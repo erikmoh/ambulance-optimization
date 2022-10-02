@@ -20,12 +20,12 @@ public class PriorityQueueTest {
     private static final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
     private static final LocalDateTime startDateTime = LocalDateTime.of(2018, 1, 1, 0, 0, 0);
     private static final LocalDateTime endDateTime = LocalDateTime.of(2019, 1, 1, 0, 0, 0);
-    private static final List<Incident> incidents = IncidentIO.loadIncidentsFromFile(startDateTime, endDateTime);
+    private static final List<Incident> incidents = IncidentIO.loadIncidentsFromFile();
 
     @BeforeAll
     public static void setup() {
         eventQueue.clear();
-        eventQueue.addAll(incidents.stream().map(NewCall::new).toList());
+        eventQueue.addAll(incidents.stream().map(incident -> new NewCall(incident, true)).toList());
     }
 
     @Test

@@ -3,11 +3,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>ai.gutta</groupId>
-  <artifactId>ambulance-location-allocation</artifactId>
-  <version>0.0.1</version>
+  <groupId>no.ntnu.erikmoh</groupId>
+  <artifactId>ambulance-optimization</artifactId>
+  <version>0.0.2</version>
 
-  <name>ambulance-location-allocation</name>
+  <name>ambulance-optimization</name>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 
@@ -124,12 +124,15 @@
           <version>3.8.0</version>
           <configuration>
             <release>18</release>
-          <compilerArgs>--enable-preview</compilerArgs>
+            <compilerArgs>--enable-preview</compilerArgs>
           </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>2.22.2</version>
+          <configuration>
+            <argLine>--enable-preview</argLine>
+          </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
@@ -159,8 +162,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>17</source>
-          <target>17</target>
+          <source>18</source>
+          <target>18</target>
           <compilerArgs>--enable-preview</compilerArgs>
         </configuration>
       </plugin>
