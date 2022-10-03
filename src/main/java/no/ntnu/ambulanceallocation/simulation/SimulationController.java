@@ -58,7 +58,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Accordion;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
@@ -93,14 +92,9 @@ public class SimulationController {
     private static final int ZOOM_DEFAULT = 11;
 
     private final Coordinate center = new Coordinate(59.929671, 10.738381);
-    private final Marker markerClick;
-    private final MapLabel labelClick;
 
     @FXML
-    private Button startSimulationbutton;
-
-    @FXML
-    private Button stopSimulationbutton;
+    private Button startSimulationButton;
 
     /** the MapView containing the map */
     @FXML
@@ -155,25 +149,13 @@ public class SimulationController {
     @FXML
     private Label labelCenter;
 
-    /** Label to display the current extent */
-    @FXML
-    private Label labelExtent;
-
     /** Label to display the current zoom */
     @FXML
     private Label labelZoom;
 
-    /** label to display the last event. */
-    @FXML
-    private Label labelEvent;
-
     /** RadioButton for MapStyle OSM */
     @FXML
     private RadioButton radioMsOSM;
-
-    /** RadioButton for MapStyle Stamen Watercolor */
-    @FXML
-    private RadioButton radioMsSTW;
 
     /** RadioButton for MapStyle Bing Roads */
     @FXML
@@ -211,10 +193,6 @@ public class SimulationController {
     @FXML
     private ToggleGroup mapTypeGroup;
 
-    /** Check button for click marker */
-    @FXML
-    private CheckBox checkClickMarker;
-
     @FXML
     private CheckBox checkShowGridCentroids;
 
@@ -223,6 +201,9 @@ public class SimulationController {
 
     @FXML
     private CheckBox checkShowHospitals;
+
+    @FXML
+    private CheckBox checkShowLabels;
 
     @FXML
     private CheckBox checkShowBaseStations;
@@ -236,43 +217,33 @@ public class SimulationController {
     @FXML
     private Slider simulationUpdateIntervalSlider;
 
-    @FXML
-    private DatePicker simulationStartTime;
+    private final URL hospitalIcon = getClass().getResource("hospital.png");
+    private final URL baseStationIcon = getClass().getResource("base_station.png");
+    private final URL ambulanceIcon = getClass().getResource("ambulance_top.png");
 
-    @FXML
-    private DatePicker simulationEndTime;
-
-    private URL hospitalIcon = getClass().getResource("hospital_boring_icon.png");
-    private URL standbyPointIcon = getClass().getResource("base_station_boring.png");
-    private URL ambulanceIcon = getClass().getResource("ambulance_marker.png");
-
-    private Map<no.ntnu.ambulanceallocation.simulation.grid.Coordinate, Coordinate> utmToLatLongMap = new HashMap<>();
-    private List<Coordinate> baseStationCoordinateList = new ArrayList<>();
-    private List<Marker> baseStationMarkerList = Collections.synchronizedList(new ArrayList<>());
-    private List<MapLabel> baseStationLabelList = Collections.synchronizedList(new ArrayList<>());
-    private List<Coordinate> hospitalCoordinateList = Collections.synchronizedList(new ArrayList<>());
-    private List<Marker> hospitalMarkerList = Collections.synchronizedList(new ArrayList<>());
-    private List<MapLabel> hospitalLabelList = Collections.synchronizedList(new ArrayList<>());
-    private List<MapCircle> gridCentroidCirclesList = Collections.synchronizedList(new ArrayList<>());
+    private final Map<no.ntnu.ambulanceallocation.simulation.grid.Coordinate, Coordinate> utmToLatLongMap = new HashMap<>();
+    private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();
+    private final List<Marker> baseStationMarkerList = Collections.synchronizedList(new ArrayList<>());
+    private final List<MapLabel> baseStationLabelList = Collections.synchronizedList(new ArrayList<>());
+    private final List<Coordinate> hospitalCoordinateList = Collections.synchronizedList(new ArrayList<>());
+    private final List<Marker> hospitalMarkerList = Collections.synchronizedList(new ArrayList<>());
+    private final List<MapLabel> hospitalLabelList = Collections.synchronizedList(new ArrayList<>());
+    private final List<MapCircle> gridCentroidCirclesList = Collections.synchronizedList(new ArrayList<>());
     private List<MapCircle> incidentCircleList = Collections.synchronizedList(new ArrayList<>());
-    private Map<Ambulance, Marker> ambulanceMarkers = Collections.synchronizedMap(new HashMap<>());
-    private Map<Ambulance, MapCircle> destinationCircles = Collections.synchronizedMap(new HashMap<>());
-    private Map<Ambulance, CoordinateLine> destinationLines = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Ambulance, Marker> ambulanceMarkers = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Ambulance, MapCircle> destinationCircles = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Ambulance, CoordinateLine> destinationLines = Collections.synchronizedMap(new HashMap<>());
     private LocalDateTime currentTimeInternal = LocalDateTime.MIN;
 
     private Thread simulationThread;
     private long lastUiUpdate = 0;
 
-    /** Check Button for polygon drawing mode. */
-    @FXML
-    private CheckBox checkDrawPolygon;
-
     /** params for the WMS server. */
-    private WMSParam wmsParam = new WMSParam()
+    private final WMSParam wmsParam = new WMSParam()
             .setUrl("http://ows.terrestris.de/osm/service?")
             .addParam("layers", "OSM-WMS");
 
-    private XYZParam xyzParams = new XYZParam()
+    private final XYZParam xyzParams = new XYZParam()
             .withUrl("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x})")
             .withAttributions(
                     "'Tiles &copy; <a href=\"https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer\">ArcGIS</a>'");
@@ -283,7 +254,7 @@ public class SimulationController {
                 .lines()) {
             lines.map(line -> line.split(",")).forEach(consumer);
         } catch (IOException | NumberFormatException e) {
-            logger.error("load {}", e);
+            logger.error("load", e);
         }
     }
 
@@ -438,53 +409,68 @@ public class SimulationController {
     @FXML
     private void setUniformAllocation() {
         dayShift.setText(new Uniform().initialize(getDayAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
         nightShift.setText(new Uniform().initialize(getNightAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
     }
 
     @FXML
     private void setUniformRandomAllocation() {
         dayShift.setText(new UniformRandom().initialize(getDayAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
         nightShift.setText(new UniformRandom().initialize(getNightAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
     }
 
     @FXML
     private void setPopulationProportionateAllocation() {
         dayShift.setText(new PopulationProportionate().initialize(getDayAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
         nightShift.setText(new PopulationProportionate().initialize(getNightAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
     }
 
     @FXML
     private void setAllCityCenterAllocation() {
         dayShift.setText(new AllCityCenter().initialize(getDayAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
         nightShift.setText(new AllCityCenter().initialize(getNightAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
     }
 
     @FXML
     private void setRandomAllocation() {
         dayShift.setText(new Random().initialize(getDayAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
         nightShift.setText(new Random().initialize(getNightAllocation()).stream()
-                .map(i -> i.toString()).collect(Collectors.joining(", ")));
+                .map(Object::toString).collect(Collectors.joining(", ")));
     }
 
     @FXML
     private void setVisibilityBaseStations() {
         logger.info("Setting base station layer visibility to " + checkShowBaseStations.isSelected());
         baseStationMarkerList.forEach(marker -> marker.setVisible(checkShowBaseStations.isSelected()));
+        baseStationLabelList.forEach(
+                label -> label.setVisible(checkShowBaseStations.isSelected() && checkShowLabels.isSelected()));
     }
 
     @FXML
     private void setVisibilityHospitals() {
         logger.info("Setting hospital layer visibility to " + checkShowHospitals.isSelected());
         hospitalMarkerList.forEach(marker -> marker.setVisible(checkShowHospitals.isSelected()));
+        hospitalLabelList.forEach(
+                label -> label.setVisible(checkShowHospitals.isSelected() && checkShowLabels.isSelected()));
+    }
+
+    @FXML
+    private void setVisibilityLabels() {
+        logger.info("Setting label visibility to " + checkShowLabels.isSelected());
+        if (checkShowHospitals.isSelected()) {
+            hospitalLabelList.forEach(label -> label.setVisible(checkShowLabels.isSelected()));
+        }
+        if (checkShowBaseStations.isSelected()) {
+            baseStationLabelList.forEach(label -> label.setVisible(checkShowLabels.isSelected()));
+        }
     }
 
     @FXML
@@ -530,10 +516,12 @@ public class SimulationController {
         logger.debug("Reading coordinate CSV files");
         readCSVThenParse("base_stations.csv", values -> {
             Coordinate coordinate = new Coordinate(Double.valueOf(values[1]), Double.valueOf(values[2]));
-            Marker mapMarker = new Marker(standbyPointIcon, -15, -15).setPosition(coordinate)
+            Marker mapMarker = new Marker(baseStationIcon, -15, -15).setPosition(coordinate)
                     .setVisible(true);
-            MapLabel label = new MapLabel(values[0], -57, 20).setVisible(false).setCssClass("label");
-            mapMarker.attachLabel(label);
+            MapLabel label = new MapLabel(values[0], -57, 20)
+                    .setPosition(coordinate)
+                    .setVisible(true)
+                    .setCssClass("label");
             baseStationCoordinateList.add(coordinate);
             baseStationMarkerList.add(mapMarker);
             baseStationLabelList.add(label);
@@ -544,9 +532,9 @@ public class SimulationController {
             Marker mapMarker = new Marker(hospitalIcon, -15, -15).setPosition(coordinate)
                     .setVisible(true);
             MapLabel label = new MapLabel(values[0], -57, 20)
-                    .setVisible(false)
+                    .setPosition(coordinate)
+                    .setVisible(true)
                     .setCssClass("label");
-            mapMarker.attachLabel(label);
             hospitalCoordinateList.add(coordinate);
             hospitalMarkerList.add(mapMarker);
             hospitalLabelList.add(label);
@@ -555,8 +543,8 @@ public class SimulationController {
         logger.debug("Reading UTM to LatLong conversion map");
         readCSVThenParse("grid_coordinates.csv", values -> {
             Coordinate coordinate = new Coordinate(Double.valueOf(values[2]), Double.valueOf(values[3]));
-            utmToLatLongMap.put(new no.ntnu.ambulanceallocation.simulation.grid.Coordinate(Integer.valueOf(values[0]),
-                    Integer.valueOf(values[1])), coordinate);
+            utmToLatLongMap.put(new no.ntnu.ambulanceallocation.simulation.grid.Coordinate(Integer.parseInt(values[0]),
+                    Integer.parseInt(values[1])), coordinate);
         });
 
         DistanceIO.uniqueGridCoordinates.forEach(utmCoordinate -> {
@@ -567,9 +555,9 @@ public class SimulationController {
                     .setVisible(false));
         });
 
-        markerClick = Marker.createProvided(Marker.Provided.ORANGE).setVisible(false);
+        Marker markerClick = Marker.createProvided(Marker.Provided.ORANGE).setVisible(false);
 
-        labelClick = new MapLabel("click!", 10, -10).setVisible(false).setCssClass("orange-label");
+        MapLabel labelClick = new MapLabel("click!", 10, -10).setVisible(false).setCssClass("orange-label");
 
         markerClick.attachLabel(labelClick);
 
@@ -588,13 +576,21 @@ public class SimulationController {
                 simulationThread.notify();
             }
         } else {
-            Task<Void> task = new Task<Void>() {
+            Task<Void> task = new Task<>() {
                 @Override
-                protected Void call() throws Exception {
-                    List<Integer> dayShiftAllocation = List.of(dayShift.getText().replaceAll("\\s", "").split(","))
-                            .stream().mapToInt(Integer::parseInt).boxed().toList();
-                    List<Integer> nightShiftAllocation = List.of(nightShift.getText().replaceAll("\\s", "").split(","))
-                            .stream().mapToInt(Integer::parseInt).boxed().toList();
+                protected Void call() {
+                    List<Integer> dayShiftAllocation =
+                            Stream.of(dayShift.getText().replaceAll("\\s", "")
+                                    .split(","))
+                                    .mapToInt(Integer::parseInt)
+                                    .boxed()
+                                    .toList();
+                    List<Integer> nightShiftAllocation =
+                            Stream.of(nightShift.getText().replaceAll("\\s", "")
+                                    .split(","))
+                                    .mapToInt(Integer::parseInt)
+                                    .boxed()
+                                    .toList();
 
                     Simulation.visualizedSimulation(new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)),
                             (currentTime, ambulanceList, callQueue) -> {
@@ -613,19 +609,7 @@ public class SimulationController {
             simulationThread.setDaemon(true);
             simulationThread.start();
         }
-        startSimulationbutton.setVisible(false);
-    }
-
-    @FXML
-    private void stopSimulation() {
-        try {
-            synchronized (simulationThread) {
-                simulationThread.wait();
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        startSimulationbutton.setVisible(true);
+        startSimulationButton.setVisible(false);
     }
 
     /**
@@ -641,6 +625,7 @@ public class SimulationController {
         checkShowPathLines.setSelected(true);
         checkShowHospitals.setSelected(true);
         checkShowBaseStations.setSelected(true);
+        checkShowLabels.setSelected(true);
         checkShowIncidents.setSelected(true);
         checkShowAmbulances.setSelected(true);
 
@@ -781,7 +766,9 @@ public class SimulationController {
         mapView.setZoom(ZOOM_DEFAULT);
         mapView.setCenter(center);
         baseStationMarkerList.forEach(mapView::addMarker);
+        baseStationLabelList.forEach(mapView::addLabel);
         hospitalMarkerList.forEach(mapView::addMarker);
+        hospitalLabelList.forEach(mapView::addLabel);
         gridCentroidCirclesList.forEach(mapView::addMapCircle);
         // now enable the controls
         setControlsDisable(false);
