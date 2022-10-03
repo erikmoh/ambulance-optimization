@@ -275,8 +275,9 @@ public class SimulationController {
             incidentCircleList.forEach(mapView::removeMapCircle);
             incidentCircleList = callQueue.stream()
                     .map(call -> new MapCircle(utmToLatLongMap.get(call.incident.getLocation()), 1000)
-                            .setColor(call.incident.urgencyLevel() == UrgencyLevel.ACUTE ? Color.web("#ff0000", 0.7)
-                                    : Color.web("#ffff00"))
+                            .setColor(call.incident.urgencyLevel() == UrgencyLevel.ACUTE
+                                    ? Color.web("#ff0000", 0.7)
+                                    : Color.web("#ffff00", 0.7))
                             .setVisible(checkShowIncidents.isSelected()))
                     .toList();
             incidentCircleList.forEach(mapView::addMapCircle);
@@ -300,21 +301,20 @@ public class SimulationController {
                             marker.setVisible(checkShowAmbulances.isSelected());
                         }
 
-                        if (ambulance.isAvailable()) {
-                            // markerLabel.setVisible(false);
+                        /*if (ambulance.isAvailable()) {
+                            markerLabel.setVisible(false);
                         } else if (!ambulance.isOffDuty()) {
-                            // if (!ambulance.isAvailable() && !ambulance.isTransport()) {
-                            // UrgencyLevel urgencyLevel = ambulance.getIncident().urgencyLevel();
-                            // markerLabel.setCssClass(
-                            // urgencyLevel == UrgencyLevel.ACUTE ? "red-label" : "orange-label")
-                            // .setVisible(checkShowAmbulances.isSelected());
-                            // } else if (!ambulance.isAvailable() && ambulance.isTransport()
-                            // && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
-                            // markerLabel.setCssClass(
-                            // "green-label")
-                            // .setVisible(checkShowAmbulances.isSelected());
-                            // }
-                        }
+                            if (!ambulance.isAvailable() && !ambulance.isTransport()) {
+                                UrgencyLevel urgencyLevel = ambulance.getIncident().urgencyLevel();
+                                markerLabel
+                                        .setCssClass(urgencyLevel == UrgencyLevel.ACUTE ? "red-label" : "orange-label")
+                                        .setVisible(checkShowAmbulances.isSelected());
+                            } else if (!ambulance.isAvailable()
+                                    && ambulance.isTransport()
+                                    && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
+                                markerLabel.setCssClass("green-label").setVisible(checkShowAmbulances.isSelected());
+                            }
+                        }*/
 
                         if (!marker.getPosition().equals(coordinate)) {
                             marker.setRotation(bearingInDegrees(marker.getPosition(), coordinate) + 90);
@@ -357,7 +357,9 @@ public class SimulationController {
                                 destinationCircles.put(ambulance,
                                         new MapCircle(destinationCoordinate,
                                                 1000)
-                                                .setColor(Color.web("#00ff00", 0.7))
+                                                .setColor(ambulance.getIncident().urgencyLevel() == UrgencyLevel.ACUTE
+                                                        ? Color.web("#ff0000", 0.7)
+                                                        : Color.web("#ffff00", 0.7))
                                                 .setVisible(checkShowIncidents.isSelected()));
                                 mapView.addMapCircle(destinationCircles.get(ambulance));
                             }
