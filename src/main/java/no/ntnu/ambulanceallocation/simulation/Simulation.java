@@ -75,11 +75,11 @@ public final class Simulation {
         return new Simulation(Config.withinPeriod(start, end));
     }
 
-    public static ResponseTimes visualizedSimulation(
+    public static void visualizedSimulation(
             final Allocation allocation,
             final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate,
             final DoubleProperty simulationUpdateInterval) {
-        return new Simulation(Config.defaultConfig(), onTimeUpdate, simulationUpdateInterval).simulate(allocation);
+        new Simulation(Config.defaultConfig(), onTimeUpdate, simulationUpdateInterval).simulate(allocation);
     }
 
     public static ResponseTimes simulate(
@@ -90,7 +90,7 @@ public final class Simulation {
 
     public ResponseTimes simulate(final Allocation allocation) {
         initialize(allocation);
-        Event event = null;
+        Event event;
         time = null;
 
         while (!eventQueue.isEmpty()) {

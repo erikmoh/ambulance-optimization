@@ -134,6 +134,9 @@ public class SimulationController {
     private Label activeAmbulances;
 
     @FXML
+    private Label standbyAmbulances;
+
+    @FXML
     private TextField numDayAmbulances;
 
     @FXML
@@ -225,6 +228,7 @@ public class SimulationController {
     private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();
     private final List<Marker> baseStationMarkerList = Collections.synchronizedList(new ArrayList<>());
     private final List<MapLabel> baseStationLabelList = Collections.synchronizedList(new ArrayList<>());
+    private final List<MapLabel> baseStationCountLabelList = Collections.synchronizedList(new ArrayList<>());
     private final List<Coordinate> hospitalCoordinateList = Collections.synchronizedList(new ArrayList<>());
     private final List<Marker> hospitalMarkerList = Collections.synchronizedList(new ArrayList<>());
     private final List<MapLabel> hospitalLabelList = Collections.synchronizedList(new ArrayList<>());
@@ -286,6 +290,7 @@ public class SimulationController {
 
     private void updateAmbulances(Collection<Ambulance> ambulanceList) {
         Platform.runLater(() -> {
+            updateStandbyAmbulanceCount(ambulanceList);
             if (ambulanceMarkers.size() > 0) {
                 synchronized (ambulanceMarkers) {
                     ambulanceList.forEach(ambulance -> {
@@ -294,8 +299,7 @@ public class SimulationController {
                         Marker marker = ambulanceMarkers.get(ambulance);
                         // MapLabel markerLabel = marker.getMapLabel().get();
 
-                        if (ambulance.getCurrentLocation() == ambulance.getBaseStationLocation()
-                                && ambulance.isOffDuty()) {
+                        if (ambulance.isAtBaseStation() && ambulance.isOffDuty()) {
                             marker.setVisible(false);
                         } else {
                             marker.setVisible(checkShowAmbulances.isSelected());
@@ -390,6 +394,30 @@ public class SimulationController {
                                     .count()
                             + "");
         });
+    }
+
+    private void updateStandbyAmbulanceCount(Collection<Ambulance> ambulances) {
+        var baseStationMap = new HashMap<BaseStation, Integer>();
+
+        for (var baseStation : BaseStation.values()) {
+            baseStationMap.put(baseStation, 0);
+        }
+
+        for (var ambulance : ambulances) {
+            if (ambulance.isAvailable()) {
+                var key = ambulance.getBaseStation();
+                baseStationMap.put(key, baseStationMap.get(key) + 1);
+            }
+        }
+
+        var standbyAmbulancesString = new StringBuilder("Standby ambulances:\n");
+        for (var baseStation : baseStationMap.keySet()) {
+            var name = baseStationLabelList.get(baseStation.getId()).getText();
+            var count = baseStationMap.get(baseStation);
+            standbyAmbulancesString.append(String.format("%s: %s\n", name, count));
+        }
+
+        standbyAmbulances.setText(standbyAmbulancesString.toString());
     }
 
     private int getDayAllocation() {
