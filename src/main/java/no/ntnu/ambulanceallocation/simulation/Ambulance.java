@@ -123,7 +123,7 @@ public class Ambulance {
         if (isAvailable()) {
             return currentLocation;
         }
-        if (travelStartTime == null) {
+        if (travelStartTime == null || currentLocation == destination) {
             return currentLocation;
         }
         int elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
@@ -133,22 +133,26 @@ public class Ambulance {
         } else {
             int timeDelta = originTimeToDestination - elapsedTime;
             List<Coordinate> closeNeighbors = currentLocation.getNeighbors().stream()
-                    .sorted(Comparator
-                            .comparingInt(c -> Math.abs(c.getNearbyAverageTravelTimeTo(destination) - timeDelta)))
+                    .sorted(Comparator.comparingInt(c ->
+                            Math.abs(c.getNearbyAverageTravelTimeTo(destination) - timeDelta)))
                     .toList();
-            for (Coordinate closeNeighbor : closeNeighbors) {
-                if (Math.abs(
-                        closeNeighbor.getNearbyAverageTravelTimeTo(destination) - timeDelta) < Math
-                                .abs(currentLocation.timeTo(destination) - timeDelta)) {
-                    return closeNeighbor;
-                }
+            var closeNeighbor = closeNeighbors.get(0);
+            if (Math.abs(closeNeighbor.getNearbyAverageTravelTimeTo(destination) - timeDelta) <
+                    Math.abs(currentLocation.timeTo(destination) - timeDelta)) {
+                return closeNeighbor;
             }
         }
         return currentLocation;
     }
 
     public void updateLocation(int timePeriod) {
+        if (currentLocation == destination) {
+            timeToDestination = 0;
+            return;
+        }
+
         timeToDestination -= timePeriod * 60;
+
         if (timeToDestination <= 0) {
             currentLocation = destination;
             timeToDestination = 0;
@@ -157,12 +161,10 @@ public class Ambulance {
             List<Coordinate> closeNeighbors = currentLocation.getNeighbors().stream()
                     .sorted(Comparator.comparingInt(c -> Math.abs(c.timeTo(destination) - timeToDestination)))
                     .toList();
-            for (Coordinate closeNeighbor : closeNeighbors) {
-                if (Math.abs(closeNeighbor.timeTo(destination) - timeToDestination) < Math
-                        .abs(previousTimeToDestination - timeToDestination)) {
-                    currentLocation = closeNeighbor;
-                    return;
-                }
+            var closeNeighbor = closeNeighbors.get(0);
+            if (Math.abs(closeNeighbor.timeTo(destination) - timeToDestination) <
+                    Math.abs(previousTimeToDestination - timeToDestination)) {
+                currentLocation = closeNeighbor;
             }
         }
     }

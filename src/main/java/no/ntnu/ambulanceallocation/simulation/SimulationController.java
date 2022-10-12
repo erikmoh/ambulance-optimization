@@ -200,6 +200,9 @@ public class SimulationController {
     private CheckBox checkShowGridCentroids;
 
     @FXML
+    private CheckBox checkShowGridLabels;
+
+    @FXML
     private CheckBox checkShowPathLines;
 
     @FXML
@@ -228,11 +231,11 @@ public class SimulationController {
     private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();
     private final List<Marker> baseStationMarkerList = Collections.synchronizedList(new ArrayList<>());
     private final List<MapLabel> baseStationLabelList = Collections.synchronizedList(new ArrayList<>());
-    private final List<MapLabel> baseStationCountLabelList = Collections.synchronizedList(new ArrayList<>());
     private final List<Coordinate> hospitalCoordinateList = Collections.synchronizedList(new ArrayList<>());
     private final List<Marker> hospitalMarkerList = Collections.synchronizedList(new ArrayList<>());
     private final List<MapLabel> hospitalLabelList = Collections.synchronizedList(new ArrayList<>());
     private final List<MapCircle> gridCentroidCirclesList = Collections.synchronizedList(new ArrayList<>());
+    private final List<MapLabel> gridCentroidLabelList = Collections.synchronizedList(new ArrayList<>());
     private List<MapCircle> incidentCircleList = Collections.synchronizedList(new ArrayList<>());
     private final Map<Ambulance, Marker> ambulanceMarkers = Collections.synchronizedMap(new HashMap<>());
     private final Map<Ambulance, MapCircle> destinationCircles = Collections.synchronizedMap(new HashMap<>());
@@ -387,12 +390,10 @@ public class SimulationController {
                 }
             }
             currentTime.setText("Current time:\n" + currentTimeInternal.toString());
-            activeAmbulances.setText(
-                    "Active ambulances: "
-                            + ambulanceList.stream()
-                                    .filter(ambulance -> !ambulance.isOffDuty())
-                                    .count()
-                            + "");
+            var activeCount = ambulanceList.stream()
+                    .filter(ambulance -> !ambulance.isOffDuty())
+                    .count();
+            activeAmbulances.setText("Active ambulances: " + activeCount + "");
         });
     }
 
@@ -520,6 +521,12 @@ public class SimulationController {
     }
 
     @FXML
+    private void setVisibilityGridLabels() {
+        logger.info("Setting grid labels layer visibility to " + checkShowGridLabels.isSelected());
+        gridCentroidLabelList.forEach(label -> label.setVisible(checkShowGridLabels.isSelected()));
+    }
+
+    @FXML
     private void setVisibilityPathLines() {
         logger.info("Setting path line layer visibility to " + checkShowPathLines.isSelected());
         destinationLines.values().forEach(mapView::removeCoordinateLine);
@@ -550,7 +557,7 @@ public class SimulationController {
                     .setVisible(true);
             MapLabel label = new MapLabel(values[0], -57, 20)
                     .setPosition(coordinate)
-                    .setVisible(true)
+                    .setVisible(false)
                     .setCssClass("label");
             baseStationCoordinateList.add(coordinate);
             baseStationMarkerList.add(mapMarker);
@@ -563,7 +570,7 @@ public class SimulationController {
                     .setVisible(true);
             MapLabel label = new MapLabel(values[0], -57, 20)
                     .setPosition(coordinate)
-                    .setVisible(true)
+                    .setVisible(false)
                     .setCssClass("label");
             hospitalCoordinateList.add(coordinate);
             hospitalMarkerList.add(mapMarker);
@@ -582,6 +589,10 @@ public class SimulationController {
             gridCentroidCirclesList.add(new MapCircle(coordinate, 100)
                     .setFillColor(Color.web("#000000", 0.4))
                     .setColor(Color.TRANSPARENT)
+                    .setVisible(false));
+            gridCentroidLabelList.add(new MapLabel(String.format("%s\n%s", utmCoordinate.x(), utmCoordinate.y()), 0, 10)
+                    .setPosition(coordinate)
+                    .setCssClass("coordinate-label")
                     .setVisible(false));
         });
 
@@ -610,14 +621,12 @@ public class SimulationController {
                 @Override
                 protected Void call() {
                     List<Integer> dayShiftAllocation =
-                            Stream.of(dayShift.getText().replaceAll("\\s", "")
-                                    .split(","))
+                            Stream.of(dayShift.getText().replaceAll("\\s", "").split(","))
                                     .mapToInt(Integer::parseInt)
                                     .boxed()
                                     .toList();
                     List<Integer> nightShiftAllocation =
-                            Stream.of(nightShift.getText().replaceAll("\\s", "")
-                                    .split(","))
+                            Stream.of(nightShift.getText().replaceAll("\\s", "").split(","))
                                     .mapToInt(Integer::parseInt)
                                     .boxed()
                                     .toList();
@@ -647,15 +656,13 @@ public class SimulationController {
      * called initialize any more,
      * because we need to pass in the projection before initializing.
      *
-     * @param projection
-     *                   the projection to use in the map.
+     * @param projection the projection to use in the map.
      */
     public void initMapAndControls(Projection projection) {
         setRandomAllocation();
         checkShowPathLines.setSelected(true);
         checkShowHospitals.setSelected(true);
         checkShowBaseStations.setSelected(true);
-        checkShowLabels.setSelected(true);
         checkShowIncidents.setSelected(true);
         checkShowAmbulances.setSelected(true);
 
@@ -778,8 +785,7 @@ public class SimulationController {
     /**
      * enables / disables the different controls
      *
-     * @param flag
-     *             if true the controls are disabled
+     * @param flag if true the controls are disabled
      */
     private void setControlsDisable(boolean flag) {
         topControls.setDisable(flag);
@@ -800,6 +806,7 @@ public class SimulationController {
         hospitalMarkerList.forEach(mapView::addMarker);
         hospitalLabelList.forEach(mapView::addLabel);
         gridCentroidCirclesList.forEach(mapView::addMapCircle);
+        gridCentroidLabelList.forEach(mapView::addLabel);
         // now enable the controls
         setControlsDisable(false);
     }

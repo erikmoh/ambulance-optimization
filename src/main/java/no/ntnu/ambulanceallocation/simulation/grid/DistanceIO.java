@@ -39,6 +39,9 @@ public final class DistanceIO {
     }
 
     public static double getDistance(Coordinate from, Coordinate to) {
+        if (from == to) {
+            return 0.0;
+        }
         if (!distances.containsKey(new Tuple<>(from, to))) {
             logger.info("Failed to find distance from {} to {}", from, to);
             return 60.0;
