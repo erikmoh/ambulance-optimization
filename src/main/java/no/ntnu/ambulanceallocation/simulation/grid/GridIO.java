@@ -11,39 +11,41 @@ import java.util.Scanner;
 
 public class GridIO {
 
-    private static final List<Coordinate> gridCoordinates = new ArrayList<>();
+  private static final List<Coordinate> gridCoordinates = new ArrayList<>();
 
-    static {
-        List<String> coordinatesFilesList = List.of("oslo.csv", "akershus.csv");
-        for (String coordinatesFile : coordinatesFilesList) {
-            loadCoordinatesFile(GridIO.class.getClassLoader().getResource(coordinatesFile));
-        }
+  static {
+    var coordinatesFilesList = List.of("data/oslo.csv", "data/akershus.csv");
+    for (var coordinatesFile : coordinatesFilesList) {
+      loadCoordinatesFile(GridIO.class.getClassLoader().getResource(coordinatesFile));
+    }
+  }
+
+  private static void loadCoordinatesFile(URL coordinatesFilePath) {
+    if (coordinatesFilePath == null) {
+      throw new IllegalArgumentException("Coordinates file not found!");
     }
 
-    private static void loadCoordinatesFile(URL coordinatesFilePath) {
-        if (coordinatesFilePath == null) {
-            throw new IllegalArgumentException("Coordinates file not found!");
-        }
+    try (var scanner = new Scanner(new File(coordinatesFilePath.toURI()))) {
+      scanner.nextLine(); // Skip header row
+      var line = scanner.nextLine();
 
-        try (Scanner scanner = new Scanner(new File(coordinatesFilePath.toURI()))) {
-            scanner.nextLine(); // Skip header row
-            String line = scanner.nextLine();
+      while (scanner.hasNextLine()) {
+        line = scanner.nextLine();
+        var values = Arrays.asList(line.split(","));
 
-            while (scanner.hasNextLine()) {
-                line = scanner.nextLine();
-                List<String> values = Arrays.asList(line.split(","));
-
-                Coordinate gridCoordinate = new Coordinate((int) Double.parseDouble(values.get(0)),
-                        (int) Double.parseDouble(values.get(1)), Long.parseLong(values.get(4)));
-                gridCoordinates.add(gridCoordinate);
-            }
-        } catch (IOException | URISyntaxException e) {
-            e.printStackTrace();
-        }
+        var gridCoordinate =
+            new Coordinate(
+                Integer.parseInt(values.get(0)),
+                Integer.parseInt(values.get(1)),
+                Long.parseLong(values.get(4)));
+        gridCoordinates.add(gridCoordinate);
+      }
+    } catch (IOException | URISyntaxException e) {
+      e.printStackTrace();
     }
+  }
 
-    public static List<Coordinate> getGridCoordinates() {
-        return gridCoordinates;
-    }
-
+  public static List<Coordinate> getGridCoordinates() {
+    return gridCoordinates;
+  }
 }

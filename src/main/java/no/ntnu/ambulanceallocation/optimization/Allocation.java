@@ -8,55 +8,56 @@ import java.util.stream.Stream;
 
 public record Allocation(List<List<Integer>> allocation) implements Iterable<List<Integer>> {
 
-    public Allocation(List<List<Integer>> allocation) {
-        List<List<Integer>> allocationCopy = new ArrayList<>();
-        for (List<Integer> subAllocation : allocation) {
-            allocationCopy.add(new ArrayList<>(subAllocation));
-        }
-        this.allocation = allocationCopy;
-    }
+  public Allocation(List<List<Integer>> allocation) {
+    var allocationCopy = new ArrayList<List<Integer>>();
 
-    public Allocation() {
-        this(List.of(new ArrayList<>(), new ArrayList<>()));
+    for (var subAllocation : allocation) {
+      allocationCopy.add(new ArrayList<>(subAllocation));
     }
+    this.allocation = allocationCopy;
+  }
 
-    public Allocation(Allocation allocation) {
-        this(allocation.allocation);
-    }
+  public Allocation() {
+    this(List.of(new ArrayList<>(), new ArrayList<>()));
+  }
 
-    public List<Integer> getDayShiftAllocation() {
-        return allocation.get(0);
-    }
+  public Allocation(Allocation allocation) {
+    this(allocation.allocation);
+  }
 
-    public List<Integer> getNightShiftAllocation() {
-        return allocation.get(1);
-    }
+  public List<Integer> getDayShiftAllocation() {
+    return allocation.get(0);
+  }
 
-    public List<Integer> getDayShiftAllocationSorted() {
-        return getDayShiftAllocation().stream().sorted().collect(Collectors.toList());
-    }
+  public List<Integer> getNightShiftAllocation() {
+    return allocation.get(1);
+  }
 
-    public List<Integer> getNightShiftAllocationSorted() {
-        return getNightShiftAllocation().stream().sorted().collect(Collectors.toList());
-    }
+  public List<Integer> getDayShiftAllocationSorted() {
+    return getDayShiftAllocation().stream().sorted().collect(Collectors.toList());
+  }
 
-    public int size() {
-        return allocation.size();
-    }
+  public List<Integer> getNightShiftAllocationSorted() {
+    return getNightShiftAllocation().stream().sorted().collect(Collectors.toList());
+  }
 
-    public List<Integer> get(int index) {
-        if (index > allocation.size()) {
-            throw new IndexOutOfBoundsException(String.format("no allocation at index %d", index));
-        }
-        return allocation.get(index);
-    }
+  public int size() {
+    return allocation.size();
+  }
 
-    @Override
-    public Iterator<List<Integer>> iterator() {
-        return allocation.iterator();
+  public List<Integer> get(int index) {
+    if (index > allocation.size()) {
+      throw new IndexOutOfBoundsException(String.format("no allocation at index %d", index));
     }
+    return allocation.get(index);
+  }
 
-    public Stream<List<Integer>> stream() {
-        return allocation.stream();
-    }
+  @Override
+  public Iterator<List<Integer>> iterator() {
+    return allocation.iterator();
+  }
+
+  public Stream<List<Integer>> stream() {
+    return allocation.stream();
+  }
 }

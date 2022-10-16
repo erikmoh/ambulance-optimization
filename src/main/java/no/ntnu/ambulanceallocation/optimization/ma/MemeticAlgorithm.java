@@ -20,110 +20,117 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class MemeticAlgorithm extends GeneticAlgorithm {
 
-    static private final AtomicInteger instanceCount = new AtomicInteger();
+  private static final AtomicInteger instanceCount = new AtomicInteger();
 
-    static {
-        instanceCount.getAndIncrement();
-    }
+  static {
+    instanceCount.getAndIncrement();
+  }
 
-    private static final ExecutorService executor = Executors.newCachedThreadPool();
+  private static final ExecutorService executor = Executors.newCachedThreadPool();
 
-    private final Logger logger = LoggerFactory.getLogger(MemeticAlgorithm.class);
+  private final Logger logger = LoggerFactory.getLogger(MemeticAlgorithm.class);
 
-    private final EvolutionStrategy evolutionStrategy;
-    private final NeighborhoodFunction neighborhoodFunction;
+  private final EvolutionStrategy evolutionStrategy;
+  private final NeighborhoodFunction neighborhoodFunction;
 
-    public MemeticAlgorithm(EvolutionStrategy evolutionStrategy, NeighborhoodFunction neighborhoodFunction) {
-        this.evolutionStrategy = evolutionStrategy;
-        this.neighborhoodFunction = neighborhoodFunction;
-    }
+  public MemeticAlgorithm(
+      EvolutionStrategy evolutionStrategy, NeighborhoodFunction neighborhoodFunction) {
+    this.evolutionStrategy = evolutionStrategy;
+    this.neighborhoodFunction = neighborhoodFunction;
+  }
 
-    public MemeticAlgorithm(EvolutionStrategy evolutionStrategy, NeighborhoodFunction neighborhoodFunction,
-            Config config) {
-        super(config);
-        this.evolutionStrategy = evolutionStrategy;
-        this.neighborhoodFunction = neighborhoodFunction;
-    }
+  public MemeticAlgorithm(
+      EvolutionStrategy evolutionStrategy,
+      NeighborhoodFunction neighborhoodFunction,
+      Config config) {
+    super(config);
+    this.evolutionStrategy = evolutionStrategy;
+    this.neighborhoodFunction = neighborhoodFunction;
+  }
 
-    @Override
-    public void optimize() {
-        clearRunStatistics();
-        population = new Population(Parameters.POPULATION_SIZE, Parameters.INITIALIZER, config);
+  @Override
+  public void optimize() {
+    clearRunStatistics();
+    population = new Population(Parameters.POPULATION_SIZE, Parameters.INITIALIZER, config);
 
-        Runnable optimizationWrapper = () -> {
-            logger.info("Starting {} optimizer...", getAbbreviation());
+    Runnable optimizationWrapper =
+        () -> {
+          logger.info("Starting {} optimizer...", getAbbreviation());
 
-            population.evaluate();
+          population.evaluate();
 
-            int generation = 0;
-            long startTime = System.nanoTime();
+          var generation = 0;
+          var startTime = System.nanoTime();
 
-            while (elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME && generation < Parameters.GENERATIONS) {
-                printAndSaveSummary(logger, generation, population);
+          while (elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME
+              && generation < Parameters.GENERATIONS) {
 
-                List<Individual> elite = population.elite(Parameters.ELITE_SIZE);
-                Population nextPopulation = new Population(elite);
-                CountDownLatch countDownLatch = new CountDownLatch(
-                        Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE);
-                for (int i = 0; i < ((Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE) / 2); i++) {
-                    executor.execute(() -> {
-                        Tuple<Individual> parents = population.selection(Parameters.TOURNAMENT_SIZE);
-                        Individual offspringA = parents.first();
-                        Individual offspringB = parents.second();
+            printAndSaveSummary(logger, generation, population);
 
-                        Tuple<Individual> offspring = offspringA.recombineWith(offspringB,
-                                Parameters.CROSSOVER_PROBABILITY);
-                        offspringA = offspring.first();
-                        offspringB = offspring.second();
+            var elite = population.elite(Parameters.ELITE_SIZE);
+            var nextPopulation = new Population(elite);
+            var countDownLatch =
+                new CountDownLatch(Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE);
 
-                        offspringA.mutate(Parameters.MUTATION_PROBABILITY);
-                        offspringB.mutate(Parameters.MUTATION_PROBABILITY);
-                        // MA step
-                        offspringA.improve(evolutionStrategy, neighborhoodFunction,
-                                Parameters.IMPROVE_PROBABILITY);
-                        offspringB.improve(evolutionStrategy, neighborhoodFunction,
-                                Parameters.IMPROVE_PROBABILITY);
+            for (var i = 0; i < ((Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE) / 2); i++) {
+              executor.execute(
+                  () -> {
+                    var parents = population.selection(Parameters.TOURNAMENT_SIZE);
+                    var offspringA = parents.first();
+                    var offspringB = parents.second();
 
-                        synchronized (nextPopulation) {
-                            if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
-                                nextPopulation.add(offspringA);
-                                countDownLatch.countDown();
-                                if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
-                                    nextPopulation.add(offspringB);
-                                    countDownLatch.countDown();
-                                }
-                            }
+                    var offspring =
+                        offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
+                    offspringA = offspring.first();
+                    offspringB = offspring.second();
+
+                    offspringA.mutate(Parameters.MUTATION_PROBABILITY);
+                    offspringB.mutate(Parameters.MUTATION_PROBABILITY);
+                    // MA step
+                    offspringA.improve(
+                        evolutionStrategy, neighborhoodFunction, Parameters.IMPROVE_PROBABILITY);
+                    offspringB.improve(
+                        evolutionStrategy, neighborhoodFunction, Parameters.IMPROVE_PROBABILITY);
+
+                    synchronized (nextPopulation) {
+                      if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
+                        nextPopulation.add(offspringA);
+                        countDownLatch.countDown();
+                        if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
+                          nextPopulation.add(offspringB);
+                          countDownLatch.countDown();
                         }
-                    });
-                }
-                try {
-                    countDownLatch.await();
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-
-                population = nextPopulation;
-                population.evaluate();
-                generation++;
+                      }
+                    }
+                  });
+            }
+            try {
+              countDownLatch.await();
+            } catch (InterruptedException e) {
+              // TODO Auto-generated catch block
+              e.printStackTrace();
             }
 
-            logger.info("{} finished successfully.", getAbbreviation());
+            population = nextPopulation;
+            population.evaluate();
+            generation++;
+          }
+
+          logger.info("{} finished successfully.", getAbbreviation());
         };
 
-        long optimizationTime = Utils.timeIt(optimizationWrapper, false);
-        logger.info("Total {} optimization time: {} s", getAbbreviation(), optimizationTime);
-    }
+    var optimizationTime = Utils.timeIt(optimizationWrapper, false);
+    logger.info("Total {} optimization time: {} s", getAbbreviation(), optimizationTime);
+  }
 
-    @Override
-    public String getAbbreviation() {
-        if (instanceCount.get() == 1) {
-            return "MA";
-        }
-        return switch (neighborhoodFunction) {
-            case FORWARD -> "FMA";
-            case HAMMING -> "HMA";
-        };
+  @Override
+  public String getAbbreviation() {
+    if (instanceCount.get() == 1) {
+      return "MA";
     }
-
+    return switch (neighborhoodFunction) {
+      case FORWARD -> "FMA";
+      case HAMMING -> "HMA";
+    };
+  }
 }

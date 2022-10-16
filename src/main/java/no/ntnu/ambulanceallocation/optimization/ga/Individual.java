@@ -17,84 +17,91 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class Individual extends Solution {
 
-    public Individual(List<List<Integer>> chromosomes) {
-        super(chromosomes);
-    }
+  public Individual(List<List<Integer>> chromosomes) {
+    super(chromosomes);
+  }
 
-    public Individual(Initializer initializer, Config config) {
-        super(initializer, config);
-    }
+  public Individual(Initializer initializer, Config config) {
+    super(initializer, config);
+  }
 
-    public Individual(Solution solution) {
-        super(solution);
-    }
+  public Individual(Solution solution) {
+    super(solution);
+  }
 
-    public void mutate(double mutationProbability) {
-        List<List<Integer>> dna = new ArrayList<>();
-        for (List<Integer> chromosome : getAllocation()) {
-            List<Integer> newChromosome = new ArrayList<>(chromosome);
-            for (int locus = 0; locus < newChromosome.size(); locus++) {
-                if (Utils.randomDouble() < mutationProbability) {
-                    newChromosome.set(locus, Utils.randomInt(BaseStation.size()));
-                }
-            }
-            dna.add(newChromosome);
+  public void mutate(double mutationProbability) {
+    var dna = new ArrayList<List<Integer>>();
+
+    for (var chromosome : getAllocation()) {
+      var newChromosome = new ArrayList<>(chromosome);
+
+      for (var locus = 0; locus < newChromosome.size(); locus++) {
+        if (Utils.randomDouble() < mutationProbability) {
+          newChromosome.set(locus, Utils.randomInt(BaseStation.size()));
         }
-        setAllocation(dna);
+      }
+      dna.add(newChromosome);
     }
+    setAllocation(dna);
+  }
 
-    public Tuple<Individual> recombineWith(Individual individual, double crossoverProbability) {
-        if (Utils.randomDouble() < crossoverProbability) {
-            List<List<Integer>> childA = new ArrayList<>();
-            List<List<Integer>> childB = new ArrayList<>();
+  public Tuple<Individual> recombineWith(Individual individual, double crossoverProbability) {
+    if (Utils.randomDouble() < crossoverProbability) {
+      var childA = new ArrayList<List<Integer>>();
+      var childB = new ArrayList<List<Integer>>();
 
-            for (int chromosomeNumber = 0; chromosomeNumber < getAllocation().size(); chromosomeNumber++) {
-                List<Integer> chromosomeFromA = new ArrayList<>(getAllocation().get(chromosomeNumber));
-                List<Integer> chromosomeFromB = new ArrayList<>(individual.getAllocation().get(chromosomeNumber));
+      for (var chromosomeNumber = 0;
+          chromosomeNumber < getAllocation().size();
+          chromosomeNumber++) {
+        var chromosomeFromA = new ArrayList<>(getAllocation().get(chromosomeNumber));
+        var chromosomeFromB = new ArrayList<>(individual.getAllocation().get(chromosomeNumber));
 
-                int crossoverPoint = 1 + Utils.randomInt(chromosomeFromA.size() - 2);
+        var crossoverPoint = 1 + Utils.randomInt(chromosomeFromA.size() - 2);
 
-                List<Integer> firstPartA = chromosomeFromA.subList(0, crossoverPoint);
-                List<Integer> firstPartB = chromosomeFromB.subList(0, crossoverPoint);
-                List<Integer> lastPartA = chromosomeFromA.subList(crossoverPoint, chromosomeFromA.size());
-                List<Integer> lastPartB = chromosomeFromB.subList(crossoverPoint, chromosomeFromB.size());
+        var firstPartA = chromosomeFromA.subList(0, crossoverPoint);
+        var firstPartB = chromosomeFromB.subList(0, crossoverPoint);
+        var lastPartA = chromosomeFromA.subList(crossoverPoint, chromosomeFromA.size());
+        var lastPartB = chromosomeFromB.subList(crossoverPoint, chromosomeFromB.size());
 
-                childA.add(Stream.concat(firstPartA.stream(), lastPartB.stream()).collect(Collectors.toList()));
-                childB.add(Stream.concat(firstPartB.stream(), lastPartA.stream()).collect(Collectors.toList()));
-            }
-            return new Tuple<>(new Individual(childA), new Individual(childB));
+        childA.add(
+            Stream.concat(firstPartA.stream(), lastPartB.stream()).collect(Collectors.toList()));
+        childB.add(
+            Stream.concat(firstPartB.stream(), lastPartA.stream()).collect(Collectors.toList()));
+      }
+      return new Tuple<>(new Individual(childA), new Individual(childB));
+    }
+    return new Tuple<>(this, individual);
+  }
+
+  // Memetic method
+  public void improve(
+      EvolutionStrategy evolutionStrategy,
+      NeighborhoodFunction neighborhoodFunction,
+      double improveProbability) {
+
+    if (Utils.randomDouble() < improveProbability) {
+      switch (evolutionStrategy) {
+        case DARWINIAN -> {}
+        case BALDWINIAN -> {
+          var bestNeighbor = getBestNeighbor(neighborhoodFunction);
+          if (bestNeighbor.getFitness() > getFitness()) {
+            this.setFitness(bestNeighbor.getFitness());
+          }
         }
-        return new Tuple<>(this, individual);
-    }
-
-    // Memetic method
-    public void improve(EvolutionStrategy evolutionStrategy, NeighborhoodFunction neighborhoodFunction,
-            double improveProbability) {
-        if (Utils.randomDouble() < improveProbability) {
-            switch (evolutionStrategy) {
-                case DARWINIAN -> {
-                }
-                case BALDWINIAN -> {
-                    Individual bestNeighbor = getBestNeighbor(neighborhoodFunction);
-                    if (bestNeighbor.getFitness() > getFitness()) {
-                        this.setFitness(bestNeighbor.getFitness());
-                    }
-                }
-                case LAMARCKIAN -> {
-                    Individual bestNeighbor = getBestNeighbor(neighborhoodFunction);
-                    if (bestNeighbor.getFitness() > getFitness()) {
-                        copy(bestNeighbor);
-                    }
-                }
-            }
+        case LAMARCKIAN -> {
+          var bestNeighbor = getBestNeighbor(neighborhoodFunction);
+          if (bestNeighbor.getFitness() > getFitness()) {
+            copy(bestNeighbor);
+          }
         }
+      }
     }
+  }
 
-    // Memetic method
-    private Individual getBestNeighbor(NeighborhoodFunction neighborhoodFunction) {
-        SlsSolution slsSolution = new SlsSolution(this);
-        SlsSolution bestNeighborhood = slsSolution.greedyStep(neighborhoodFunction);
-        return new Individual(bestNeighborhood);
-    }
-
+  // Memetic method
+  private Individual getBestNeighbor(NeighborhoodFunction neighborhoodFunction) {
+    var slsSolution = new SlsSolution(this);
+    var bestNeighborhood = slsSolution.greedyStep(neighborhoodFunction);
+    return new Individual(bestNeighborhood);
+  }
 }

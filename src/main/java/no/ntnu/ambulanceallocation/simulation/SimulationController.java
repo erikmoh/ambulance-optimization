@@ -15,6 +15,17 @@
 */
 package no.ntnu.ambulanceallocation.simulation;
 
+import com.sothawo.mapjfx.Configuration;
+import com.sothawo.mapjfx.Coordinate;
+import com.sothawo.mapjfx.CoordinateLine;
+import com.sothawo.mapjfx.MapCircle;
+import com.sothawo.mapjfx.MapLabel;
+import com.sothawo.mapjfx.MapType;
+import com.sothawo.mapjfx.MapView;
+import com.sothawo.mapjfx.Marker;
+import com.sothawo.mapjfx.Projection;
+import com.sothawo.mapjfx.WMSParam;
+import com.sothawo.mapjfx.XYZParam;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -30,26 +41,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.sothawo.mapjfx.Configuration;
-import com.sothawo.mapjfx.Coordinate;
-import com.sothawo.mapjfx.CoordinateLine;
-import com.sothawo.mapjfx.MapCircle;
-import com.sothawo.mapjfx.MapLabel;
-import com.sothawo.mapjfx.MapType;
-import com.sothawo.mapjfx.MapView;
-import com.sothawo.mapjfx.Marker;
-import com.sothawo.mapjfx.Projection;
-import com.sothawo.mapjfx.WMSParam;
-import com.sothawo.mapjfx.XYZParam;
-import com.sothawo.mapjfx.offline.OfflineCache;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javafx.animation.Transition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -77,6 +72,8 @@ import no.ntnu.ambulanceallocation.optimization.initializer.UniformRandom;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Controller for the FXML defined code.
@@ -85,729 +82,782 @@ import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
  */
 public class SimulationController {
 
-    /** logger for the class. */
-    private static final Logger logger = LoggerFactory.getLogger(SimulationController.class);
+  /** logger for the class. */
+  private static final Logger logger = LoggerFactory.getLogger(SimulationController.class);
 
-    /** default zoom value. */
-    private static final int ZOOM_DEFAULT = 11;
+  /** default zoom value. */
+  private static final int ZOOM_DEFAULT = 11;
 
-    private final Coordinate center = new Coordinate(59.929671, 10.738381);
+  private final Coordinate center = new Coordinate(59.929671, 10.738381);
+  private final URL hospitalIcon = getClass().getResource("/images/hospital.png");
+  private final URL baseStationIcon = getClass().getResource("/images/base_station.png");
+  private final URL ambulanceIcon = getClass().getResource("/images/ambulance_top.png");
+  private final Map<no.ntnu.ambulanceallocation.simulation.grid.Coordinate, Coordinate>
+      utmToLatLongMap = new HashMap<>();
+  private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();
+  private final List<Marker> baseStationMarkerList =
+      Collections.synchronizedList(new ArrayList<>());
+  private final List<MapLabel> baseStationLabelList =
+      Collections.synchronizedList(new ArrayList<>());
+  private final List<Coordinate> hospitalCoordinateList =
+      Collections.synchronizedList(new ArrayList<>());
+  private final List<Marker> hospitalMarkerList = Collections.synchronizedList(new ArrayList<>());
+  private final List<MapLabel> hospitalLabelList = Collections.synchronizedList(new ArrayList<>());
+  private final List<MapCircle> gridCentroidCirclesList =
+      Collections.synchronizedList(new ArrayList<>());
+  private final List<MapLabel> gridCentroidLabelList =
+      Collections.synchronizedList(new ArrayList<>());
+  private final Map<Ambulance, Marker> ambulanceMarkers =
+      Collections.synchronizedMap(new HashMap<>());
+  private final Map<Ambulance, MapCircle> destinationCircles =
+      Collections.synchronizedMap(new HashMap<>());
+  private final Map<Ambulance, CoordinateLine> destinationLines =
+      Collections.synchronizedMap(new HashMap<>());
+  /** params for the WMS server. */
+  private final WMSParam wmsParam =
+      new WMSParam().setUrl("http://ows.terrestris.de/osm/service?").addParam("layers", "OSM-WMS");
 
-    @FXML
-    private Button startSimulationButton;
+  private final XYZParam xyzParams =
+      new XYZParam()
+          .withUrl(
+              "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x})")
+          .withAttributions(
+              "'Tiles &copy; <a href=\"https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer\">ArcGIS</a>'");
+  @FXML private Button startSimulationButton;
+  /** the MapView containing the map */
+  @FXML private MapView mapView;
+  /** the box containing the top controls, must be enabled when mapView is initialized */
+  @FXML private HBox topControls;
+  /** Slider to change the zoom value */
+  @FXML private Slider sliderZoom;
+  /** Accordion for all the different options */
+  @FXML private Accordion leftControls;
+  /** section containing the location button */
+  @FXML private TitledPane optionsLocations;
+  /** for editing the animation duration */
+  @FXML private TextField animationDuration;
+  /** the BIng Maps API Key. */
+  @FXML private TextField bingMapsApiKey;
 
-    /** the MapView containing the map */
-    @FXML
-    private MapView mapView;
+  @FXML private Label currentTime;
+  @FXML private Label activeAmbulances;
+  @FXML private Label standbyAmbulances;
+  @FXML private TextField numDayAmbulances;
+  @FXML private TextField numNightAmbulances;
+  @FXML private TextField dayShift;
+  @FXML private TextField nightShift;
+  /** Label to display the current center */
+  @FXML private Label labelCenter;
+  /** Label to display the current zoom */
+  @FXML private Label labelZoom;
+  /** RadioButton for MapStyle OSM */
+  @FXML private RadioButton radioMsOSM;
+  /** RadioButton for MapStyle Bing Roads */
+  @FXML private RadioButton radioMsBR;
+  /** RadioButton for MapStyle Bing Roads - dark */
+  @FXML private RadioButton radioMsCd;
+  /** RadioButton for MapStyle Bing Roads - grayscale */
+  @FXML private RadioButton radioMsCg;
+  /** RadioButton for MapStyle Bing Roads - light */
+  @FXML private RadioButton radioMsCl;
+  /** RadioButton for MapStyle Bing Aerial */
+  @FXML private RadioButton radioMsBA;
+  /** RadioButton for MapStyle Bing Aerial with Label */
+  @FXML private RadioButton radioMsBAwL;
+  /** RadioButton for MapStyle WMS. */
+  @FXML private RadioButton radioMsWMS;
+  /** RadioButton for MapStyle XYZ */
+  @FXML private RadioButton radioMsXYZ;
+  /** ToggleGroup for the MapStyle radios */
+  @FXML private ToggleGroup mapTypeGroup;
 
-    /**
-     * the box containing the top controls, must be enabled when mapView is
-     * initialized
-     */
-    @FXML
-    private HBox topControls;
+  @FXML private CheckBox checkShowGridCentroids;
+  @FXML private CheckBox checkShowGridLabels;
+  @FXML private CheckBox checkShowPathLines;
+  @FXML private CheckBox checkShowHospitals;
+  @FXML private CheckBox checkShowLabels;
+  @FXML private CheckBox checkShowBaseStations;
+  @FXML private CheckBox checkShowIncidents;
+  @FXML private CheckBox checkShowAmbulances;
+  @FXML private Slider simulationUpdateIntervalSlider;
+  private List<MapCircle> incidentCircleList = Collections.synchronizedList(new ArrayList<>());
+  private LocalDateTime currentTimeInternal = LocalDateTime.MIN;
+  private Thread simulationThread;
+  private long lastUiUpdate = 0;
 
-    /** Slider to change the zoom value */
-    @FXML
-    private Slider sliderZoom;
+  public SimulationController() {
+    /*
+    logger.debug("Prefetching incidents and distances for simulation");
+    var distances = new DistanceIO();
+    var incidents = new IncidentIO();
+    */
 
-    /** Accordion for all the different options */
-    @FXML
-    private Accordion leftControls;
-
-    /** section containing the location button */
-    @FXML
-    private TitledPane optionsLocations;
-
-    /** for editing the animation duration */
-    @FXML
-    private TextField animationDuration;
-
-    /** the BIng Maps API Key. */
-    @FXML
-    private TextField bingMapsApiKey;
-
-    @FXML
-    private Label currentTime;
-
-    @FXML
-    private Label activeAmbulances;
-
-    @FXML
-    private Label standbyAmbulances;
-
-    @FXML
-    private TextField numDayAmbulances;
-
-    @FXML
-    private TextField numNightAmbulances;
-
-    @FXML
-    private TextField dayShift;
-
-    @FXML
-    private TextField nightShift;
-
-    /** Label to display the current center */
-    @FXML
-    private Label labelCenter;
-
-    /** Label to display the current zoom */
-    @FXML
-    private Label labelZoom;
-
-    /** RadioButton for MapStyle OSM */
-    @FXML
-    private RadioButton radioMsOSM;
-
-    /** RadioButton for MapStyle Bing Roads */
-    @FXML
-    private RadioButton radioMsBR;
-
-    /** RadioButton for MapStyle Bing Roads - dark */
-    @FXML
-    private RadioButton radioMsCd;
-
-    /** RadioButton for MapStyle Bing Roads - grayscale */
-    @FXML
-    private RadioButton radioMsCg;
-
-    /** RadioButton for MapStyle Bing Roads - light */
-    @FXML
-    private RadioButton radioMsCl;
-
-    /** RadioButton for MapStyle Bing Aerial */
-    @FXML
-    private RadioButton radioMsBA;
-
-    /** RadioButton for MapStyle Bing Aerial with Label */
-    @FXML
-    private RadioButton radioMsBAwL;
-
-    /** RadioButton for MapStyle WMS. */
-    @FXML
-    private RadioButton radioMsWMS;
-
-    /** RadioButton for MapStyle XYZ */
-    @FXML
-    private RadioButton radioMsXYZ;
-
-    /** ToggleGroup for the MapStyle radios */
-    @FXML
-    private ToggleGroup mapTypeGroup;
-
-    @FXML
-    private CheckBox checkShowGridCentroids;
-
-    @FXML
-    private CheckBox checkShowGridLabels;
-
-    @FXML
-    private CheckBox checkShowPathLines;
-
-    @FXML
-    private CheckBox checkShowHospitals;
-
-    @FXML
-    private CheckBox checkShowLabels;
-
-    @FXML
-    private CheckBox checkShowBaseStations;
-
-    @FXML
-    private CheckBox checkShowIncidents;
-
-    @FXML
-    private CheckBox checkShowAmbulances;
-
-    @FXML
-    private Slider simulationUpdateIntervalSlider;
-
-    private final URL hospitalIcon = getClass().getResource("hospital.png");
-    private final URL baseStationIcon = getClass().getResource("base_station.png");
-    private final URL ambulanceIcon = getClass().getResource("ambulance_top.png");
-
-    private final Map<no.ntnu.ambulanceallocation.simulation.grid.Coordinate, Coordinate> utmToLatLongMap = new HashMap<>();
-    private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();
-    private final List<Marker> baseStationMarkerList = Collections.synchronizedList(new ArrayList<>());
-    private final List<MapLabel> baseStationLabelList = Collections.synchronizedList(new ArrayList<>());
-    private final List<Coordinate> hospitalCoordinateList = Collections.synchronizedList(new ArrayList<>());
-    private final List<Marker> hospitalMarkerList = Collections.synchronizedList(new ArrayList<>());
-    private final List<MapLabel> hospitalLabelList = Collections.synchronizedList(new ArrayList<>());
-    private final List<MapCircle> gridCentroidCirclesList = Collections.synchronizedList(new ArrayList<>());
-    private final List<MapLabel> gridCentroidLabelList = Collections.synchronizedList(new ArrayList<>());
-    private List<MapCircle> incidentCircleList = Collections.synchronizedList(new ArrayList<>());
-    private final Map<Ambulance, Marker> ambulanceMarkers = Collections.synchronizedMap(new HashMap<>());
-    private final Map<Ambulance, MapCircle> destinationCircles = Collections.synchronizedMap(new HashMap<>());
-    private final Map<Ambulance, CoordinateLine> destinationLines = Collections.synchronizedMap(new HashMap<>());
-    private LocalDateTime currentTimeInternal = LocalDateTime.MIN;
-
-    private Thread simulationThread;
-    private long lastUiUpdate = 0;
-
-    /** params for the WMS server. */
-    private final WMSParam wmsParam = new WMSParam()
-            .setUrl("http://ows.terrestris.de/osm/service?")
-            .addParam("layers", "OSM-WMS");
-
-    private final XYZParam xyzParams = new XYZParam()
-            .withUrl("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x})")
-            .withAttributions(
-                    "'Tiles &copy; <a href=\"https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer\">ArcGIS</a>'");
-
-    private void readCSVThenParse(String fileName, Consumer<String[]> consumer) {
-        try (Stream<String> lines = new BufferedReader(
-                new InputStreamReader(getClass().getResource(fileName).openStream(), StandardCharsets.UTF_8))
-                .lines()) {
-            lines.map(line -> line.split(",")).forEach(consumer);
-        } catch (IOException | NumberFormatException e) {
-            logger.error("load", e);
-        }
+    if (baseStationIcon == null || hospitalIcon == null) {
+      throw new IllegalStateException("Missing one or more icons");
     }
 
-    private static int bearingInDegrees(Coordinate src, Coordinate dst) {
-        double srcLat = Math.toRadians(src.getLatitude());
-        double dstLat = Math.toRadians(dst.getLatitude());
-        double dLng = Math.toRadians(dst.getLongitude() - src.getLongitude());
+    logger.debug("Reading coordinate CSV files");
+    readCSVThenParse(
+        "/data/base_stations.csv",
+        values -> {
+          var coordinate = new Coordinate(Double.valueOf(values[1]), Double.valueOf(values[2]));
+          var mapMarker =
+              new Marker(baseStationIcon, -15, -15).setPosition(coordinate).setVisible(true);
+          var label =
+              new MapLabel(values[0], -57, 20)
+                  .setPosition(coordinate)
+                  .setVisible(false)
+                  .setCssClass("label");
 
-        return (int) Math.round(Math.toDegrees((Math.atan2(Math.sin(dLng) * Math.cos(dstLat),
-                Math.cos(srcLat) * Math.sin(dstLat) -
-                        Math.sin(srcLat) * Math.cos(dstLat) * Math.cos(dLng))
-                + Math.PI)));
-
-    }
-
-    private void updateIncidents(Collection<NewCall> callQueue) {
-        Platform.runLater(() -> {
-            incidentCircleList.forEach(mapView::removeMapCircle);
-            incidentCircleList = callQueue.stream()
-                    .map(call -> new MapCircle(utmToLatLongMap.get(call.incident.getLocation()), 1000)
-                            .setColor(call.incident.urgencyLevel() == UrgencyLevel.ACUTE
-                                    ? Color.web("#ff0000", 0.7)
-                                    : Color.web("#ffff00", 0.7))
-                            .setVisible(checkShowIncidents.isSelected()))
-                    .toList();
-            incidentCircleList.forEach(mapView::addMapCircle);
-        });
-    }
-
-    private void updateAmbulances(Collection<Ambulance> ambulanceList) {
-        Platform.runLater(() -> {
-            updateStandbyAmbulanceCount(ambulanceList);
-            if (ambulanceMarkers.size() > 0) {
-                synchronized (ambulanceMarkers) {
-                    ambulanceList.forEach(ambulance -> {
-                        Coordinate coordinate = utmToLatLongMap
-                                .get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
-                        Marker marker = ambulanceMarkers.get(ambulance);
-                        // MapLabel markerLabel = marker.getMapLabel().get();
-
-                        if (ambulance.isAtBaseStation() && ambulance.isOffDuty()) {
-                            marker.setVisible(false);
-                        } else {
-                            marker.setVisible(checkShowAmbulances.isSelected());
-                        }
-
-                        /*if (ambulance.isAvailable()) {
-                            markerLabel.setVisible(false);
-                        } else if (!ambulance.isOffDuty()) {
-                            if (!ambulance.isAvailable() && !ambulance.isTransport()) {
-                                UrgencyLevel urgencyLevel = ambulance.getIncident().urgencyLevel();
-                                markerLabel
-                                        .setCssClass(urgencyLevel == UrgencyLevel.ACUTE ? "red-label" : "orange-label")
-                                        .setVisible(checkShowAmbulances.isSelected());
-                            } else if (!ambulance.isAvailable()
-                                    && ambulance.isTransport()
-                                    && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
-                                markerLabel.setCssClass("green-label").setVisible(checkShowAmbulances.isSelected());
-                            }
-                        }*/
-
-                        if (!marker.getPosition().equals(coordinate)) {
-                            marker.setRotation(bearingInDegrees(marker.getPosition(), coordinate) + 90);
-                            if (destinationLines.containsKey(ambulance)) {
-                                mapView.removeCoordinateLine(destinationLines.get(ambulance));
-                            }
-                            Coordinate ambulanceDestination = utmToLatLongMap
-                                    .get(ambulance.getDestination());
-                            Color color;
-                            if (!ambulance.isAvailable() && ambulance.isTransport()
-                                    && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
-                                color = Color.web("#ff0000", 0.9);
-                            } else if (ambulance.isAvailable()
-                                    && ambulance.getDestination() == ambulance.getBaseStationLocation()) {
-                                color = Color.web("#0000ff", 0.9);
-                            } else {
-                                color = Color.web("#00ff00", 0.9);
-                            }
-                            destinationLines.put(ambulance,
-                                    new CoordinateLine(ambulanceDestination,
-                                            utmToLatLongMap.get(ambulance
-                                                    .getCurrentLocationVisualized(currentTimeInternal)))
-                                            .setColor(color)
-                                            .setVisible(checkShowPathLines.isSelected()));
-                            mapView.addCoordinateLine(destinationLines.get(ambulance));
-                        }
-
-                        if (destinationCircles.containsKey(ambulance)) {
-                            if (ambulance.getDestination() == null || !destinationCircles.get(ambulance).getCenter()
-                                    .equals(utmToLatLongMap.get(ambulance.getDestination()))) {
-                                mapView.removeMapCircle(destinationCircles.get(ambulance));
-                                destinationCircles.remove(ambulance);
-                            }
-                        }
-
-                        if (ambulance.getDestination() != null && !destinationCircles.containsKey(ambulance)) {
-                            Coordinate destinationCoordinate = utmToLatLongMap.get(ambulance.getDestination());
-                            if (!baseStationCoordinateList.contains(destinationCoordinate)
-                                    && !hospitalCoordinateList.contains(destinationCoordinate)) {
-                                destinationCircles.put(ambulance,
-                                        new MapCircle(destinationCoordinate,
-                                                1000)
-                                                .setColor(ambulance.getIncident().urgencyLevel() == UrgencyLevel.ACUTE
-                                                        ? Color.web("#ff0000", 0.7)
-                                                        : Color.web("#ffff00", 0.7))
-                                                .setVisible(checkShowIncidents.isSelected()));
-                                mapView.addMapCircle(destinationCircles.get(ambulance));
-                            }
-                        }
-                        animateMarker(marker, marker.getPosition(), coordinate);
-
-                    });
-                }
-            } else {
-                for (Ambulance ambulance : ambulanceList) {
-                    Coordinate coordinates = utmToLatLongMap
-                            .get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
-                    Marker marker = new Marker(ambulanceIcon, -15, -15).setPosition(coordinates)
-                            .setVisible(checkShowAmbulances.isSelected());
-                    ambulanceMarkers.put(ambulance, marker);
-                    // MapLabel label = new MapLabel("Responding", -25, 20)
-                    // .setVisible(false)
-                    // .setCssClass("orange-label");
-                    // marker.attachLabel(label).setVisible(true);
-                    mapView.addMarker(marker);
-                }
-            }
-            currentTime.setText("Current time:\n" + currentTimeInternal.toString());
-            var activeCount = ambulanceList.stream()
-                    .filter(ambulance -> !ambulance.isOffDuty())
-                    .count();
-            activeAmbulances.setText("Active ambulances: " + activeCount + "");
-        });
-    }
-
-    private void updateStandbyAmbulanceCount(Collection<Ambulance> ambulances) {
-        var baseStationMap = new HashMap<BaseStation, Integer>();
-
-        for (var baseStation : BaseStation.values()) {
-            baseStationMap.put(baseStation, 0);
-        }
-
-        for (var ambulance : ambulances) {
-            if (ambulance.isAvailable()) {
-                var key = ambulance.getBaseStation();
-                baseStationMap.put(key, baseStationMap.get(key) + 1);
-            }
-        }
-
-        var standbyAmbulancesString = new StringBuilder("Standby ambulances:\n");
-        for (var baseStation : baseStationMap.keySet()) {
-            var name = baseStationLabelList.get(baseStation.getId()).getText();
-            var count = baseStationMap.get(baseStation);
-            standbyAmbulancesString.append(String.format("%s: %s\n", name, count));
-        }
-
-        standbyAmbulances.setText(standbyAmbulancesString.toString());
-    }
-
-    private int getDayAllocation() {
-        if (numDayAmbulances.getText() == null || numDayAmbulances.getText().isEmpty()) {
-            return Parameters.NUMBER_OF_AMBULANCES_DAY;
-        } else {
-            return Integer.parseInt(numDayAmbulances.getText());
-        }
-    }
-
-    private int getNightAllocation() {
-        if (numNightAmbulances.getText() == null || numNightAmbulances.getText().isEmpty()) {
-            return Parameters.NUMBER_OF_AMBULANCES_NIGHT;
-        } else {
-            return Integer.parseInt(numNightAmbulances.getText());
-        }
-    }
-
-    @FXML
-    private void setUniformAllocation() {
-        dayShift.setText(new Uniform().initialize(getDayAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-        nightShift.setText(new Uniform().initialize(getNightAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-    }
-
-    @FXML
-    private void setUniformRandomAllocation() {
-        dayShift.setText(new UniformRandom().initialize(getDayAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-        nightShift.setText(new UniformRandom().initialize(getNightAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-    }
-
-    @FXML
-    private void setPopulationProportionateAllocation() {
-        dayShift.setText(new PopulationProportionate().initialize(getDayAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-        nightShift.setText(new PopulationProportionate().initialize(getNightAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-    }
-
-    @FXML
-    private void setAllCityCenterAllocation() {
-        dayShift.setText(new AllCityCenter().initialize(getDayAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-        nightShift.setText(new AllCityCenter().initialize(getNightAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-    }
-
-    @FXML
-    private void setRandomAllocation() {
-        dayShift.setText(new Random().initialize(getDayAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-        nightShift.setText(new Random().initialize(getNightAllocation()).stream()
-                .map(Object::toString).collect(Collectors.joining(", ")));
-    }
-
-    @FXML
-    private void setVisibilityBaseStations() {
-        logger.info("Setting base station layer visibility to " + checkShowBaseStations.isSelected());
-        baseStationMarkerList.forEach(marker -> marker.setVisible(checkShowBaseStations.isSelected()));
-        baseStationLabelList.forEach(
-                label -> label.setVisible(checkShowBaseStations.isSelected() && checkShowLabels.isSelected()));
-    }
-
-    @FXML
-    private void setVisibilityHospitals() {
-        logger.info("Setting hospital layer visibility to " + checkShowHospitals.isSelected());
-        hospitalMarkerList.forEach(marker -> marker.setVisible(checkShowHospitals.isSelected()));
-        hospitalLabelList.forEach(
-                label -> label.setVisible(checkShowHospitals.isSelected() && checkShowLabels.isSelected()));
-    }
-
-    @FXML
-    private void setVisibilityLabels() {
-        logger.info("Setting label visibility to " + checkShowLabels.isSelected());
-        if (checkShowHospitals.isSelected()) {
-            hospitalLabelList.forEach(label -> label.setVisible(checkShowLabels.isSelected()));
-        }
-        if (checkShowBaseStations.isSelected()) {
-            baseStationLabelList.forEach(label -> label.setVisible(checkShowLabels.isSelected()));
-        }
-    }
-
-    @FXML
-    private void setVisibilityAmbulances() {
-        logger.info("Setting ambulance layer visibility to " + checkShowAmbulances.isSelected());
-        ambulanceMarkers.values().forEach(mapView::removeMarker);
-        ambulanceMarkers.values().forEach(marker -> marker.setVisible(checkShowAmbulances.isSelected()));
-        ambulanceMarkers.values().forEach(mapView::addMarker);
-    }
-
-    @FXML
-    private void setVisibilityGridCentroids() {
-        logger.info("Setting grid centroids layer visibility to " + checkShowGridCentroids.isSelected());
-        gridCentroidCirclesList.forEach(mapView::removeMapCircle);
-        gridCentroidCirclesList.forEach(circle -> circle.setVisible(checkShowGridCentroids.isSelected()));
-        gridCentroidCirclesList.forEach(mapView::addMapCircle);
-    }
-
-    @FXML
-    private void setVisibilityGridLabels() {
-        logger.info("Setting grid labels layer visibility to " + checkShowGridLabels.isSelected());
-        gridCentroidLabelList.forEach(label -> label.setVisible(checkShowGridLabels.isSelected()));
-    }
-
-    @FXML
-    private void setVisibilityPathLines() {
-        logger.info("Setting path line layer visibility to " + checkShowPathLines.isSelected());
-        destinationLines.values().forEach(mapView::removeCoordinateLine);
-        destinationLines.values().forEach(line -> line.setVisible(checkShowPathLines.isSelected()));
-        destinationLines.values().forEach(mapView::addCoordinateLine);
-    }
-
-    @FXML
-    private void setVisibilityIncidents() {
-        logger.info("Setting incident layer visibility to " + checkShowIncidents.isSelected());
-        destinationCircles.values().forEach(mapView::removeMapCircle);
-        incidentCircleList.forEach(mapView::removeMapCircle);
-        destinationCircles.values().forEach(circle -> circle.setVisible(checkShowIncidents.isSelected()));
-        incidentCircleList.forEach(circle -> circle.setVisible(checkShowIncidents.isSelected()));
-        destinationCircles.values().forEach(mapView::addMapCircle);
-        incidentCircleList.forEach(mapView::addMapCircle);
-    }
-
-    public SimulationController() {
-        // logger.debug("Prefetching incidents and distances for simulation");
-        // DistanceIO distances = new DistanceIO();
-        // IncidentIO incidents = new IncidentIO();
-
-        logger.debug("Reading coordinate CSV files");
-        readCSVThenParse("base_stations.csv", values -> {
-            Coordinate coordinate = new Coordinate(Double.valueOf(values[1]), Double.valueOf(values[2]));
-            Marker mapMarker = new Marker(baseStationIcon, -15, -15).setPosition(coordinate)
-                    .setVisible(true);
-            MapLabel label = new MapLabel(values[0], -57, 20)
-                    .setPosition(coordinate)
-                    .setVisible(false)
-                    .setCssClass("label");
-            baseStationCoordinateList.add(coordinate);
-            baseStationMarkerList.add(mapMarker);
-            baseStationLabelList.add(label);
+          baseStationCoordinateList.add(coordinate);
+          baseStationMarkerList.add(mapMarker);
+          baseStationLabelList.add(label);
         });
 
-        readCSVThenParse("hospitals.csv", values -> {
-            Coordinate coordinate = new Coordinate(Double.valueOf(values[1]), Double.valueOf(values[2]));
-            Marker mapMarker = new Marker(hospitalIcon, -15, -15).setPosition(coordinate)
-                    .setVisible(true);
-            MapLabel label = new MapLabel(values[0], -57, 20)
-                    .setPosition(coordinate)
-                    .setVisible(false)
-                    .setCssClass("label");
-            hospitalCoordinateList.add(coordinate);
-            hospitalMarkerList.add(mapMarker);
-            hospitalLabelList.add(label);
+    readCSVThenParse(
+        "/data/hospitals.csv",
+        values -> {
+          var coordinate = new Coordinate(Double.valueOf(values[1]), Double.valueOf(values[2]));
+          var mapMarker =
+              new Marker(hospitalIcon, -15, -15).setPosition(coordinate).setVisible(true);
+          var label =
+              new MapLabel(values[0], -57, 20)
+                  .setPosition(coordinate)
+                  .setVisible(false)
+                  .setCssClass("label");
+
+          hospitalCoordinateList.add(coordinate);
+          hospitalMarkerList.add(mapMarker);
+          hospitalLabelList.add(label);
         });
 
-        logger.debug("Reading UTM to LatLong conversion map");
-        readCSVThenParse("grid_coordinates.csv", values -> {
-            Coordinate coordinate = new Coordinate(Double.valueOf(values[2]), Double.valueOf(values[3]));
-            utmToLatLongMap.put(new no.ntnu.ambulanceallocation.simulation.grid.Coordinate(Integer.parseInt(values[0]),
-                    Integer.parseInt(values[1])), coordinate);
+    logger.debug("Reading UTM to LatLong conversion map");
+    readCSVThenParse(
+        "/data/grid_coordinates.csv",
+        values -> {
+          var coordinate = new Coordinate(Double.valueOf(values[2]), Double.valueOf(values[3]));
+
+          utmToLatLongMap.put(
+              new no.ntnu.ambulanceallocation.simulation.grid.Coordinate(
+                  Integer.parseInt(values[0]), Integer.parseInt(values[1])),
+              coordinate);
         });
 
-        DistanceIO.uniqueGridCoordinates.forEach(utmCoordinate -> {
-            Coordinate coordinate = utmToLatLongMap.get(utmCoordinate);
-            gridCentroidCirclesList.add(new MapCircle(coordinate, 100)
-                    .setFillColor(Color.web("#000000", 0.4))
-                    .setColor(Color.TRANSPARENT)
-                    .setVisible(false));
-            gridCentroidLabelList.add(new MapLabel(String.format("%s\n%s", utmCoordinate.x(), utmCoordinate.y()), 0, 10)
-                    .setPosition(coordinate)
-                    .setCssClass("coordinate-label")
-                    .setVisible(false));
+    DistanceIO.uniqueGridCoordinates.forEach(
+        utmCoordinate -> {
+          var coordinate = utmToLatLongMap.get(utmCoordinate);
+
+          gridCentroidCirclesList.add(
+              new MapCircle(coordinate, 100)
+                  .setFillColor(Color.web("#000000", 0.4))
+                  .setColor(Color.TRANSPARENT)
+                  .setVisible(false));
+
+          gridCentroidLabelList.add(
+              new MapLabel(String.format("%s\n%s", utmCoordinate.x(), utmCoordinate.y()), 0, 10)
+                  .setPosition(coordinate)
+                  .setCssClass("coordinate-label")
+                  .setVisible(false));
         });
 
-        Marker markerClick = Marker.createProvided(Marker.Provided.ORANGE).setVisible(false);
+    var markerClick = Marker.createProvided(Marker.Provided.ORANGE).setVisible(false);
+    var labelClick = new MapLabel("click!", 10, -10).setVisible(false).setCssClass("orange-label");
+    markerClick.attachLabel(labelClick);
+  }
 
-        MapLabel labelClick = new MapLabel("click!", 10, -10).setVisible(false).setCssClass("orange-label");
+  /**
+   * called after the fxml is loaded and all objects are created. This is not called initialize
+   * anymore, because we need to pass in the projection before initializing.
+   *
+   * @param projection the projection to use in the map.
+   */
+  public void initMapAndControls(Projection projection) {
+    setRandomAllocation();
 
-        markerClick.attachLabel(labelClick);
+    checkShowPathLines.setSelected(true);
+    checkShowHospitals.setSelected(true);
+    checkShowBaseStations.setSelected(true);
+    checkShowIncidents.setSelected(true);
+    checkShowAmbulances.setSelected(true);
 
+    logger.trace("begin initialize");
+
+    // init MapView-Cache
+    final var offlineCache = mapView.getOfflineCache();
+    final var cacheDir = System.getProperty("java.io.tmpdir") + "/mapjfx-cache";
+    logger.info("using dir for cache: " + cacheDir);
+    try {
+      Files.createDirectories(Paths.get(cacheDir));
+      offlineCache.setCacheDirectory(cacheDir);
+      offlineCache.setActive(true);
+    } catch (IOException e) {
+      logger.warn("could not activate offline cache", e);
     }
 
-    @FXML
-    private void centerMap() {
-        mapView.setCenter(center);
-        mapView.setZoom(ZOOM_DEFAULT);
-    }
+    // set the custom css file for the MapView
+    mapView.setCustomMapviewCssURL(
+        Objects.requireNonNull(getClass().getResource("/css/custom_mapview.css")));
 
-    @FXML
-    private void startSimulation() {
-        if (simulationThread != null && simulationThread.isAlive()) {
-            synchronized (simulationThread) {
-                simulationThread.notify();
-            }
-        } else {
-            Task<Void> task = new Task<>() {
-                @Override
-                protected Void call() {
-                    List<Integer> dayShiftAllocation =
-                            Stream.of(dayShift.getText().replaceAll("\\s", "").split(","))
-                                    .mapToInt(Integer::parseInt)
-                                    .boxed()
-                                    .toList();
-                    List<Integer> nightShiftAllocation =
-                            Stream.of(nightShift.getText().replaceAll("\\s", "").split(","))
-                                    .mapToInt(Integer::parseInt)
-                                    .boxed()
-                                    .toList();
+    leftControls.setExpandedPane(optionsLocations);
 
-                    Simulation.visualizedSimulation(new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)),
-                            (currentTime, ambulanceList, callQueue) -> {
-                                if (System.currentTimeMillis() - lastUiUpdate > Parameters.GUI_UPDATE_INTERVAL
-                                        && (int) ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
-                                    currentTimeInternal = currentTime;
-                                    updateAmbulances(ambulanceList);
-                                    updateIncidents(callQueue);
-                                    lastUiUpdate = System.currentTimeMillis();
-                                }
-                            }, simulationUpdateIntervalSlider.valueProperty());
-                    return null;
-                }
-            };
-            simulationThread = new Thread(task);
-            simulationThread.setDaemon(true);
-            simulationThread.start();
-        }
-        startSimulationButton.setVisible(false);
-    }
+    // set the controls to disabled, this will be changed when the MapView is initialized
+    setControlsDisable(true);
 
-    /**
-     * called after the fxml is loaded and all objects are created. This is not
-     * called initialize any more,
-     * because we need to pass in the projection before initializing.
-     *
-     * @param projection the projection to use in the map.
-     */
-    public void initMapAndControls(Projection projection) {
-        setRandomAllocation();
-        checkShowPathLines.setSelected(true);
-        checkShowHospitals.setSelected(true);
-        checkShowBaseStations.setSelected(true);
-        checkShowIncidents.setSelected(true);
-        checkShowAmbulances.setSelected(true);
+    sliderZoom.valueProperty().bindBidirectional(mapView.zoomProperty());
 
-        logger.trace("begin initialize");
-
-        // init MapView-Cache
-        final OfflineCache offlineCache = mapView.getOfflineCache();
-        final String cacheDir = System.getProperty("java.io.tmpdir") + "/mapjfx-cache";
-        logger.info("using dir for cache: " + cacheDir);
-        try {
-            Files.createDirectories(Paths.get(cacheDir));
-            offlineCache.setCacheDirectory(cacheDir);
-            offlineCache.setActive(true);
-        } catch (IOException e) {
-            logger.warn("could not activate offline cache", e);
-        }
-
-        // set the custom css file for the MapView
-        mapView.setCustomMapviewCssURL(getClass().getResource("/custom_mapview.css"));
-
-        leftControls.setExpandedPane(optionsLocations);
-
-        // set the controls to disabled, this will be changed when the MapView is
-        // intialized
-        setControlsDisable(true);
-
-        sliderZoom.valueProperty().bindBidirectional(mapView.zoomProperty());
-
-        // add a listener to the animationDuration field and make sure we only accept
-        // int values
-        animationDuration.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue.isEmpty()) {
+    // add a listener to the animationDuration field and make sure we only accept int values
+    animationDuration
+        .textProperty()
+        .addListener(
+            (observable, oldValue, newValue) -> {
+              if (newValue.isEmpty()) {
                 mapView.setAnimationDuration(0);
-            } else {
+              } else {
                 try {
-                    mapView.setAnimationDuration(Integer.parseInt(newValue));
+                  mapView.setAnimationDuration(Integer.parseInt(newValue));
                 } catch (NumberFormatException e) {
-                    animationDuration.setText(oldValue);
+                  animationDuration.setText(oldValue);
                 }
-            }
-        });
-        animationDuration.setText("500");
+              }
+            });
+    animationDuration.setText("500");
 
-        // bind the map's center and zoom properties to the corresponding labels and
-        // format them
-        labelCenter.textProperty().bind(Bindings.format("center: %s", mapView.centerProperty()));
-        labelZoom.textProperty().bind(Bindings.format("zoom: %.0f", mapView.zoomProperty()));
-        logger.trace("options and labels done");
+    // bind the map's center and zoom properties to the corresponding labels and format them
+    labelCenter.textProperty().bind(Bindings.format("center: %s", mapView.centerProperty()));
+    labelZoom.textProperty().bind(Bindings.format("zoom: %.0f", mapView.zoomProperty()));
+    logger.trace("options and labels done");
 
-        // watch the MapView's initialized property to finish initialization
-        mapView.initializedProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue) {
+    // watch the MapView's initialized property to finish initialization
+    mapView
+        .initializedProperty()
+        .addListener(
+            (observable, oldValue, newValue) -> {
+              if (newValue) {
                 afterMapIsInitialized();
-            }
-        });
+              }
+            });
 
-        // observe the map type radiobuttons
-        mapTypeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
-            logger.debug("map type toggled to {}", newValue.toString());
-            MapType mapType = MapType.OSM;
-            if (newValue == radioMsOSM) {
-                mapType = MapType.OSM;
-            } else if (newValue == radioMsBR) {
+    // observe the map type radio buttons
+    mapTypeGroup
+        .selectedToggleProperty()
+        .addListener(
+            (observable, oldValue, newValue) -> {
+              logger.debug("map type toggled to {}", newValue.toString());
+              var mapType = MapType.OSM;
+              if (newValue == radioMsBR) {
                 mapType = MapType.BINGMAPS_ROAD;
-            } else if (newValue == radioMsCd) {
+              } else if (newValue == radioMsCd) {
                 mapType = MapType.BINGMAPS_CANVAS_DARK;
-            } else if (newValue == radioMsCg) {
+              } else if (newValue == radioMsCg) {
                 mapType = MapType.BINGMAPS_CANVAS_GRAY;
-            } else if (newValue == radioMsCl) {
+              } else if (newValue == radioMsCl) {
                 mapType = MapType.BINGMAPS_CANVAS_LIGHT;
-            } else if (newValue == radioMsBA) {
+              } else if (newValue == radioMsBA) {
                 mapType = MapType.BINGMAPS_AERIAL;
-            } else if (newValue == radioMsBAwL) {
+              } else if (newValue == radioMsBAwL) {
                 mapType = MapType.BINGMAPS_AERIAL_WITH_LABELS;
-            } else if (newValue == radioMsWMS) {
+              } else if (newValue == radioMsWMS) {
                 mapView.setWMSParam(wmsParam);
                 mapType = MapType.WMS;
-            } else if (newValue == radioMsXYZ) {
+              } else if (newValue == radioMsXYZ) {
                 mapView.setXYZParam(xyzParams);
                 mapType = MapType.XYZ;
-            }
-            mapView.setBingMapsApiKey(bingMapsApiKey.getText());
-            mapView.setMapType(mapType);
+              }
+              mapView.setBingMapsApiKey(bingMapsApiKey.getText());
+              mapView.setMapType(mapType);
+            });
+    mapTypeGroup.selectToggle(radioMsOSM);
+
+    // finally initialize the map view
+    logger.trace("start map initialization");
+    mapView.initialize(
+        Configuration.builder().projection(projection).showZoomControls(false).build());
+    logger.debug("initialization finished");
+  }
+
+  /**
+   * enables / disables the different controls
+   *
+   * @param flag if true the controls are disabled
+   */
+  private void setControlsDisable(boolean flag) {
+    topControls.setDisable(flag);
+    leftControls.setDisable(flag);
+  }
+
+  /** finishes setup after the mpa is initialized */
+  private void afterMapIsInitialized() {
+    logger.trace("map intialized");
+    logger.debug("setting center and enabling controls...");
+    // start at the harbour with default zoom
+    mapView.setZoom(ZOOM_DEFAULT);
+    mapView.setCenter(center);
+    baseStationMarkerList.forEach(mapView::addMarker);
+    baseStationLabelList.forEach(mapView::addLabel);
+    hospitalMarkerList.forEach(mapView::addMarker);
+    hospitalLabelList.forEach(mapView::addLabel);
+    gridCentroidCirclesList.forEach(mapView::addMapCircle);
+    gridCentroidLabelList.forEach(mapView::addLabel);
+    // now enable the controls
+    setControlsDisable(false);
+  }
+
+  private void readCSVThenParse(String fileName, Consumer<String[]> consumer) {
+    try {
+      var lines =
+          new BufferedReader(
+                  new InputStreamReader(
+                      Objects.requireNonNull(getClass().getResource(fileName)).openStream(),
+                      StandardCharsets.UTF_8))
+              .lines();
+
+      lines.map(line -> line.split(",")).forEach(consumer);
+
+    } catch (IOException | NumberFormatException e) {
+      logger.error("load", e);
+    }
+  }
+
+  private void updateIncidents(Collection<NewCall> callQueue) {
+    Platform.runLater(
+        () -> {
+          incidentCircleList.forEach(mapView::removeMapCircle);
+          incidentCircleList =
+              callQueue.stream()
+                  .map(
+                      call ->
+                          new MapCircle(utmToLatLongMap.get(call.incident.getLocation()), 1000)
+                              .setColor(
+                                  call.incident.urgencyLevel() == UrgencyLevel.ACUTE
+                                      ? Color.web("#ff0000", 0.7)
+                                      : Color.web("#ffff00", 0.7))
+                              .setVisible(checkShowIncidents.isSelected()))
+                  .toList();
+          incidentCircleList.forEach(mapView::addMapCircle);
         });
-        mapTypeGroup.selectToggle(radioMsOSM);
+  }
 
-        // finally initialize the map view
-        logger.trace("start map initialization");
-        mapView.initialize(Configuration.builder()
-                .projection(projection)
-                .showZoomControls(false)
-                .build());
-        logger.debug("initialization finished");
+  private void updateAmbulances(Collection<Ambulance> ambulanceList) {
+    Platform.runLater(
+        () -> {
+          updateStandbyAmbulanceCount(ambulanceList);
 
+          if (ambulanceMarkers.size() > 0) {
+
+            synchronized (ambulanceMarkers) {
+              for (var ambulance : ambulanceList) {
+
+                var coordinate =
+                    utmToLatLongMap.get(
+                        ambulance.getCurrentLocationVisualized(currentTimeInternal));
+                var marker = ambulanceMarkers.get(ambulance);
+                // var markerLabel = marker.getMapLabel().get();
+
+                if (ambulance.isAtBaseStation() && ambulance.isOffDuty()) {
+                  marker.setVisible(false);
+                } else {
+                  marker.setVisible(checkShowAmbulances.isSelected());
+                }
+
+                if (!marker.getPosition().equals(coordinate)) {
+                  marker.setRotation(bearingInDegrees(marker.getPosition(), coordinate) + 90);
+                  updateAmbulanceDestinationLine(ambulance);
+                }
+
+                updateAmbulanceUrgencyMarker();
+                updateAmbulanceDestinationCircle(ambulance);
+
+                animateMarker(marker, marker.getPosition(), coordinate);
+              }
+            }
+          } else {
+            updateAmbulancesNoMarkers(ambulanceList);
+          }
+
+          currentTime.setText("Current time:\n" + currentTimeInternal.toString());
+
+          var activeCount =
+              ambulanceList.stream().filter(ambulance -> !ambulance.isOffDuty()).count();
+
+          activeAmbulances.setText("Active ambulances: " + activeCount + "");
+        });
+  }
+
+  private void updateStandbyAmbulanceCount(Collection<Ambulance> ambulances) {
+    var baseStationMap = new HashMap<BaseStation, Integer>();
+
+    for (var baseStation : BaseStation.values()) {
+      baseStationMap.put(baseStation, 0);
     }
 
-    private void animateMarker(Marker marker, Coordinate oldPosition, Coordinate newPosition) {
-        // animate the marker to the new position
-        final Transition transition = new Transition() {
-            private final Double oldPositionLongitude = oldPosition.getLongitude();
-            private final Double oldPositionLatitude = oldPosition.getLatitude();
-            private final double deltaLatitude = newPosition.getLatitude() - oldPositionLatitude;
-            private final double deltaLongitude = newPosition.getLongitude() - oldPositionLongitude;
+    for (var ambulance : ambulances) {
+      if (ambulance.isAvailable()) {
+        var key = ambulance.getBaseStation();
+        baseStationMap.put(key, baseStationMap.get(key) + 1);
+      }
+    }
 
-            {
-                setCycleDuration(Duration.seconds(0.5));
-                setOnFinished(evt -> marker.setPosition(newPosition));
-            }
+    var standbyAmbulancesString = new StringBuilder("Standby ambulances:\n");
+    for (var baseStation : baseStationMap.keySet()) {
+      var name = baseStationLabelList.get(baseStation.getId()).getText();
+      var count = baseStationMap.get(baseStation);
 
-            @Override
-            protected void interpolate(double v) {
-                final double latitude = oldPosition.getLatitude() + v * deltaLatitude;
-                final double longitude = oldPosition.getLongitude() + v * deltaLongitude;
-                marker.setPosition(new Coordinate(latitude, longitude));
-            }
+      standbyAmbulancesString.append(String.format("%s: %s\n", name, count));
+    }
+
+    standbyAmbulances.setText(standbyAmbulancesString.toString());
+  }
+
+  private static int bearingInDegrees(Coordinate src, Coordinate dst) {
+    var srcLat = Math.toRadians(src.getLatitude());
+    var dstLat = Math.toRadians(dst.getLatitude());
+    var dLng = Math.toRadians(dst.getLongitude() - src.getLongitude());
+
+    return (int)
+        Math.round(
+            Math.toDegrees(
+                (Math.atan2(
+                        Math.sin(dLng) * Math.cos(dstLat),
+                        Math.cos(srcLat) * Math.sin(dstLat)
+                            - Math.sin(srcLat) * Math.cos(dstLat) * Math.cos(dLng))
+                    + Math.PI)));
+  }
+
+  private void updateAmbulanceDestinationLine(Ambulance ambulance) {
+    Color color;
+    if (!ambulance.isAvailable()
+        && ambulance.isTransport()
+        && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
+      color = Color.web("#ff0000", 0.9);
+    } else if (ambulance.isAvailable()
+        && ambulance.getDestination() == ambulance.getBaseStationLocation()) {
+      color = Color.web("#0000ff", 0.9);
+    } else {
+      color = Color.web("#00ff00", 0.9);
+    }
+
+    if (destinationLines.containsKey(ambulance)) {
+      mapView.removeCoordinateLine(destinationLines.get(ambulance));
+    }
+
+    var ambulanceDestination = utmToLatLongMap.get(ambulance.getDestination());
+
+    destinationLines.put(
+        ambulance,
+        new CoordinateLine(
+                ambulanceDestination,
+                utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal)))
+            .setColor(color)
+            .setVisible(checkShowPathLines.isSelected()));
+    mapView.addCoordinateLine(destinationLines.get(ambulance));
+  }
+
+  private void updateAmbulanceUrgencyMarker() {
+    /*if (ambulance.isAvailable()) {
+        markerLabel.setVisible(false);
+    } else if (!ambulance.isOffDuty()) {
+        if (!ambulance.isAvailable() && !ambulance.isTransport()) {
+            UrgencyLevel urgencyLevel = ambulance.getIncident().urgencyLevel();
+            markerLabel
+                    .setCssClass(urgencyLevel == UrgencyLevel.ACUTE ? "red-label" : "orange-label")
+                    .setVisible(checkShowAmbulances.isSelected());
+        } else if (!ambulance.isAvailable()
+                && ambulance.isTransport()
+                && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
+            markerLabel.setCssClass("green-label").setVisible(checkShowAmbulances.isSelected());
+        }
+    }*/
+  }
+
+  private void updateAmbulanceDestinationCircle(Ambulance ambulance) {
+    if (destinationCircles.containsKey(ambulance)) {
+      if (ambulance.getDestination() == null
+          || !destinationCircles
+              .get(ambulance)
+              .getCenter()
+              .equals(utmToLatLongMap.get(ambulance.getDestination()))) {
+        mapView.removeMapCircle(destinationCircles.get(ambulance));
+        destinationCircles.remove(ambulance);
+      }
+    }
+
+    if (ambulance.getDestination() != null && !destinationCircles.containsKey(ambulance)) {
+
+      var destinationCoordinate = utmToLatLongMap.get(ambulance.getDestination());
+
+      if (!baseStationCoordinateList.contains(destinationCoordinate)
+          && !hospitalCoordinateList.contains(destinationCoordinate)) {
+
+        destinationCircles.put(
+            ambulance,
+            new MapCircle(destinationCoordinate, 1000)
+                .setColor(
+                    ambulance.getIncident().urgencyLevel() == UrgencyLevel.ACUTE
+                        ? Color.web("#ff0000", 0.7)
+                        : Color.web("#ffff00", 0.7))
+                .setVisible(checkShowIncidents.isSelected()));
+        mapView.addMapCircle(destinationCircles.get(ambulance));
+      }
+    }
+  }
+
+  private void animateMarker(Marker marker, Coordinate oldPosition, Coordinate newPosition) {
+    // animate the marker to the new position
+    final Transition transition =
+        new Transition() {
+          private final Double oldPositionLongitude = oldPosition.getLongitude();
+          private final Double oldPositionLatitude = oldPosition.getLatitude();
+          private final double deltaLatitude = newPosition.getLatitude() - oldPositionLatitude;
+          private final double deltaLongitude = newPosition.getLongitude() - oldPositionLongitude;
+
+          {
+            setCycleDuration(Duration.seconds(0.5));
+            setOnFinished(evt -> marker.setPosition(newPosition));
+          }
+
+          @Override
+          protected void interpolate(double v) {
+            final var latitude = oldPosition.getLatitude() + v * deltaLatitude;
+            final var longitude = oldPosition.getLongitude() + v * deltaLongitude;
+            marker.setPosition(new Coordinate(latitude, longitude));
+          }
         };
-        transition.play();
+    transition.play();
+  }
+
+  private void updateAmbulancesNoMarkers(Collection<Ambulance> ambulanceList) {
+    if (ambulanceIcon == null) {
+      throw new IllegalStateException("Missing ambulance icon");
     }
 
-    /**
-     * enables / disables the different controls
-     *
-     * @param flag if true the controls are disabled
-     */
-    private void setControlsDisable(boolean flag) {
-        topControls.setDisable(flag);
-        leftControls.setDisable(flag);
-    }
+    for (var ambulance : ambulanceList) {
 
-    /**
-     * finishes setup after the mpa is initialzed
-     */
-    private void afterMapIsInitialized() {
-        logger.trace("map intialized");
-        logger.debug("setting center and enabling controls...");
-        // start at the harbour with default zoom
-        mapView.setZoom(ZOOM_DEFAULT);
-        mapView.setCenter(center);
-        baseStationMarkerList.forEach(mapView::addMarker);
-        baseStationLabelList.forEach(mapView::addLabel);
-        hospitalMarkerList.forEach(mapView::addMarker);
-        hospitalLabelList.forEach(mapView::addLabel);
-        gridCentroidCirclesList.forEach(mapView::addMapCircle);
-        gridCentroidLabelList.forEach(mapView::addLabel);
-        // now enable the controls
-        setControlsDisable(false);
+      var coordinates =
+          utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
+      var marker =
+          new Marker(ambulanceIcon, -15, -15)
+              .setPosition(coordinates)
+              .setVisible(checkShowAmbulances.isSelected());
+
+      ambulanceMarkers.put(ambulance, marker);
+      /*
+      var label = new MapLabel("Responding", -25, 20)
+          .setVisible(false)
+          .setCssClass("orange-label");
+      marker.attachLabel(label).setVisible(true);
+      */
+      mapView.addMarker(marker);
     }
+  }
+
+  private int getDayAllocation() {
+    if (numDayAmbulances.getText() == null || numDayAmbulances.getText().isEmpty()) {
+      return Parameters.NUMBER_OF_AMBULANCES_DAY;
+    } else {
+      return Integer.parseInt(numDayAmbulances.getText());
+    }
+  }
+
+  private int getNightAllocation() {
+    if (numNightAmbulances.getText() == null || numNightAmbulances.getText().isEmpty()) {
+      return Parameters.NUMBER_OF_AMBULANCES_NIGHT;
+    } else {
+      return Integer.parseInt(numNightAmbulances.getText());
+    }
+  }
+
+  @FXML
+  private void setUniformAllocation() {
+    dayShift.setText(
+        new Uniform()
+            .initialize(getDayAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+    nightShift.setText(
+        new Uniform()
+            .initialize(getNightAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+  }
+
+  @FXML
+  private void setUniformRandomAllocation() {
+    dayShift.setText(
+        new UniformRandom()
+            .initialize(getDayAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+    nightShift.setText(
+        new UniformRandom()
+            .initialize(getNightAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+  }
+
+  @FXML
+  private void setPopulationProportionateAllocation() {
+    dayShift.setText(
+        new PopulationProportionate()
+            .initialize(getDayAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+    nightShift.setText(
+        new PopulationProportionate()
+            .initialize(getNightAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+  }
+
+  @FXML
+  private void setAllCityCenterAllocation() {
+    dayShift.setText(
+        new AllCityCenter()
+            .initialize(getDayAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+    nightShift.setText(
+        new AllCityCenter()
+            .initialize(getNightAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+  }
+
+  @FXML
+  private void setRandomAllocation() {
+    dayShift.setText(
+        new Random()
+            .initialize(getDayAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+    nightShift.setText(
+        new Random()
+            .initialize(getNightAllocation()).stream()
+                .map(Object::toString)
+                .collect(Collectors.joining(", ")));
+  }
+
+  @FXML
+  private void setVisibilityBaseStations() {
+    logger.info("Setting base station layer visibility to " + checkShowBaseStations.isSelected());
+    baseStationMarkerList.forEach(marker -> marker.setVisible(checkShowBaseStations.isSelected()));
+    baseStationLabelList.forEach(
+        label ->
+            label.setVisible(checkShowBaseStations.isSelected() && checkShowLabels.isSelected()));
+  }
+
+  @FXML
+  private void setVisibilityHospitals() {
+    logger.info("Setting hospital layer visibility to " + checkShowHospitals.isSelected());
+    hospitalMarkerList.forEach(marker -> marker.setVisible(checkShowHospitals.isSelected()));
+    hospitalLabelList.forEach(
+        label -> label.setVisible(checkShowHospitals.isSelected() && checkShowLabels.isSelected()));
+  }
+
+  @FXML
+  private void setVisibilityLabels() {
+    logger.info("Setting label visibility to " + checkShowLabels.isSelected());
+    if (checkShowHospitals.isSelected()) {
+      hospitalLabelList.forEach(label -> label.setVisible(checkShowLabels.isSelected()));
+    }
+    if (checkShowBaseStations.isSelected()) {
+      baseStationLabelList.forEach(label -> label.setVisible(checkShowLabels.isSelected()));
+    }
+  }
+
+  @FXML
+  private void setVisibilityAmbulances() {
+    logger.info("Setting ambulance layer visibility to " + checkShowAmbulances.isSelected());
+    ambulanceMarkers.values().forEach(mapView::removeMarker);
+    ambulanceMarkers
+        .values()
+        .forEach(marker -> marker.setVisible(checkShowAmbulances.isSelected()));
+    ambulanceMarkers.values().forEach(mapView::addMarker);
+  }
+
+  @FXML
+  private void setVisibilityGridCentroids() {
+    logger.info(
+        "Setting grid centroids layer visibility to " + checkShowGridCentroids.isSelected());
+    gridCentroidCirclesList.forEach(mapView::removeMapCircle);
+    gridCentroidCirclesList.forEach(
+        circle -> circle.setVisible(checkShowGridCentroids.isSelected()));
+    gridCentroidCirclesList.forEach(mapView::addMapCircle);
+  }
+
+  @FXML
+  private void setVisibilityGridLabels() {
+    logger.info("Setting grid labels layer visibility to " + checkShowGridLabels.isSelected());
+    gridCentroidLabelList.forEach(label -> label.setVisible(checkShowGridLabels.isSelected()));
+  }
+
+  @FXML
+  private void setVisibilityPathLines() {
+    logger.info("Setting path line layer visibility to " + checkShowPathLines.isSelected());
+    destinationLines.values().forEach(mapView::removeCoordinateLine);
+    destinationLines.values().forEach(line -> line.setVisible(checkShowPathLines.isSelected()));
+    destinationLines.values().forEach(mapView::addCoordinateLine);
+  }
+
+  @FXML
+  private void setVisibilityIncidents() {
+    logger.info("Setting incident layer visibility to " + checkShowIncidents.isSelected());
+    destinationCircles.values().forEach(mapView::removeMapCircle);
+    incidentCircleList.forEach(mapView::removeMapCircle);
+    destinationCircles
+        .values()
+        .forEach(circle -> circle.setVisible(checkShowIncidents.isSelected()));
+    incidentCircleList.forEach(circle -> circle.setVisible(checkShowIncidents.isSelected()));
+    destinationCircles.values().forEach(mapView::addMapCircle);
+    incidentCircleList.forEach(mapView::addMapCircle);
+  }
+
+  @FXML
+  private void centerMap() {
+    mapView.setCenter(center);
+    mapView.setZoom(ZOOM_DEFAULT);
+  }
+
+  @FXML
+  private void startSimulation() {
+    if (simulationThread != null && simulationThread.isAlive()) {
+      synchronized (simulationThread) {
+        simulationThread.notify();
+      }
+    } else {
+      var task =
+          new Task<>() {
+            @Override
+            protected Void call() {
+              var dayShiftAllocation =
+                  Stream.of(dayShift.getText().replaceAll("\\s", "").split(","))
+                      .mapToInt(Integer::parseInt)
+                      .boxed()
+                      .toList();
+              var nightShiftAllocation =
+                  Stream.of(nightShift.getText().replaceAll("\\s", "").split(","))
+                      .mapToInt(Integer::parseInt)
+                      .boxed()
+                      .toList();
+
+              Simulation.visualizedSimulation(
+                  new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)),
+                  (currentTime, ambulanceList, callQueue) -> {
+                    if (System.currentTimeMillis() - lastUiUpdate > Parameters.GUI_UPDATE_INTERVAL
+                        && ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
+                      currentTimeInternal = currentTime;
+                      updateAmbulances(ambulanceList);
+                      updateIncidents(callQueue);
+                      lastUiUpdate = System.currentTimeMillis();
+                    }
+                  },
+                  simulationUpdateIntervalSlider.valueProperty());
+              return null;
+            }
+          };
+      simulationThread = new Thread(task);
+      simulationThread.setDaemon(true);
+      simulationThread.start();
+    }
+    startSimulationButton.setVisible(false);
+  }
 }

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright 2015-2020 Peter-Josef Meisch (pj.meisch@sothawo.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+<?import com.sothawo.mapjfx.MapView?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
+  prefHeight="800.0"
+  prefWidth="1200.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+  fx:controller="no.ntnu.ambulanceallocation.simulation.SimulationController">
+
+  <top>
+    <HBox fx:id="topControls" alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
+      <padding>
+        <Insets bottom="5.0" left="10.0" right="10.0" top="5.0"/>
+      </padding>
+      <Button fx:id="centerMap" text="Center map" onAction="#centerMap"/>
+      <Slider fx:id="sliderZoom" blockIncrement="1.0" majorTickUnit="7.0" max="28.0"
+        minorTickCount="6"
+        showTickLabels="true" showTickMarks="true" snapToTicks="true" value="14.0"
+        HBox.hgrow="ALWAYS"/>
+    </HBox>
+  </top>
+
+  <center>
+    <MapView fx:id="mapView" BorderPane.alignment="CENTER"/>
+  </center>
+
+  <bottom>
+    <HBox alignment="CENTER_LEFT" spacing="5.0" BorderPane.alignment="CENTER">
+      <padding>
+        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
+      </padding>
+      <Label fx:id="labelCenter" text="Center: "/>
+      <Label fx:id="labelZoom" text="Zoom: "/>
+    </HBox>
+  </bottom>
+
+  <left>
+    <Accordion fx:id="leftControls" BorderPane.alignment="CENTER">
+      <panes>
+
+        <TitledPane fx:id="optionsLocations" text="Allocation">
+          <VBox spacing="10.0">
+            <Label text="Max number of day ambulances: "/>
+            <TextField fx:id="numDayAmbulances" maxWidth="Infinity" text="45"/>
+            <Label text="Max number of night ambulances: "/>
+            <TextField fx:id="numNightAmbulances" maxWidth="Infinity" text="29"/>
+            <Label text="Day shift allocation: "/>
+            <TextField fx:id="dayShift" maxWidth="Infinity" promptText="Day shift"/>
+            <Label text="Night shift allocation: "/>
+            <TextField fx:id="nightShift" maxWidth="Infinity" promptText="Night shift"/>
+            <Label text="Generate allocations: "/>
+            <Button text="Random" onAction="#setRandomAllocation"
+              maxWidth="Infinity"/>
+            <Button text="Uniform" onAction="#setUniformAllocation"
+              maxWidth="Infinity"/>
+            <Button text="Uniform Random"
+              onAction="#setUniformRandomAllocation" maxWidth="Infinity"/>
+            <Button text="All City Center"
+              onAction="#setAllCityCenterAllocation" maxWidth="Infinity"/>
+            <Button text="Population Proportionate"
+              onAction="#setPopulationProportionateAllocation" maxWidth="Infinity"/>
+          </VBox>
+        </TitledPane>
+
+        <TitledPane text="Simulation">
+          <VBox spacing="10.0">
+            <Label fx:id="currentTime" text="Current time: "/>
+            <Label fx:id="activeAmbulances" text="Active ambulances: "/>
+            <Label text="Simulation update interval:"/>
+            <Slider fx:id="simulationUpdateIntervalSlider" blockIncrement="1.0"
+              majorTickUnit="50.0" max="1000.0" min="5.0" minorTickCount="10"
+              showTickLabels="true" showTickMarks="true" value="400.0"
+              HBox.hgrow="ALWAYS"/>
+            <Label fx:id="standbyAmbulances" text="Standby ambulances: "/>
+            <Button fx:id="startSimulationButton" text="Start simulation"
+              onAction="#startSimulation" maxWidth="Infinity"/>
+          </VBox>
+        </TitledPane>
+
+        <TitledPane text="Layers">
+          <VBox spacing="10.0">
+            <CheckBox fx:id="checkShowGridCentroids" text="Grid centroids" maxWidth="Infinity"
+              onAction="#setVisibilityGridCentroids"/>
+            <CheckBox fx:id="checkShowGridLabels" text="Grid labels" maxWidth="Infinity"
+              onAction="#setVisibilityGridLabels"/>
+            <CheckBox fx:id="checkShowPathLines" text="Path lines" maxWidth="Infinity"
+              onAction="#setVisibilityPathLines"/>
+            <CheckBox fx:id="checkShowHospitals" text="Hospitals" maxWidth="Infinity"
+              onAction="#setVisibilityHospitals"/>
+            <CheckBox fx:id="checkShowLabels" text="Labels" maxWidth="Infinity"
+              onAction="#setVisibilityLabels"/>
+            <CheckBox fx:id="checkShowBaseStations" text="Base stations" maxWidth="Infinity"
+              onAction="#setVisibilityBaseStations"/>
+            <CheckBox fx:id="checkShowIncidents" text="Incidents" maxWidth="Infinity"
+              onAction="#setVisibilityIncidents"/>
+            <CheckBox fx:id="checkShowAmbulances" text="Ambulances" maxWidth="Infinity"
+              onAction="#setVisibilityAmbulances"/>
+          </VBox>
+        </TitledPane>
+
+        <TitledPane text="Map style">
+          <VBox spacing="10.0">
+            <fx:define>
+              <ToggleGroup fx:id="mapTypeGroup"/>
+            </fx:define>
+            <RadioButton fx:id="radioMsOSM" text="OSM" toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsWMS" text="WMS terrestris OSM"
+              toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsXYZ" text="XYZ source" toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsBR" text="Bing Roads" toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsCd" text="Bing Roads - dark"
+              toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsCg" text="Bing Roads - grayscale"
+              toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsCl" text="Bing Roads - light"
+              toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsBA" text="Bing Aerial" toggleGroup="$mapTypeGroup"/>
+            <RadioButton fx:id="radioMsBAwL" text="Bing Aerial with Labels"
+              toggleGroup="$mapTypeGroup"/>
+          </VBox>
+        </TitledPane>
+
+        <TitledPane text="Misc.">
+          <VBox spacing="10.0">
+            <Label text="animation duration"/>
+            <TextField fx:id="animationDuration" prefWidth="120.0" promptText="milliseconds"/>
+            <Label text="Bing Maps API-Key"/>
+            <TextField fx:id="bingMapsApiKey" prefWidth="120.0" promptText="API-Key"/>
+          </VBox>
+        </TitledPane>
+
+      </panes>
+    </Accordion>
+  </left>
+</BorderPane>

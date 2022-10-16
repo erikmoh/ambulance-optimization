@@ -5,5 +5,5 @@ import java.util.List;
 @FunctionalInterface
 public interface Initializer {
 
-    List<Integer> initialize(int numberOfAmbulances);
+  List<Integer> initialize(int numberOfAmbulances);
 }

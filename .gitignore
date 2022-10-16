@@ -3,9 +3,11 @@ target/
 .idea/
 
 output/
+
 scripts/data/
 scripts/proprietary_data/
-src/main/resources/
+src/main/resources/images
+src/main/resources/data
 
 pom.xml.tag
 pom.xml.releaseBackup
