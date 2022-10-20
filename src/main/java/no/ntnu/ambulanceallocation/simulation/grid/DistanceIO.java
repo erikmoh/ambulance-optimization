@@ -23,9 +23,9 @@ import no.ntnu.ambulanceallocation.utils.Tuple;
 public final class DistanceIO {
 
   public static final String distancesFilePath =
-      new File("src/main/resources/data/od.json").getAbsolutePath();
+      new File("src/main/resources/data/distance/od.json").getAbsolutePath();
   public static final String neighborsFilePath =
-      new File("src/main/resources/data/od_nearest_neighbors.json").getAbsolutePath();
+      new File("src/main/resources/data/distance/od_nearest_neighbors.json").getAbsolutePath();
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
   public static final Map<Coordinate, List<Coordinate>> coordinateNeighbors = new HashMap<>();
   public static final Map<Tuple<Coordinate>, Double> distances = new HashMap<>();
