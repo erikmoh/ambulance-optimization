@@ -110,6 +110,7 @@ public class Ambulance {
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
+    timeToDestination = currentLocation.timeTo(destination);
   }
 
   public void dispatchTransport(Incident incident, Coordinate hospitalLocation) {
@@ -134,14 +135,12 @@ public class Ambulance {
     } else {
       var timeDelta = originTimeToDestination - elapsedTime;
 
-      var closeNeighbors =
+      var closeNeighbor =
           currentLocation.getNeighbors().stream()
-              .sorted(
+              .min(
                   Comparator.comparingInt(
                       c -> Math.abs(c.getNearbyAverageTravelTimeTo(destination) - timeDelta)))
-              .toList();
-
-      var closeNeighbor = closeNeighbors.get(0);
+              .orElseThrow();
 
       if (Math.abs(closeNeighbor.getNearbyAverageTravelTimeTo(destination) - timeDelta)
           < Math.abs(currentLocation.timeTo(destination) - timeDelta)) {
@@ -165,13 +164,11 @@ public class Ambulance {
     } else {
       var previousTimeToDestination = currentLocation.timeTo(destination);
 
-      var closeNeighbors =
+      var closeNeighbor =
           currentLocation.getNeighbors().stream()
-              .sorted(
+              .min(
                   Comparator.comparingInt(c -> Math.abs(c.timeTo(destination) - timeToDestination)))
-              .toList();
-
-      var closeNeighbor = closeNeighbors.get(0);
+              .orElseThrow();
 
       if (Math.abs(closeNeighbor.timeTo(destination) - timeToDestination)
           < Math.abs(previousTimeToDestination - timeToDestination)) {
