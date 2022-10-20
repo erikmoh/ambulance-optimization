@@ -254,7 +254,12 @@ public class SimulationController {
                   .setVisible(false));
 
           gridCentroidLabelList.add(
-              new MapLabel(String.format("%s\n%s", utmCoordinate.x(), utmCoordinate.y()), 0, 10)
+              new MapLabel(
+                      String.format(
+                          "x:%s y:%s id:%s",
+                          utmCoordinate.x(), utmCoordinate.y(), utmCoordinate.getIdNum()),
+                      0,
+                      10)
                   .setPosition(coordinate)
                   .setCssClass("coordinate-label")
                   .setVisible(false));
