@@ -1,6 +1,6 @@
-from functools import partial
-
 import matplotlib
+
+from functools import partial
 
 from colors import ALLOCATION_COLORS, HEATMAP_COLORS, ZONE_COLORS
 

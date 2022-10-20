@@ -1,14 +1,13 @@
-import json
 import os
+import json
 import pathlib
-from platform import node
-from time import time
+import psycopg2
 
 import numpy as np
 import pandas as pd
 import proprietary_scripts.ferd.routeplanner as ferd
-import psycopg2
 
+from time import time
 from coordinate_converter import latitude_longitude_to_utm, utm_to_ssb_grid_id
 
 graphdir = str(pathlib.Path().resolve().joinpath(

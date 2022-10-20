@@ -1,6 +1,6 @@
-from math import dist, floor
-
 import utm
+
+from math import dist, floor
 
 ZONE_NUMBER = 33
 FALSE_EASTING = 2_000_000

@@ -2,12 +2,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import (FixedFormatter, FixedLocator, FuncFormatter,
-                               MaxNLocator, MultipleLocator)
-
 import ambulance_allocation
-from common import (OUTPUT_FOLDER, SIMULATION_FOLDER, VISUALIZATION_FOLDER,
-                    ensure_folder_exists)
+
+from matplotlib.ticker import FixedFormatter, FixedLocator, FuncFormatter, MaxNLocator, MultipleLocator
+
+from common import OUTPUT_FOLDER, SIMULATION_FOLDER, VISUALIZATION_FOLDER, ensure_folder_exists
 from plots.box_plot import plot_box_plot
 from save_statistics import save_aggregated_allocations, save_statistics
 

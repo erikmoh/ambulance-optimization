@@ -1,7 +1,7 @@
-from math import floor
-
 import geojson
 import utm
+
+from math import floor
 
 FALSE_EASTING = 2_000_000
 

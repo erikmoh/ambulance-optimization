@@ -2,16 +2,16 @@ import io
 import os
 import platform
 import time
-from collections import Counter
-from pathlib import Path
-
 import folium
 import PIL.Image
+
+from collections import Counter
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 from common import VISUALIZATION_FOLDER
-from styles import allocation_coloring
+from map.styles import allocation_coloring
 
 MAP_WIDTH = 400
 MAP_HEIGHT = 800
@@ -103,8 +103,7 @@ def export_map_with_chrome(folium_map: folium.Map, file_name, width=MAP_WIDTH, h
     # Setup Chrome
     options = Options()
     options.headless = True
-    driver_path = '/usr/bin/chromedriver' if platform.system() == 'Linux' else '/usr/local/bin/chromedriver'
-    driver = webdriver.Chrome(driver_path, options=options)
+    driver = webdriver.Chrome(options=options)
     driver.set_window_size(4000, 3000)
 
     # Open in Chrome and save screenshot
