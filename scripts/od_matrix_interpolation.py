@@ -1,12 +1,10 @@
-
 import json
 import math
 import sys
 
 import numpy as np
 
-from coordinate_converter import (ssb_grid_id_to_utm_centroid,
-                                  utm_to_latitude_longitude)
+from coordinate_converter import ssb_grid_id_to_utm_centroid, utm_to_latitude_longitude
 
 manual_interpolation = {}
 with open('data/uninterpolatable_nearest_junction.json', 'r') as f0:

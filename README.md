@@ -1,2 +1,2 @@
-# ambulance-location-allocation
-Repo for our master's thesis spring 2022
+# ambulance-optimization
+Repository for my master's thesis spring 2023

@@ -1,9 +1,7 @@
-
-
-from collections import Counter
-
 import numpy as np
 import pandas as pd
+
+from collections import Counter
 
 from common import OUTPUT_FOLDER, SIMULATION_FOLDER
 

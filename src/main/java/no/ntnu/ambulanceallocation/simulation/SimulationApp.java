@@ -28,32 +28,35 @@ import javafx.stage.Stage;
 
 public class SimulationApp extends Application {
 
-    private static final Logger logger = LoggerFactory.getLogger(SimulationApp.class);
+  private static final Logger logger = LoggerFactory.getLogger(SimulationApp.class);
 
-    public static void main(String[] args) {
-        launch(args);
-    }
+  public static void main(String[] args) {
+    launch(args);
+  }
 
-    @Override
-    public void start(Stage primaryStage) throws Exception {
-        logger.info("Starting Real Time Map");
-        String fxmlFile = "RealTimeMap.fxml";
-        logger.debug("loading fxml file {}", fxmlFile);
-        FXMLLoader fxmlLoader = new FXMLLoader();
-        Parent rootNode = fxmlLoader.load(getClass().getResourceAsStream(fxmlFile));
+  @Override
+  public void start(Stage primaryStage) throws Exception {
+    logger.info("Starting Real Time Map");
 
-        final SimulationController controller = fxmlLoader.getController();
-        final Projection projection = getParameters().getUnnamed().contains("wgs84")
-                ? Projection.WGS_84
-                : Projection.WEB_MERCATOR;
-        controller.initMapAndControls(projection);
+    var fxmlFile = "/view/RealTimeMap.fxml";
+    logger.debug("loading fxml file {}", fxmlFile);
 
-        Scene scene = new Scene(rootNode);
+    var fxmlLoader = new FXMLLoader();
+    var rootNode = (Parent) fxmlLoader.load(getClass().getResourceAsStream(fxmlFile));
 
-        primaryStage.setTitle("Oslo & Akershus EMS simulation");
-        primaryStage.setScene(scene);
-        primaryStage.show();
+    final SimulationController controller = fxmlLoader.getController();
+    final var projection =
+        getParameters().getUnnamed().contains("wgs84")
+            ? Projection.WGS_84
+            : Projection.WEB_MERCATOR;
+    controller.initMapAndControls(projection);
 
-        logger.debug("application start method finished.");
-    }
+    var scene = new Scene(rootNode);
+
+    primaryStage.setTitle("Oslo & Akershus EMS simulation");
+    primaryStage.setScene(scene);
+    primaryStage.show();
+
+    logger.debug("application start method finished.");
+  }
 }

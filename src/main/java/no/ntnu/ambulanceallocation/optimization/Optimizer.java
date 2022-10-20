@@ -4,12 +4,11 @@ import no.ntnu.ambulanceallocation.experiments.Result;
 
 public interface Optimizer {
 
-    void optimize();
+  void optimize();
 
-    Solution getOptimalSolution();
-    
-    String getAbbreviation();
+  Solution getOptimalSolution();
 
-    Result getRunStatistics();
+  String getAbbreviation();
 
+  Result getRunStatistics();
 }

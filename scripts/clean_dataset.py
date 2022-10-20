@@ -1,5 +1,5 @@
-import pandas as pd
 import regex as re
+import pandas as pd
 
 
 def convert_to_datetime(df):
@@ -32,7 +32,9 @@ def main():
     data_folder = 'proprietary_data'
     raw_data_path = f'{data_folder}/raw_data.csv'
     cleaned_data_path = f'{data_folder}/cleaned_data.csv'
+
     csv_parser(raw_data_path, cleaned_data_path)
+    
     df = pd.read_csv(cleaned_data_path, encoding='utf-8', escapechar='\\')
     df = convert_to_datetime(df)
     df.to_csv(cleaned_data_path, index=False)

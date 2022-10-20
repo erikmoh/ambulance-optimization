@@ -7,11 +7,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class AllCityCenter implements  Initializer {
+public class AllCityCenter implements Initializer {
 
-    @Override
-    public List<Integer> initialize(int numberOfAmbulances) {
-        return new ArrayList<>(Collections.nCopies(numberOfAmbulances, BaseStation.SENTRUM.getId()));
-    }
-
+  @Override
+  public List<Integer> initialize(int numberOfAmbulances) {
+    return new ArrayList<>(Collections.nCopies(numberOfAmbulances, BaseStation.SENTRUM.getId()));
+  }
 }

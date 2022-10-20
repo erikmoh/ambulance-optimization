@@ -2,8 +2,7 @@ package no.ntnu.ambulanceallocation.experiments;
 
 public interface Experiment {
 
-    void run();
+  void run();
 
-    void saveResults();
-
+  void saveResults();
 }

@@ -1,11 +1,11 @@
 import os
-from collections import Counter
-
 import pandas as pd
 
-import geojson_tools
-import map_tools
+from collections import Counter
 from common import VISUALIZATION_FOLDER, ensure_folder_exists
+
+import map.geojson_tools as geojson_tools
+import map.map_tools as map_tools
 
 
 def process_grids():
@@ -51,18 +51,18 @@ def plot() -> None:
             grids = process_grids()
             base_stations = process_base_stations()
 
-            features = map.geojson_tools.dataframe_to_squares(grids)
-            map.geojson_tools.export_features(features, 'data/grid.geojson')
+            features = geojson_tools.dataframe_to_squares(grids)
+            geojson_tools.export_features(features, 'data/grid.geojson')
 
-            heatmap = map.map_tools.get_map(width=3000, height=2500, location=[58.7, 14.073], zoom_start=9)
+            heatmap = map_tools.get_map(width=3000, height=2500, location=[58.7, 14.073], zoom_start=9)
 
-            points = map.geojson_tools.dataframe_to_points(base_stations)
-            circle_markers = map.map_tools.create_capacity_circle_markers(points, allocation_counts)
+            points = geojson_tools.dataframe_to_points(base_stations)
+            circle_markers = map_tools.create_capacity_circle_markers(points, allocation_counts)
             for circle_marker in circle_markers:
                 circle_marker.add_to(heatmap)
 
             # experiment_name = '_'.join(experiment.split('/')[-1].split('_')[:-1])
             file_name = f'allocations/{strategy_name}'.lower()
 
-            map.map_tools.export_map_with_chrome(heatmap, file_name, width=700)
+            map_tools.export_map_with_chrome(heatmap, file_name, width=700)
     print('done.')

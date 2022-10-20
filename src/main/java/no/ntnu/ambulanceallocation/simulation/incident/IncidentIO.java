@@ -18,101 +18,105 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class IncidentIO {
 
-    private static final Logger logger = LoggerFactory.getLogger(IncidentIO.class);
+  private static final Logger logger = LoggerFactory.getLogger(IncidentIO.class);
 
-    public static final String incidentsFilePath = new File("src/main/resources/incidents.csv").getAbsolutePath();
-    public static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+  public static final String incidentsFilePath =
+      new File("src/main/resources/data/incidents.csv").getAbsolutePath();
+  public static final DateTimeFormatter dateTimeFormatter =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    public static final List<Incident> incidents;
+  public static final List<Incident> incidents;
 
-    static {
-        incidents = loadIncidentsFromFile();
-    }
+  static {
+    incidents = loadIncidentsFromFile();
+  }
 
-    public static List<Incident> loadIncidentsFromFile() {
+  public static List<Incident> loadIncidentsFromFile() {
 
-        List<Incident> incidents = new ArrayList<>();
+    var incidents = new ArrayList<Incident>();
 
-        logger.info("Loading incidents from file...");
+    logger.info("Loading incidents from file...");
 
-        int processedLines = 0;
-        int skippedLines = 0;
+    var processedLines = 0;
+    var skippedLines = 0;
 
-        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(incidentsFilePath))) {
-            String header = bufferedReader.readLine();
+    try (var bufferedReader = new BufferedReader(new FileReader(incidentsFilePath))) {
+      var header = bufferedReader.readLine();
 
-            logger.info("Incident CSV header: {}", header); // tidspunkt,xcoor,ycoor,hastegrad,tiltak_type,rykker_ut,ank_hentested,avg_hentested,ledig,total_vehicles_assigned,transporting_vehicles,cancelled_vehicles
+      // tidspunkt,xcoor,ycoor,hastegrad,tiltak_type,rykker_ut,ank_hentested,avg_hentested,ledig,total_vehicles_assigned,transporting_vehicles,cancelled_vehicles
+      logger.info("Incident CSV header: {}", header);
 
-            String line = bufferedReader.readLine();
+      var line = bufferedReader.readLine();
 
-            while (line != null) {
-                List<String> values = Arrays.asList(line.split(","));
+      while (line != null) {
+        var values = Arrays.asList(line.split(","));
 
-                LocalDateTime callReceived = LocalDateTime.parse(values.get(0), dateTimeFormatter);
+        if (isValid(values)) {
+          incidents.add(createIncident(values));
 
-                if (isValid(values)) {
-
-                    int xCoordinate = Integer.parseInt(values.get(1));
-                    int yCoordinate = Integer.parseInt(values.get(2));
-
-                    String urgencyLevel = values.get(3);
-                    // String dispatchType = values.get(4); // Always ambulance
-
-                    LocalDateTime dispatched = LocalDateTime.parse(values.get(5), dateTimeFormatter);
-                    Optional<LocalDateTime> arrivalAtScene = parseDateTime(values.get(6));
-                    Optional<LocalDateTime> departureFromScene = parseDateTime(values.get(7));
-                    LocalDateTime availableNonTransport = LocalDateTime.parse(values.get(8), dateTimeFormatter);
-                    LocalDateTime availableTransport = LocalDateTime.parse(values.get(9), dateTimeFormatter);
-
-                    int nonTransportingVehicles = Integer.parseInt(values.get(10));
-                    int transportingVehicles = Integer.parseInt(values.get(11));
-
-                    incidents.add(new Incident(
-                            callReceived,
-                            xCoordinate,
-                            yCoordinate,
-                            UrgencyLevel.get(urgencyLevel),
-                            dispatched,
-                            arrivalAtScene,
-                            departureFromScene,
-                            availableNonTransport,
-                            availableTransport,
-                            nonTransportingVehicles,
-                            transportingVehicles));
-
-                    processedLines++;
-                } else {
-                    // Skip line
-                    skippedLines++;
-                }
-
-                line = bufferedReader.readLine();
-            }
-
-        } catch (IOException exception) {
-            exception.printStackTrace();
-            logger.error("An IOException occurred while loading incidents from file: {}", exception);
-            System.exit(1);
+          processedLines++;
+        } else {
+          // Skip line
+          skippedLines++;
         }
 
-        logger.info("Loading incidents from file was successful.");
+        line = bufferedReader.readLine();
+      }
 
-        double percentageSkipped = 100 * Utils.round((double) skippedLines / (double) processedLines, 6);
-        logger.info("{} incidents were successfully processed", processedLines);
-        logger.info("{} incidents were skipped ({}%)", skippedLines, percentageSkipped);
-
-        return incidents;
+    } catch (IOException exception) {
+      logger.error("An IOException occurred while loading incidents from file: ", exception);
+      System.exit(1);
     }
 
-    private static boolean isValid(List<String> values) {
-        return !values.get(5).isBlank() && !values.get(8).isBlank();
-    }
+    logger.info("Loading incidents from file was successful.");
 
-    private static Optional<LocalDateTime> parseDateTime(String dateTime) {
-        if (dateTime.isBlank()) {
-            return Optional.empty();
-        }
-        return Optional.of(LocalDateTime.parse(dateTime, dateTimeFormatter));
-    }
+    var percentageSkipped = 100 * Utils.round(skippedLines / (double) processedLines, 6);
+    logger.info("{} incidents were successfully processed", processedLines);
+    logger.info("{} incidents were skipped ({}%)", skippedLines, percentageSkipped);
 
+    return incidents;
+  }
+
+  private static Incident createIncident(List<String> values) {
+    var callReceived = LocalDateTime.parse(values.get(0), dateTimeFormatter);
+
+    var xCoordinate = Integer.parseInt(values.get(1));
+    var yCoordinate = Integer.parseInt(values.get(2));
+
+    var urgencyLevel = UrgencyLevel.get(values.get(3));
+    // String dispatchType = values.get(4); // Always ambulance
+
+    var dispatched = LocalDateTime.parse(values.get(5), dateTimeFormatter);
+    var arrivalAtScene = parseDateTime(values.get(6));
+    var departureFromScene = parseDateTime(values.get(7));
+    var availableNonTransport = LocalDateTime.parse(values.get(8), dateTimeFormatter);
+    var availableTransport = LocalDateTime.parse(values.get(9), dateTimeFormatter);
+
+    var nonTransportingVehicles = Integer.parseInt(values.get(10));
+    var transportingVehicles = Integer.parseInt(values.get(11));
+
+    return new Incident(
+        callReceived,
+        xCoordinate,
+        yCoordinate,
+        urgencyLevel,
+        dispatched,
+        arrivalAtScene,
+        departureFromScene,
+        availableNonTransport,
+        availableTransport,
+        nonTransportingVehicles,
+        transportingVehicles);
+  }
+
+  private static boolean isValid(List<String> values) {
+    return !values.get(5).isBlank() && !values.get(8).isBlank();
+  }
+
+  private static Optional<LocalDateTime> parseDateTime(String dateTime) {
+    if (dateTime.isBlank()) {
+      return Optional.empty();
+    }
+    return Optional.of(LocalDateTime.parse(dateTime, dateTimeFormatter));
+  }
 }

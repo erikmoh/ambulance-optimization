@@ -2,6 +2,7 @@ import re
 
 import matplotlib.pyplot as plt
 import pandas as pd
+
 from common import OUTPUT_FOLDER, VISUALIZATION_FOLDER
 
 

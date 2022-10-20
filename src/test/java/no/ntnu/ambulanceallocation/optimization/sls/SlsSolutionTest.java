@@ -4,22 +4,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
 public class SlsSolutionTest {
 
-    @Test
-    public void comparableBasedOnFitnessShouldWork() {
-        SlsSolution solution1 = new SlsSolution();
-        SlsSolution solution2 = new SlsSolution();
+  @Test
+  public void comparableBasedOnFitnessShouldWork() {
+    var solution1 = new SlsSolution();
+    var solution2 = new SlsSolution();
 
-        List<SlsSolution> solutions = Arrays.asList(solution1, solution2);
-        Collections.sort(solutions);
-        SlsSolution bestSolution = solutions.get(0);
-        SlsSolution worstSolution = solutions.get(1);
-        assertTrue(bestSolution.compareTo(worstSolution) <= 0);
-    }
-
+    var solutions = Arrays.asList(solution1, solution2);
+    Collections.sort(solutions);
+    var bestSolution = solutions.get(0);
+    var worstSolution = solutions.get(1);
+    assertTrue(bestSolution.compareTo(worstSolution) <= 0);
+  }
 }

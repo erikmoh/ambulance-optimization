@@ -12,79 +12,85 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class PopulationProportionate implements Initializer {
 
-    @Override
-    public List<Integer> initialize(int numberOfAmbulances) {
-        List<Integer> ambulancesPerStation = BaseStation.getPopulationDistribution()
-                .stream()
-                .map(populationProportion -> populationProportion * numberOfAmbulances)
-                .map(proportion -> (int) Math.round(proportion))
-                .collect(Collectors.toList());
+  @Override
+  public List<Integer> initialize(int numberOfAmbulances) {
+    var ambulancesPerStation =
+        BaseStation.getPopulationDistribution().stream()
+            .map(populationProportion -> populationProportion * numberOfAmbulances)
+            .map(proportion -> (int) Math.round(proportion))
+            .collect(Collectors.toList());
 
-        return fairRepair(generateAllocation(ambulancesPerStation), ambulancesPerStation, numberOfAmbulances);
+    return fairRepair(
+        generateAllocation(ambulancesPerStation), ambulancesPerStation, numberOfAmbulances);
+  }
+
+  private List<Integer> generateAllocation(List<Integer> ambulancesPerStation) {
+    var allocation = new ArrayList<Integer>();
+
+    for (var baseStationId = 0; baseStationId < BaseStation.size(); baseStationId++) {
+      for (var i = 0; i < ambulancesPerStation.get(baseStationId); i++) {
+        allocation.add(baseStationId);
+      }
+    }
+    return allocation;
+  }
+
+  private List<Integer> stochasticRepair(List<Integer> allocation, int numberOfAmbulances) {
+    while (allocation.size() != numberOfAmbulances) {
+      if (allocation.size() > numberOfAmbulances) {
+        removeRandom(allocation);
+      } else {
+        addRandom(allocation);
+      }
+    }
+    return allocation;
+  }
+
+  private List<Integer> fairRepair(
+      List<Integer> allocation, List<Integer> ambulancesPerStation, int numberOfAmbulances) {
+
+    var deviations = computeDeviations(ambulancesPerStation, numberOfAmbulances);
+
+    var difference = allocation.size() - numberOfAmbulances;
+    var deficit = difference < 0;
+
+    if (deficit) {
+      Collections.reverse(deviations);
     }
 
-    private List<Integer> generateAllocation(List<Integer> ambulancesPerStation) {
-        List<Integer> allocation = new ArrayList<>();
-        for (int baseStationId = 0; baseStationId < BaseStation.size(); baseStationId++) {
-            for (int i = 0; i < ambulancesPerStation.get(baseStationId); i++) {
-                allocation.add(baseStationId);
-            }
-        }
-        return allocation;
+    for (int i = 0; i < Math.abs(difference); i++) {
+      if (deficit) {
+        allocation.add(deviations.get(i));
+      } else {
+        allocation.remove(deviations.get(i));
+      }
+    }
+    return allocation;
+  }
+
+  private List<Integer> computeDeviations(
+      List<Integer> ambulancesPerStation, int numberOfAmbulances) {
+
+    var deviations = new ArrayList<Tuple<Double>>();
+    var populationDistribution = BaseStation.getPopulationDistribution();
+
+    for (var id : BaseStation.ids()) {
+      var ambulanceProportion = populationDistribution.get(id) * numberOfAmbulances;
+      var difference = ambulanceProportion - ambulancesPerStation.get(id);
+      deviations.add(new Tuple<>((double) id, difference));
     }
 
-    private List<Integer> stochasticRepair(List<Integer> allocation, int numberOfAmbulances) {
-        while (allocation.size() != numberOfAmbulances) {
-            if (allocation.size() > numberOfAmbulances) {
-                removeRandom(allocation);
-            } else {
-                addRandom(allocation);
-            }
-        }
-        return allocation;
-    }
+    deviations.sort(Comparator.comparing(Tuple::second));
+    return deviations.stream()
+        .map(element -> element.first().intValue())
+        .collect(Collectors.toList());
+  }
 
-    private List<Integer> fairRepair(List<Integer> allocation, List<Integer> ambulancesPerStation,
-            int numberOfAmbulances) {
-        List<Integer> deviations = computeDeviations(ambulancesPerStation, numberOfAmbulances);
+  private void removeRandom(List<Integer> allocation) {
+    allocation.remove(Utils.randomInt(allocation.size()));
+  }
 
-        int difference = allocation.size() - numberOfAmbulances;
-        boolean deficit = difference < 0;
-
-        if (deficit) {
-            Collections.reverse(deviations);
-        }
-
-        for (int i = 0; i < Math.abs(difference); i++) {
-            if (deficit) {
-                allocation.add(deviations.get(i));
-            } else {
-                allocation.remove(deviations.get(i));
-            }
-        }
-        return allocation;
-    }
-
-    private List<Integer> computeDeviations(List<Integer> ambulancesPerStation, int numberOfAmbulances) {
-        List<Tuple<Double>> deviations = new ArrayList<>();
-        List<Double> populationDistribution = BaseStation.getPopulationDistribution();
-
-        for (int id : BaseStation.ids()) {
-            double ambulanceProportion = populationDistribution.get(id) * numberOfAmbulances;
-            double difference = ambulanceProportion - ambulancesPerStation.get(id);
-            deviations.add(new Tuple<>((double) id, difference));
-        }
-
-        deviations.sort(Comparator.comparing(Tuple::second));
-        return deviations.stream().map(element -> element.first().intValue()).collect(Collectors.toList());
-    }
-
-    private void removeRandom(List<Integer> allocation) {
-        allocation.remove(Utils.randomInt(allocation.size()));
-    }
-
-    private void addRandom(List<Integer> allocation) {
-        allocation.add(Utils.randomInt(BaseStation.size()));
-    }
-
+  private void addRandom(List<Integer> allocation) {
+    allocation.add(Utils.randomInt(BaseStation.size()));
+  }
 }
