@@ -10,25 +10,24 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import no.ntnu.ambulanceallocation.Parameters;
-import no.ntnu.ambulanceallocation.utils.Tuple;
-
 public final class DistanceIO {
 
-  public static final String distancesFilePath =
-      new File("src/main/resources/data/distance/od.json").getAbsolutePath();
+  public static final String routesFilePath =
+      new File("src/main/resources/data/distance/od_paths.json").getAbsolutePath();
   public static final String neighborsFilePath =
       new File("src/main/resources/data/distance/od_nearest_neighbors.json").getAbsolutePath();
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
   public static final Map<Coordinate, List<Coordinate>> coordinateNeighbors = new HashMap<>();
-  public static final Map<Tuple<Coordinate>, Double> distances = new HashMap<>();
+
+  public static final Map<Tuple<Coordinate>, Route> routes = new HashMap<>();
   public static final Map<String, Coordinate> coordinateCache = new HashMap<>();
   private static final Logger logger = LoggerFactory.getLogger(DistanceIO.class);
 
@@ -38,15 +37,23 @@ public final class DistanceIO {
     coordinateCache.clear();
   }
 
+  public static Route getRoute(Coordinate from, Coordinate to) {
+    if (!routes.containsKey(new Tuple<>(from, to))) {
+      logger.info("Failed to find route from {} to {}", from, to);
+      return new Route(new ArrayList<>(), 60 * 60);
+    }
+    return routes.get(new Tuple<>(from, to));
+  }
+
   public static double getDistance(Coordinate from, Coordinate to) {
     if (from == to) {
       return 0.0;
     }
-    if (!distances.containsKey(new Tuple<>(from, to))) {
+    if (!routes.containsKey(new Tuple<>(from, to))) {
       logger.info("Failed to find distance from {} to {}", from, to);
       return 60.0;
     }
-    return distances.get(new Tuple<>(from, to));
+    return routes.get(new Tuple<>(from, to)).time();
   }
 
   private static Coordinate getCoordinateFromString(String coordinateString) {
@@ -69,22 +76,32 @@ public final class DistanceIO {
     return coordinate;
   }
 
+  private static ArrayList<String> getRouteFromJsonArray(JSONArray jsonArray) {
+    var route = new ArrayList<String>();
+    for (var i = 0; i < jsonArray.length(); i++) {
+      route.add(jsonArray.getString(i));
+    }
+    return route;
+  }
+
   private static void loadDistancesFromFile() {
-    logger.info("Loading distances from file...");
+    logger.info("Loading routes from file...");
 
     try {
-      var distanceJsonObject = new JSONObject(Files.readString(Path.of(distancesFilePath)));
+      var routeJsonObject = new JSONObject(Files.readString(Path.of(routesFilePath)));
 
-      for (var originKey : distanceJsonObject.names()) {
+      for (var originKey : routeJsonObject.names()) {
         var origin = getCoordinateFromString(originKey.toString());
         uniqueGridCoordinates.add(origin);
-        var destinationObject = (JSONObject) distanceJsonObject.get(originKey.toString());
+        var destinationsObject = (JSONObject) routeJsonObject.get(originKey.toString());
 
-        if (destinationObject.names() != null) {
-          for (var destKey : destinationObject.names()) {
-            var time = destinationObject.getDouble(destKey.toString());
+        if (destinationsObject.names() != null) {
+          for (var destKey : destinationsObject.names()) {
+            var destinationObject = (JSONObject) destinationsObject.get(destKey.toString());
             var destination = getCoordinateFromString(destKey.toString());
-            distances.put(new Tuple<>(origin, destination), (time * 60));
+            var route = getRouteFromJsonArray(destinationObject.getJSONArray("route"));
+            var time = destinationObject.getInt("travel_time");
+            routes.put(new Tuple<>(origin, destination), new Route(route, time));
           }
         }
       }
@@ -93,7 +110,7 @@ public final class DistanceIO {
       System.exit(1);
     }
 
-    logger.info("Loaded {} distances.", distances.size());
+    logger.info("Loaded {} routes.", routes.size());
   }
 
   private static void loadNearestNeighborsFromFile() {

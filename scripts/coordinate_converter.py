@@ -1,6 +1,6 @@
 import utm
 
-from math import dist, floor
+from math import dist, floor, radians, sin, cos, asin, sqrt, inf
 
 ZONE_NUMBER = 33
 FALSE_EASTING = 2_000_000
@@ -84,3 +84,66 @@ def utm_distance(start, end):
             Distance between start and end
     """
     return dist(start, end)
+
+
+def node_to_id(node_id, type, xs, ys):
+    lat = ys[node_id]
+    long = xs[node_id]
+    easting, northing, _, _ = utm.from_latlon(lat, long, ZONE_NUMBER)
+    if type == "grid":
+        return str(utm_to_ssb_grid_id(easting, northing))
+    return f"_{easting:.0f}_{northing:.0f}"
+
+
+def calc_dist(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    # Radius of earth in kilometers is 6371
+    km = 6371* c
+    return km
+
+
+def closest_grid(G, grids, node_id):
+    closest = None
+    minDist = inf
+    # get node coordinates
+    node_x = G.nodes[node_id]['x']
+    node_y = G.nodes[node_id]['y']
+    # loop all grids to find closest
+    for coordinate in grids.itertuples():
+        grid_id, grid_y, grid_x, _ = coordinate
+        # calc distances
+        dist = calc_dist(grid_x, grid_y, node_x, node_y)
+        if dist < minDist:
+            minDist = dist
+            closest = grid_id
+    # return grid id
+    return closest
+
+def get_route_info(G, grids, ssb_ids, route, update_period):
+    travel_time = 0
+    section_time = 0
+    route_grids = []
+    # iterate edges in route
+    for u, v in zip(route[:-1], route[1:]):
+        edge_time = G.edges[(u, v, 0)]['travel_time']
+        travel_time += edge_time
+        section_time += edge_time
+        # save position every x min along route
+        if section_time > update_period*60:
+            section_time = 0
+            closest = closest_grid(G, grids, u)
+            if closest:
+                route_grids.append(ssb_ids[closest])
+    
+    travel_time = round(travel_time)
+    return travel_time, route_grids
