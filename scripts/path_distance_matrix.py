@@ -73,14 +73,14 @@ def load_coordinates():
     return combined, ids, xs, ys, grids
 
 
-def shortest_paths(G, ids, to_ids, ssb_ids, nearest_nodes, grids, conn):
-    print(f"Finding shortest path to id {to_ids[0]}-{to_ids[-1]} in process", getpid())
+def shortest_paths(G, ids, from_ids, ssb_ids, nearest_nodes, grids, conn):
+    print(f"Finding shortest path from id {from_ids[0]}-{from_ids[-1]} in process", getpid())
     od = {}
-    for id1 in tqdm(ids):
+    for id1 in tqdm(from_ids):
         ssb_id1 = ssb_ids[id1]
         od[ssb_id1] = {}
         
-        for id2 in to_ids:
+        for id2 in ids:
             # set travel time to 0 if path is from and to the same node
             ssb_id2 = ssb_ids[id2]
             if id1 == id2:
