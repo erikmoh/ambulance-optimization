@@ -113,11 +113,6 @@ def shortest_paths(G, ids, from_ids, ssb_ids, nearest_nodes, grids, conn):
 
             od[ssb_id1][ssb_id2] = {"travel_time": travel_time, "route": route_grids}
 
-        """ if id1 > 0 and id1 % 25 == 0:
-            print("Saving od to tmp file...")
-            with open(f'data/od_path_matrix_tmp_{to_ids[-1]}.json', 'w') as f:
-                json.dump(od, f, indent=2) """
-
     conn.send(od)
 
 
@@ -147,7 +142,7 @@ def main():
     for split in range(PROCESSES):
         conn1, conn2 = Pipe()
         split_ids = ids[split_size*split:split_size*(split+1)]
-        processes.append(Process(target=shortest_paths, args=(G, ids, split_ids, ssb_ids, nearest_nodes, grids, conn2, )))
+        processes.append(Process(target=shortest_paths, args=(G, ids, split_ids, ssb_ids, nearest_nodes, grids, conn2)))
         connections.append(conn1)
 
     print("Getting shortest paths from and to all coordinates...")
@@ -155,8 +150,16 @@ def main():
         process.start()
 
     od = {}
+    """ with open(f'data/od_path_matrix_with_missing.json', 'r') as r:
+        od = json.load(r) """
+
     for connection in connections:
         od1 = connection.recv()
+        """ for k in od1.keys():
+            item = od1[k]
+            for k1 in item.keys():
+                v = od1[k][k1]
+                od[k][k1] = v """
         od.update(od1)
     
     print("Closing all processes...")

@@ -126,8 +126,12 @@ public class Ambulance {
 
   // Only used for visualization
   public Coordinate getCurrentLocationVisualized(LocalDateTime currentTime) {
-    if (isAvailable() || currentLocation == destination) {
+    if (isAvailable() || currentLocation == destination || route == null) {
       return currentLocation;
+    }
+
+    if (travelStartTime == null) {
+      travelStartTime = currentTime;
     }
 
     var timePeriod = 5;
