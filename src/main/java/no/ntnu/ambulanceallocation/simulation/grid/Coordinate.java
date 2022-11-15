@@ -1,7 +1,5 @@
 package no.ntnu.ambulanceallocation.simulation.grid;
 
-import java.util.List;
-
 public record Coordinate(int x, int y, long id) {
 
   private static final double FALSE_EASTING = 2_000_000.0;
@@ -30,25 +28,6 @@ public record Coordinate(int x, int y, long id) {
 
   public double manhattanDistanceTo(Coordinate other) {
     return Math.abs(this.x() - other.x()) + Math.abs(this.y() - other.y());
-  }
-
-  public List<Coordinate> getNeighbors() {
-    return DistanceIO.coordinateNeighbors.get(this);
-  }
-
-  public List<Coordinate> getNeighbors(int radius) {
-    return DistanceIO.coordinateNeighbors.get(this).stream()
-        .filter(c -> c.euclideanDistanceTo(this) <= radius)
-        .toList();
-  }
-
-  public int getNearbyAverageTravelTimeTo(Coordinate coordinate) {
-    return (int)
-        Math.round(
-            getNeighbors(1200).stream()
-                .mapToInt(c -> c.timeTo(coordinate))
-                .average()
-                .orElse(this.timeTo(coordinate)));
   }
 
   public long getIdNum() {

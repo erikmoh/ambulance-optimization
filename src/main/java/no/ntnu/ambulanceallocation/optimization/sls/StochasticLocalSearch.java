@@ -101,7 +101,7 @@ public class StochasticLocalSearch implements Optimizer {
           }
         };
 
-    var optimizationTime = Utils.timeIt(optimizationWrapper, false);
+    var optimizationTime = Utils.timeIt(optimizationWrapper);
     logger.info("Total {} optimization time: {} s", getAbbreviation(), optimizationTime);
   }
 

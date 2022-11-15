@@ -27,22 +27,6 @@ public record Incident(
     return (int) ChronoUnit.SECONDS.between(callReceived, dispatched);
   }
 
-  public int getTravelTime() {
-    if (arrivalAtScene.isEmpty()) {
-      throw new IllegalStateException(
-          "Cannot compute travel time for incident without arrival time");
-    }
-    return (int) ChronoUnit.SECONDS.between(dispatched, arrivalAtScene.get());
-  }
-
-  public int getTimeSpentAtScene() {
-    if (arrivalAtScene.isEmpty() && departureFromScene.isEmpty()) {
-      throw new IllegalStateException(
-          "Cannot compute time spent at scene without arrival and departure time");
-    }
-    return (int) ChronoUnit.SECONDS.between(arrivalAtScene.get(), departureFromScene.get());
-  }
-
   public int getDuration() {
     if (arrivalAtScene.isEmpty() && departureFromScene.isEmpty()) {
       throw new IllegalStateException("Cannot compute duration without departure time");
@@ -50,8 +34,19 @@ public record Incident(
     return (int) ChronoUnit.SECONDS.between(callReceived, departureFromScene.get());
   }
 
-  public int getTotalIntervalTransport() {
-    return (int) ChronoUnit.SECONDS.between(callReceived, availableTransport);
+  public int getTimeSpentAtScene() {
+    if (arrivalAtScene.isEmpty() || departureFromScene.isEmpty()) {
+      throw new IllegalStateException(
+          "Cannot compute time spent at scene without arrival and departure time");
+    }
+    return (int) ChronoUnit.SECONDS.between(arrivalAtScene.get(), departureFromScene.get());
+  }
+
+  public int getTimeSpentAtSceneNonTransport() {
+    if (arrivalAtScene.isEmpty()) {
+      throw new IllegalStateException("Cannot compute time spent at scene without arrival time");
+    }
+    return (int) ChronoUnit.SECONDS.between(arrivalAtScene.get(), availableNonTransport);
   }
 
   public int getTotalIntervalNonTransport() {
@@ -63,12 +58,5 @@ public record Incident(
       throw new IllegalStateException("Cannot compute duration without departure time");
     }
     return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableTransport);
-  }
-
-  public int getTimeFromDepartureToAvailableNonTransport() {
-    if (departureFromScene.isEmpty()) {
-      throw new IllegalStateException("Cannot compute duration without departure time");
-    }
-    return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableNonTransport);
   }
 }

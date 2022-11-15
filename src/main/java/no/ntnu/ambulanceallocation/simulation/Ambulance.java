@@ -4,18 +4,15 @@ import static java.lang.Math.round;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
 import no.ntnu.ambulanceallocation.simulation.grid.Route;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Ambulance {
-
-  private static final double CONVERSION_FACTOR = 3.6;
 
   // Only used for visualization
   private static LocalDateTime currentGlobalTime;
@@ -28,7 +25,6 @@ public class Ambulance {
   private Coordinate originatingLocation;
   private Route route;
   private Coordinate destination = null;
-  private int timeToDestination = 0;
   private Coordinate currentLocation;
 
   public Ambulance(BaseStation baseStation) {
@@ -36,18 +32,8 @@ public class Ambulance {
     this.currentLocation = baseStation.getCoordinate();
   }
 
-  public static List<Ambulance> generateFromAllocation(Collection<Integer> allocation) {
-    return allocation.stream()
-        .map(id -> new Ambulance(BaseStation.get(id)))
-        .collect(Collectors.toList());
-  }
-
   public static void setCurrentGlobalTime(LocalDateTime time) {
     currentGlobalTime = time;
-  }
-
-  public static Comparator<Ambulance> closestTo(Incident incident) {
-    return Comparator.comparingDouble(ambulance -> ambulance.timeTo(incident));
   }
 
   public void startNewShift() {
@@ -90,17 +76,23 @@ public class Ambulance {
     return incident;
   }
 
+  public Route getRoute() {
+    return route;
+  }
+
   public boolean isAvailable() {
     return incident == null && !isOffDuty;
+  }
+
+  public boolean isStationary() {
+    return currentLocation == destination || route == null;
   }
 
   public boolean isTransport() {
     return hospitalLocation != null;
   }
 
-  public boolean isNonTransport() {
-    return !isTransport();
-  }
+  private static final Logger logger = LoggerFactory.getLogger(Ambulance.class);
 
   public void flagAsAvailable() {
     incident = null;
@@ -125,47 +117,73 @@ public class Ambulance {
   }
 
   // Only used for visualization
-  public Coordinate getCurrentLocationVisualized(LocalDateTime currentTime) {
-    if (isAvailable() || currentLocation == destination || route == null) {
+  public Coordinate getCurrentLocationVisualized(
+      LocalDateTime currentTime, Map<Coordinate, com.sothawo.mapjfx.Coordinate> utmToLatLongMap) {
+    logger.info(
+        "{}: Updating pos from current pos: {} {}",
+        currentTime,
+        currentLocation,
+        utmToLatLongMap.get(currentLocation));
+    if (isAvailable() || isStationary()) {
+      logger.info(
+          "{}: Returned current pos {} {}",
+          currentTime,
+          currentLocation,
+          utmToLatLongMap.get(currentLocation));
       return currentLocation;
     }
 
     if (travelStartTime == null) {
       travelStartTime = currentTime;
+      logger.info(
+          "{}: Returned current pos {} {}",
+          currentTime,
+          currentLocation,
+          utmToLatLongMap.get(currentLocation));
+      return currentLocation;
     }
 
-    var timePeriod = 5;
     var originTimeToDestination = route.time();
     var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
 
+    if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2) * 60) {
+      logger.info(
+          "{}: Returned current pos {} {}",
+          currentTime,
+          currentLocation,
+          utmToLatLongMap.get(currentLocation));
+      return currentLocation;
+    }
+
     if (elapsedTime >= originTimeToDestination) {
+      logger.info(
+          "{}: Returned destination {} {}",
+          currentTime,
+          destination,
+          utmToLatLongMap.get(destination));
       currentLocation = destination;
       return destination;
     }
 
-    if (timePeriod == 5) {
-      var routeCoordinates = route.routeCoordinates();
+    var routeCoordinates = route.routeCoordinates();
 
-      var nextRouteIndex = (int) round(elapsedTime * 60.0 / 5);
-      if (nextRouteIndex >= routeCoordinates.size()) {
-        return destination;
-      }
-      var nextLocationId = routeCoordinates.get(nextRouteIndex);
-      return new Coordinate(Long.parseLong(nextLocationId));
+    var nextRouteIndex = (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+    if (nextRouteIndex >= routeCoordinates.size()) {
+      logger.info(
+          "{}: Returned destination {} {}",
+          currentTime,
+          destination,
+          utmToLatLongMap.get(destination));
+      currentLocation = destination;
+      return destination;
     }
-
-    var timeDelta = originTimeToDestination - elapsedTime;
-    var closeNeighbor =
-        currentLocation.getNeighbors().stream()
-            .min(
-                Comparator.comparingInt(
-                    c -> Math.abs(c.getNearbyAverageTravelTimeTo(destination) - timeDelta)))
-            .orElseThrow();
-
-    if (Math.abs(closeNeighbor.getNearbyAverageTravelTimeTo(destination) - timeDelta)
-        < Math.abs(currentLocation.timeTo(destination) - timeDelta)) {
-      return closeNeighbor;
-    }
+    var nextLocationId = routeCoordinates.get(nextRouteIndex);
+    currentLocation = new Coordinate(Long.parseLong(nextLocationId));
+    logger.info(
+        "{}: Returned new pos {} {}",
+        currentTime,
+        currentLocation,
+        utmToLatLongMap.get(currentLocation));
     return currentLocation;
   }
 
@@ -174,7 +192,7 @@ public class Ambulance {
       return;
     }
 
-    if (timePeriod == 5) {
+    if (timePeriod == DistanceIO.getTravelTimeInterval()) {
       var routeCoordinates = route.routeCoordinates();
       var currentLocationId = String.valueOf(currentLocation.getIdNum());
       var routeIndex = routeCoordinates.indexOf(currentLocationId);
@@ -186,20 +204,30 @@ public class Ambulance {
 
       var nextLocationId = routeCoordinates.get(routeIndex + 1);
       currentLocation = new Coordinate(Long.parseLong(nextLocationId));
-
     } else {
+      var originTimeToDestination = route.time();
       var previousTimeToDestination = currentLocation.timeTo(destination);
+      var elapsedTime = previousTimeToDestination + timePeriod;
 
-      var closeNeighbor =
-          currentLocation.getNeighbors().stream()
-              .min(
-                  Comparator.comparingInt(c -> Math.abs(c.timeTo(destination) - timeToDestination)))
-              .orElseThrow();
-
-      if (Math.abs(closeNeighbor.timeTo(destination) - timeToDestination)
-          < Math.abs(previousTimeToDestination - timeToDestination)) {
-        currentLocation = closeNeighbor;
+      if (elapsedTime <= (timePeriod / 2.0) * 60) {
+        return;
       }
+
+      if (elapsedTime >= originTimeToDestination) {
+        currentLocation = destination;
+        return;
+      }
+
+      var routeCoordinates = route.routeCoordinates();
+
+      var nextRouteIndex =
+          (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+      if (nextRouteIndex >= routeCoordinates.size()) {
+        currentLocation = destination;
+        return;
+      }
+      var nextLocationId = routeCoordinates.get(nextRouteIndex);
+      currentLocation = new Coordinate(Long.parseLong(nextLocationId));
     }
   }
 

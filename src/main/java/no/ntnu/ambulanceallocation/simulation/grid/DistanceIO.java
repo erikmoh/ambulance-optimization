@@ -7,10 +7,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,11 +19,9 @@ import org.slf4j.LoggerFactory;
 public final class DistanceIO {
 
   public static final String routesFilePath =
-      new File("src/main/resources/data/distance/od_paths.json").getAbsolutePath();
-  public static final String neighborsFilePath =
-      new File("src/main/resources/data/distance/od_nearest_neighbors.json").getAbsolutePath();
+      new File("src/main/resources/data/od_paths.json").getAbsolutePath();
+  private static final double TRAVEL_TIME_INTERVAL = 5.0;
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
-  public static final Map<Coordinate, List<Coordinate>> coordinateNeighbors = new HashMap<>();
 
   public static final Map<Tuple<Coordinate>, Route> routes = new HashMap<>();
   public static final Map<String, Coordinate> coordinateCache = new HashMap<>();
@@ -33,8 +29,11 @@ public final class DistanceIO {
 
   static {
     loadDistancesFromFile();
-    loadNearestNeighborsFromFile();
     coordinateCache.clear();
+  }
+
+  public static double getTravelTimeInterval() {
+    return TRAVEL_TIME_INTERVAL;
   }
 
   public static Route getRoute(Coordinate from, Coordinate to) {
@@ -111,36 +110,5 @@ public final class DistanceIO {
     }
 
     logger.info("Loaded {} routes.", routes.size());
-  }
-
-  private static void loadNearestNeighborsFromFile() {
-    logger.info("Loading nearest grid coordinate neighbors from file...");
-
-    try {
-      var neighborsJsonObject = new JSONObject(Files.readString(Path.of(neighborsFilePath)));
-
-      for (var originKey : neighborsJsonObject.names()) {
-        var nearbyGridList = new ArrayList<Coordinate>();
-        var origin = getCoordinateFromString(originKey.toString());
-        var neighborJsonArray = neighborsJsonObject.getJSONArray(originKey.toString());
-
-        if (neighborJsonArray.length() < 1) {
-          throw new IllegalArgumentException("No neighbors found for coordinate " + origin);
-        }
-
-        for (var i = 0; i < neighborJsonArray.length(); i++) {
-          var neighbor = getCoordinateFromString(neighborJsonArray.getString(i));
-          if (neighbor.euclideanDistanceTo(origin) <= Parameters.COORDINATE_NEIGHBOR_DISTANCE) {
-            nearbyGridList.add(neighbor);
-          }
-        }
-        coordinateNeighbors.put(origin, nearbyGridList);
-      }
-    } catch (JSONException | IOException e) {
-      e.printStackTrace();
-      System.exit(1);
-    }
-
-    logger.info("Loaded neighbors for {} coordinates.", coordinateNeighbors.size());
   }
 }

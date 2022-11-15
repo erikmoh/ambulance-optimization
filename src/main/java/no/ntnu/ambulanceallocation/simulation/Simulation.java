@@ -208,16 +208,18 @@ public final class Simulation {
     var dispatchedAmbulances = dispatch(newCall);
 
     if (!dispatchedAmbulances.isEmpty()) {
+      var firstAmbulance = dispatchedAmbulances.get(0);
+      var travelTime = firstAmbulance.timeTo(newCall.incident);
       if (newCall.incident.departureFromScene().isPresent()) {
-        var duration = newCall.incident.getDuration();
-        eventQueue.add(new SceneDeparture(time.plusSeconds(duration), newCall));
-        saveResponseTime(newCall, dispatchedAmbulances.get(0));
+        var duration = newCall.incident.getTimeSpentAtScene();
+        eventQueue.add(new SceneDeparture(time.plusSeconds(travelTime + duration), newCall));
       } else {
         for (var ambulance : dispatchedAmbulances) {
-          var totalInterval = newCall.incident.getTotalIntervalNonTransport();
-          eventQueue.add(new JobCompletion(time.plusSeconds(totalInterval), ambulance));
+          var duration = newCall.incident.getTimeSpentAtSceneNonTransport();
+          eventQueue.add(new JobCompletion(time.plusSeconds(travelTime + duration), ambulance));
         }
       }
+      saveResponseTime(newCall, travelTime);
     }
   }
 
@@ -347,14 +349,12 @@ public final class Simulation {
     }
   }
 
-  private void saveResponseTime(NewCall newCall, Ambulance firstResponder) {
+  private void saveResponseTime(NewCall newCall, Integer travelTime) {
     if (newCall.providesResponseTime && newCall.incident.arrivalAtScene().isPresent()) {
 
       var simulatedDispatchTime =
           (int) ChronoUnit.SECONDS.between(newCall.incident.callReceived(), newCall.getTime());
       var dispatchTime = Math.max(simulatedDispatchTime, newCall.incident.getDispatchDelay());
-
-      var travelTime = firstResponder.timeTo(newCall.incident);
 
       var responseTime = dispatchTime + travelTime;
       if (responseTime < 0) {

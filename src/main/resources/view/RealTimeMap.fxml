@@ -60,9 +60,9 @@
         <TitledPane fx:id="optionsLocations" text="Allocation">
           <VBox spacing="10.0">
             <Label text="Max number of day ambulances: "/>
-            <TextField fx:id="numDayAmbulances" maxWidth="Infinity" text="45"/>
+            <TextField fx:id="numDayAmbulances" maxWidth="Infinity" text="1"/>
             <Label text="Max number of night ambulances: "/>
-            <TextField fx:id="numNightAmbulances" maxWidth="Infinity" text="29"/>
+            <TextField fx:id="numNightAmbulances" maxWidth="Infinity" text="1"/>
             <Label text="Day shift allocation: "/>
             <TextField fx:id="dayShift" maxWidth="Infinity" promptText="Day shift"/>
             <Label text="Night shift allocation: "/>
@@ -90,7 +90,6 @@
               majorTickUnit="50.0" max="1000.0" min="5.0" minorTickCount="10"
               showTickLabels="true" showTickMarks="true" value="400.0"
               HBox.hgrow="ALWAYS"/>
-            <Label fx:id="standbyAmbulances" text="Standby ambulances: "/>
             <Button fx:id="startSimulationButton" text="Start simulation"
               onAction="#startSimulation" maxWidth="Infinity"/>
           </VBox>
