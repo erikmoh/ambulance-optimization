@@ -6,8 +6,10 @@ output/
 
 scripts/data/
 scripts/proprietary_data/
-src/main/resources/images
-src/main/resources/data
+
+src/main/resources/data/incidents.csv
+src/main/resources/data/od_paths.json
+src/main/resources/data/distance/od.json
 
 pom.xml.tag
 pom.xml.releaseBackup
