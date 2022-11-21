@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 public class Ambulance {
 
+  private static final Logger logger = LoggerFactory.getLogger(Ambulance.class);
+
   // Only used for visualization
   private static LocalDateTime currentGlobalTime;
   private final BaseStation baseStation;
@@ -76,10 +78,6 @@ public class Ambulance {
     return incident;
   }
 
-  public Route getRoute() {
-    return route;
-  }
-
   public boolean isAvailable() {
     return incident == null && !isOffDuty;
   }
@@ -91,8 +89,6 @@ public class Ambulance {
   public boolean isTransport() {
     return hospitalLocation != null;
   }
-
-  private static final Logger logger = LoggerFactory.getLogger(Ambulance.class);
 
   public void flagAsAvailable() {
     incident = null;
@@ -116,9 +112,23 @@ public class Ambulance {
     this.hospitalLocation = hospitalLocation;
   }
 
+  public void transport() {
+    travelStartTime = currentGlobalTime;
+    originatingLocation = currentLocation;
+    destination = new Coordinate(hospitalLocation);
+    route = DistanceIO.getRoute(currentLocation, destination);
+  }
+
+  public void arriveAtHospital() {
+    currentLocation = new Coordinate(hospitalLocation);
+  }
+
   // Only used for visualization
   public Coordinate getCurrentLocationVisualized(
       LocalDateTime currentTime, Map<Coordinate, com.sothawo.mapjfx.Coordinate> utmToLatLongMap) {
+    if (currentLocation.getIdNum() == 22640006640000L) {
+      var s = 0;
+    }
     logger.info(
         "{}: Updating pos from current pos: {} {}",
         currentTime,
@@ -233,16 +243,6 @@ public class Ambulance {
 
   public boolean endOfJourney() {
     return currentLocation.equals(destination);
-  }
-
-  public void transport() {
-    travelStartTime = currentGlobalTime;
-    originatingLocation = currentLocation;
-    destination = new Coordinate(hospitalLocation);
-  }
-
-  public void arriveAtHospital() {
-    currentLocation = new Coordinate(hospitalLocation);
   }
 
   public int timeTo(Incident incident) {

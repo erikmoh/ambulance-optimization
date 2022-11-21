@@ -444,15 +444,9 @@ public class SimulationController {
             synchronized (ambulanceMarkers) {
               for (var ambulance : ambulanceList) {
 
-                /*logger.info("route: {}", ambulance.getRoute().routeCoordinates());*/
                 var pos =
                     ambulance.getCurrentLocationVisualized(currentTimeInternal, utmToLatLongMap);
                 var coordinate = utmToLatLongMap.get(pos);
-                /*logger.info(
-                "{}: Updated pos when updating ambulance: {} {}",
-                currentTimeInternal,
-                coordinate.toString(),
-                pos);*/
                 var marker = ambulanceMarkers.get(ambulance);
                 // var markerLabel = marker.getMapLabel().get();
 
@@ -522,8 +516,6 @@ public class SimulationController {
     var currentPosition =
         utmToLatLongMap.get(
             ambulance.getCurrentLocationVisualized(currentTimeInternal, utmToLatLongMap));
-    /*logger.info(
-    "{}: Updated pos when updating line: {}", currentTimeInternal, currentPosition.toString());*/
 
     destinationLines.put(
         ambulance,
@@ -616,8 +608,6 @@ public class SimulationController {
       var coordinates =
           utmToLatLongMap.get(
               ambulance.getCurrentLocationVisualized(currentTimeInternal, utmToLatLongMap));
-      /*logger.info(
-      "{}: Updated pos when setting marker: {}", currentTimeInternal, coordinates.toString());*/
       var marker =
           new Marker(ambulanceIcon, -15, -15)
               .setPosition(coordinates)
@@ -830,7 +820,8 @@ public class SimulationController {
               Simulation.visualizedSimulation(
                   allocation,
                   (currentTime, ambulanceList, callQueue) -> {
-                    if (ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
+                    if (System.currentTimeMillis() - lastUiUpdate > Parameters.GUI_UPDATE_INTERVAL
+                        && ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
                       currentTimeInternal = currentTime;
                       updateAmbulances(ambulanceList);
                       updateIncidents(callQueue);
