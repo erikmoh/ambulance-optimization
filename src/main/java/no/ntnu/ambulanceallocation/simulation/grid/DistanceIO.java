@@ -1,7 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation.grid;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -9,6 +8,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -28,7 +30,7 @@ public final class DistanceIO {
   private static final Logger logger = LoggerFactory.getLogger(DistanceIO.class);
 
   static {
-    loadDistancesFromFile();
+    loadRoutesFromFile();
     coordinateCache.clear();
   }
 
@@ -83,7 +85,7 @@ public final class DistanceIO {
     return route;
   }
 
-  private static void loadDistancesFromFile() {
+  private static void loadRoutesFromFileOld() {
     logger.info("Loading routes from file...");
 
     try {
@@ -110,5 +112,61 @@ public final class DistanceIO {
     }
 
     logger.info("Loaded {} routes.", routes.size());
+  }
+
+  private static void loadRoutesFromFile() {
+    logger.info("Loading routes from file...");
+
+    try {
+      var inputStream = new FileInputStream(routesFilePath);
+      var reader = new JsonReader(new BufferedReader(new InputStreamReader(inputStream)));
+
+      reader.beginObject();
+      while (reader.hasNext()) {
+        if (reader.peek().equals(JsonToken.END_OBJECT)) {
+          reader.close();
+          return;
+        }
+
+        handleOriginObject(reader);
+      }
+    } catch(Exception e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} routes.", routes.size());
+  }
+
+  private static void handleOriginObject(JsonReader reader) throws IOException {
+    var origin = getCoordinateFromString(reader.nextName());
+    uniqueGridCoordinates.add(origin);
+
+    reader.beginObject();
+    while (reader.peek().equals(JsonToken.NAME)) {
+      handleDestinationObject(reader, origin);
+    }
+
+    reader.endObject();
+  }
+
+  private static void handleDestinationObject(JsonReader reader, Coordinate origin) throws IOException {
+    var destination = getCoordinateFromString(reader.nextName());
+    reader.beginObject();
+
+    reader.nextName();
+    var travelTime = reader.nextInt();
+
+    reader.nextName();
+    var route = new ArrayList<String>();
+    reader.beginArray();
+    while (reader.peek().equals(JsonToken.STRING)) {
+      route.add(reader.nextString());
+    }
+    reader.endArray();
+
+    routes.put(new Tuple<>(origin, destination), new Route(route, travelTime));
+
+    reader.endObject();
   }
 }
