@@ -91,7 +91,7 @@ public class SimulationController {
   private final Coordinate center = new Coordinate(59.929671, 10.738381);
   private final URL hospitalIcon = getClass().getResource("/images/hospital.png");
   private final URL baseStationIcon = getClass().getResource("/images/base_station.png");
-  private final URL ambulanceIcon = getClass().getResource("/images/ambulance_top.png");
+  private final URL ambulanceIcon = getClass().getResource("/images/ambulance.png");
   private final Map<no.ntnu.ambulanceallocation.simulation.grid.Coordinate, Coordinate>
       utmToLatLongMap = new HashMap<>();
   private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();

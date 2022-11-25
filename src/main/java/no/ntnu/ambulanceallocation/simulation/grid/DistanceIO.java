@@ -1,6 +1,12 @@
 package no.ntnu.ambulanceallocation.simulation.grid;
 
-import java.io.*;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -8,9 +14,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -22,6 +25,7 @@ public final class DistanceIO {
 
   public static final String routesFilePath =
       new File("src/main/resources/data/od_paths.json").getAbsolutePath();
+  // Interval time for od_paths route coordinates
   private static final double TRAVEL_TIME_INTERVAL = 5.0;
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
 
@@ -130,7 +134,7 @@ public final class DistanceIO {
 
         handleOriginObject(reader);
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
       System.exit(1);
     }
@@ -150,7 +154,8 @@ public final class DistanceIO {
     reader.endObject();
   }
 
-  private static void handleDestinationObject(JsonReader reader, Coordinate origin) throws IOException {
+  private static void handleDestinationObject(JsonReader reader, Coordinate origin)
+      throws IOException {
     var destination = getCoordinateFromString(reader.nextName());
     reader.beginObject();
 
