@@ -14,13 +14,21 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 -->
+
 <?import com.sothawo.mapjfx.MapView?>
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
+<?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
-
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
   prefHeight="800.0"
   prefWidth="1200.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
@@ -60,9 +68,9 @@
         <TitledPane fx:id="optionsLocations" text="Allocation">
           <VBox spacing="10.0">
             <Label text="Max number of day ambulances: "/>
-            <TextField fx:id="numDayAmbulances" maxWidth="Infinity" text="1"/>
+            <TextField fx:id="numDayAmbulances" maxWidth="Infinity" text="45"/>
             <Label text="Max number of night ambulances: "/>
-            <TextField fx:id="numNightAmbulances" maxWidth="Infinity" text="1"/>
+            <TextField fx:id="numNightAmbulances" maxWidth="Infinity" text="29"/>
             <Label text="Day shift allocation: "/>
             <TextField fx:id="dayShift" maxWidth="Infinity" promptText="Day shift"/>
             <Label text="Night shift allocation: "/>

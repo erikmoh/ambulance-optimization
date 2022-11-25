@@ -271,7 +271,7 @@ public class SimulationController {
    * @param projection the projection to use in the map.
    */
   public void initMapAndControls(Projection projection) {
-    setCustomAllocation();
+    setRandomAllocation();
 
     checkShowPathLines.setSelected(true);
     checkShowHospitals.setSelected(true);
@@ -698,12 +698,6 @@ public class SimulationController {
             .initialize(getNightAllocation()).stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(", ")));
-  }
-
-  @FXML
-  private void setCustomAllocation() {
-    dayShift.setText("5");
-    nightShift.setText("5");
   }
 
   @FXML
