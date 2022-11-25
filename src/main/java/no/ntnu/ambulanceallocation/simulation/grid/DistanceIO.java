@@ -1,16 +1,19 @@
 package no.ntnu.ambulanceallocation.simulation.grid;
 
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,20 +24,22 @@ import org.slf4j.LoggerFactory;
 public final class DistanceIO {
 
   public static final String routesFilePath =
-      new File("src/main/resources/data/distance/od_paths.json").getAbsolutePath();
-  public static final String neighborsFilePath =
-      new File("src/main/resources/data/distance/od_nearest_neighbors.json").getAbsolutePath();
+      new File("src/main/resources/data/od_paths.json").getAbsolutePath();
+  // Interval time for od_paths route coordinates
+  private static final double TRAVEL_TIME_INTERVAL = 5.0;
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
-  public static final Map<Coordinate, List<Coordinate>> coordinateNeighbors = new HashMap<>();
 
   public static final Map<Tuple<Coordinate>, Route> routes = new HashMap<>();
   public static final Map<String, Coordinate> coordinateCache = new HashMap<>();
   private static final Logger logger = LoggerFactory.getLogger(DistanceIO.class);
 
   static {
-    loadDistancesFromFile();
-    loadNearestNeighborsFromFile();
+    loadRoutesFromFile();
     coordinateCache.clear();
+  }
+
+  public static double getTravelTimeInterval() {
+    return TRAVEL_TIME_INTERVAL;
   }
 
   public static Route getRoute(Coordinate from, Coordinate to) {
@@ -84,7 +89,7 @@ public final class DistanceIO {
     return route;
   }
 
-  private static void loadDistancesFromFile() {
+  private static void loadRoutesFromFileOld() {
     logger.info("Loading routes from file...");
 
     try {
@@ -113,34 +118,60 @@ public final class DistanceIO {
     logger.info("Loaded {} routes.", routes.size());
   }
 
-  private static void loadNearestNeighborsFromFile() {
-    logger.info("Loading nearest grid coordinate neighbors from file...");
+  private static void loadRoutesFromFile() {
+    logger.info("Loading routes from file...");
 
     try {
-      var neighborsJsonObject = new JSONObject(Files.readString(Path.of(neighborsFilePath)));
+      var inputStream = new FileInputStream(routesFilePath);
+      var reader = new JsonReader(new BufferedReader(new InputStreamReader(inputStream)));
 
-      for (var originKey : neighborsJsonObject.names()) {
-        var nearbyGridList = new ArrayList<Coordinate>();
-        var origin = getCoordinateFromString(originKey.toString());
-        var neighborJsonArray = neighborsJsonObject.getJSONArray(originKey.toString());
-
-        if (neighborJsonArray.length() < 1) {
-          throw new IllegalArgumentException("No neighbors found for coordinate " + origin);
+      reader.beginObject();
+      while (reader.hasNext()) {
+        if (reader.peek().equals(JsonToken.END_OBJECT)) {
+          reader.close();
+          return;
         }
 
-        for (var i = 0; i < neighborJsonArray.length(); i++) {
-          var neighbor = getCoordinateFromString(neighborJsonArray.getString(i));
-          if (neighbor.euclideanDistanceTo(origin) <= Parameters.COORDINATE_NEIGHBOR_DISTANCE) {
-            nearbyGridList.add(neighbor);
-          }
-        }
-        coordinateNeighbors.put(origin, nearbyGridList);
+        handleOriginObject(reader);
       }
-    } catch (JSONException | IOException e) {
+    } catch (Exception e) {
       e.printStackTrace();
       System.exit(1);
     }
 
-    logger.info("Loaded neighbors for {} coordinates.", coordinateNeighbors.size());
+    logger.info("Loaded {} routes.", routes.size());
+  }
+
+  private static void handleOriginObject(JsonReader reader) throws IOException {
+    var origin = getCoordinateFromString(reader.nextName());
+    uniqueGridCoordinates.add(origin);
+
+    reader.beginObject();
+    while (reader.peek().equals(JsonToken.NAME)) {
+      handleDestinationObject(reader, origin);
+    }
+
+    reader.endObject();
+  }
+
+  private static void handleDestinationObject(JsonReader reader, Coordinate origin)
+      throws IOException {
+    var destination = getCoordinateFromString(reader.nextName());
+    reader.beginObject();
+
+    reader.nextName();
+    var travelTime = reader.nextInt();
+
+    reader.nextName();
+    var route = new ArrayList<String>();
+    reader.beginArray();
+    while (reader.peek().equals(JsonToken.STRING)) {
+      route.add(reader.nextString());
+    }
+    reader.endArray();
+
+    routes.put(new Tuple<>(origin, destination), new Route(route, travelTime));
+
+    reader.endObject();
   }
 }

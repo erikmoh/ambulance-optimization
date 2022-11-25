@@ -28,9 +28,6 @@ public final class Parameters {
   // Simulation visualization
   public static final int GUI_UPDATE_INTERVAL = 400; // every x milliseconds
 
-  // Route calculation
-  public static final int COORDINATE_NEIGHBOR_DISTANCE = 8000; // meters
-
   // SLS
   public static final int MAX_TRIES = 999;
   public static final double RESTART_PROBABILITY = 0.025;
