@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.stream.Stream;
-
 import javafx.beans.property.DoubleProperty;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
@@ -208,18 +207,42 @@ public final class Simulation {
     var dispatchedAmbulances = dispatch(newCall);
 
     if (!dispatchedAmbulances.isEmpty()) {
+      var incident = newCall.incident;
       var firstAmbulance = dispatchedAmbulances.get(0);
-      var travelTime = firstAmbulance.timeTo(newCall.incident);
-      if (newCall.incident.departureFromScene().isPresent()) {
-        var duration = newCall.incident.getTimeSpentAtScene();
-        eventQueue.add(new SceneDeparture(time.plusSeconds(travelTime + duration), newCall));
+      var travelTime = firstAmbulance.timeTo(incident);
+
+      if (incident.departureFromScene().isPresent()) {
+        // An ambulance transported patients to a hospital
+        if (incident.arrivalAtScene().isPresent()) {
+          // Add scene departure event
+          var timeAtScene = incident.getTimeSpentAtScene();
+          eventQueue.add(new SceneDeparture(time.plusSeconds(travelTime + timeAtScene), newCall));
+        } else {
+          // No arrival time at scene, so we simulate it by using dispatch and travel time
+          var simulatedArrivalTime = incident.dispatched().plusSeconds(travelTime);
+          var timeAtScene =
+              ChronoUnit.SECONDS.between(simulatedArrivalTime, incident.departureFromScene().get());
+          eventQueue.add(new SceneDeparture(time.plusSeconds(travelTime + timeAtScene), newCall));
+        }
+        // Only save response time for incidents where patients had to go to a hospital
+        saveResponseTime(newCall, travelTime);
       } else {
-        for (var ambulance : dispatchedAmbulances) {
-          var duration = newCall.incident.getTimeSpentAtSceneNonTransport();
-          eventQueue.add(new JobCompletion(time.plusSeconds(travelTime + duration), ambulance));
+        // No ambulances transported patients to a hospital so the job will be completed
+        if (incident.arrivalAtScene().isPresent()) {
+          // Job is completed when the ambulance leaves the scene
+          for (var ambulance : dispatchedAmbulances) {
+            var timeAtScene = incident.getTimeSpentAtSceneNonTransport();
+            eventQueue.add(
+                new JobCompletion(time.plusSeconds(travelTime + timeAtScene), ambulance));
+          }
+        } else {
+          // The incident had no arrival at scene time, so it is assumed that it was aborted
+          for (var ambulance : dispatchedAmbulances) {
+            var timeBeforeAborting = incident.getTimeBeforeAborting();
+            eventQueue.add(new JobCompletion(time.plusSeconds(timeBeforeAborting), ambulance));
+          }
         }
       }
-      saveResponseTime(newCall, travelTime);
     }
   }
 
@@ -350,18 +373,19 @@ public final class Simulation {
   }
 
   private void saveResponseTime(NewCall newCall, Integer travelTime) {
-    if (newCall.providesResponseTime && newCall.incident.arrivalAtScene().isPresent()) {
+    if (newCall.providesResponseTime) {
+      var incident = newCall.incident;
 
       var simulatedDispatchTime =
-          (int) ChronoUnit.SECONDS.between(newCall.incident.callReceived(), newCall.getTime());
-      var dispatchTime = Math.max(simulatedDispatchTime, newCall.incident.getDispatchDelay());
+          (int) ChronoUnit.SECONDS.between(incident.callReceived(), newCall.getTime());
+      var dispatchTime = Math.max(simulatedDispatchTime, incident.getDispatchDelay());
 
       var responseTime = dispatchTime + travelTime;
       if (responseTime < 0) {
         throw new IllegalStateException("Response time should never be negative");
       }
 
-      responseTimes.add(newCall.incident.callReceived(), responseTime);
+      responseTimes.add(incident.callReceived(), responseTime);
     }
   }
 

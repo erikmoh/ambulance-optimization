@@ -27,13 +27,6 @@ public record Incident(
     return (int) ChronoUnit.SECONDS.between(callReceived, dispatched);
   }
 
-  public int getDuration() {
-    if (arrivalAtScene.isEmpty() && departureFromScene.isEmpty()) {
-      throw new IllegalStateException("Cannot compute duration without departure time");
-    }
-    return (int) ChronoUnit.SECONDS.between(callReceived, departureFromScene.get());
-  }
-
   public int getTimeSpentAtScene() {
     if (arrivalAtScene.isEmpty() || departureFromScene.isEmpty()) {
       throw new IllegalStateException(
@@ -46,11 +39,18 @@ public record Incident(
     if (arrivalAtScene.isEmpty()) {
       throw new IllegalStateException("Cannot compute time spent at scene without arrival time");
     }
+    if (arrivalAtScene.get().isAfter(availableNonTransport)) {
+      // assume that the availableNonTransport is wrong, but it could also be an aborted incident
+      return (int) ChronoUnit.SECONDS.between(arrivalAtScene.get(), availableTransport);
+    }
     return (int) ChronoUnit.SECONDS.between(arrivalAtScene.get(), availableNonTransport);
   }
 
-  public int getTotalIntervalNonTransport() {
-    return (int) ChronoUnit.SECONDS.between(callReceived, availableNonTransport);
+  public int getTimeBeforeAborting() {
+    if (dispatched.isAfter(availableNonTransport)) {
+      throw new IllegalStateException("Dispatch time cannot be after available non-transport time");
+    }
+    return (int) ChronoUnit.SECONDS.between(dispatched, availableNonTransport);
   }
 
   public int getTimeFromDepartureToAvailableTransport() {
