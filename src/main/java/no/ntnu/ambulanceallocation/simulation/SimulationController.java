@@ -444,11 +444,9 @@ public class SimulationController {
             synchronized (ambulanceMarkers) {
               for (var ambulance : ambulanceList) {
 
-                var pos =
-                    ambulance.getCurrentLocationVisualized(currentTimeInternal, utmToLatLongMap);
+                var pos = ambulance.getCurrentLocationVisualized(currentTimeInternal);
                 var coordinate = utmToLatLongMap.get(pos);
                 var marker = ambulanceMarkers.get(ambulance);
-                // var markerLabel = marker.getMapLabel().get();
 
                 if (ambulance.isAtBaseStation() && ambulance.isOffDuty()) {
                   marker.setVisible(false);
@@ -514,8 +512,7 @@ public class SimulationController {
 
     var ambulanceDestination = utmToLatLongMap.get(ambulance.getDestination());
     var currentPosition =
-        utmToLatLongMap.get(
-            ambulance.getCurrentLocationVisualized(currentTimeInternal, utmToLatLongMap));
+        utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
 
     destinationLines.put(
         ambulance,
@@ -606,20 +603,13 @@ public class SimulationController {
     for (var ambulance : ambulanceList) {
 
       var coordinates =
-          utmToLatLongMap.get(
-              ambulance.getCurrentLocationVisualized(currentTimeInternal, utmToLatLongMap));
+          utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
       var marker =
           new Marker(ambulanceIcon, -15, -15)
               .setPosition(coordinates)
               .setVisible(checkShowAmbulances.isSelected());
 
       ambulanceMarkers.put(ambulance, marker);
-      /*
-      var label = new MapLabel("Responding", -25, 20)
-          .setVisible(false)
-          .setCssClass("orange-label");
-      marker.attachLabel(label).setVisible(true);
-      */
       mapView.addMarker(marker);
     }
   }

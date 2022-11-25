@@ -4,17 +4,12 @@ import static java.lang.Math.round;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
 import no.ntnu.ambulanceallocation.simulation.grid.Route;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Ambulance {
-
-  private static final Logger logger = LoggerFactory.getLogger(Ambulance.class);
 
   // Only used for visualization
   private static LocalDateTime currentGlobalTime;
@@ -124,32 +119,13 @@ public class Ambulance {
   }
 
   // Only used for visualization
-  public Coordinate getCurrentLocationVisualized(
-      LocalDateTime currentTime, Map<Coordinate, com.sothawo.mapjfx.Coordinate> utmToLatLongMap) {
-    if (currentLocation.getIdNum() == 22640006640000L) {
-      var s = 0;
-    }
-    logger.info(
-        "{}: Updating pos from current pos: {} {}",
-        currentTime,
-        currentLocation,
-        utmToLatLongMap.get(currentLocation));
+  public Coordinate getCurrentLocationVisualized(LocalDateTime currentTime) {
     if (isAvailable() || isStationary()) {
-      logger.info(
-          "{}: Returned current pos {} {}",
-          currentTime,
-          currentLocation,
-          utmToLatLongMap.get(currentLocation));
       return currentLocation;
     }
 
     if (travelStartTime == null) {
       travelStartTime = currentTime;
-      logger.info(
-          "{}: Returned current pos {} {}",
-          currentTime,
-          currentLocation,
-          utmToLatLongMap.get(currentLocation));
       return currentLocation;
     }
 
@@ -157,20 +133,10 @@ public class Ambulance {
     var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
 
     if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2) * 60) {
-      logger.info(
-          "{}: Returned current pos {} {}",
-          currentTime,
-          currentLocation,
-          utmToLatLongMap.get(currentLocation));
       return currentLocation;
     }
 
     if (elapsedTime >= originTimeToDestination) {
-      logger.info(
-          "{}: Returned destination {} {}",
-          currentTime,
-          destination,
-          utmToLatLongMap.get(destination));
       currentLocation = destination;
       return destination;
     }
@@ -179,21 +145,11 @@ public class Ambulance {
 
     var nextRouteIndex = (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
     if (nextRouteIndex >= routeCoordinates.size()) {
-      logger.info(
-          "{}: Returned destination {} {}",
-          currentTime,
-          destination,
-          utmToLatLongMap.get(destination));
       currentLocation = destination;
       return destination;
     }
     var nextLocationId = routeCoordinates.get(nextRouteIndex);
     currentLocation = new Coordinate(Long.parseLong(nextLocationId));
-    logger.info(
-        "{}: Returned new pos {} {}",
-        currentTime,
-        currentLocation,
-        utmToLatLongMap.get(currentLocation));
     return currentLocation;
   }
 
