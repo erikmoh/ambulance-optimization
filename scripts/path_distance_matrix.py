@@ -81,8 +81,8 @@ def shortest_paths(G, ids, from_ids, ssb_ids, nearest_nodes, grids, conn):
         od[ssb_id1] = {}
         
         for id2 in ids:
-            # set travel time to 0 if path is from and to the same node
             ssb_id2 = ssb_ids[id2]
+            # set travel time to 0 if path is from and to the same node
             if id1 == id2:
                 od[ssb_id1][ssb_id2] = {"travel_time": 0, "route": []}
                 continue
@@ -150,24 +150,29 @@ def main():
         process.start()
 
     od = {}
-    """ with open(f'data/od_path_matrix_with_missing.json', 'r') as r:
-        od = json.load(r) """
-
+    """ 
+    print("Loading od path matrix")
+    with open(f'data/od_paths', 'r') as r:
+        od = json.load(r)
+    """
+    print("Upserting new paths from processes to od matrix")
     for connection in connections:
         od1 = connection.recv()
-        """ for k in od1.keys():
+        for k in od1.keys():
             item = od1[k]
             for k1 in item.keys():
                 v = od1[k][k1]
-                od[k][k1] = v """
-        od.update(od1)
+                try:
+                    od[k][k1] = v 
+                except:
+                    od[k] = item 
     
     print("Closing all processes...")
     for process in processes:
         process.join()
         
     print("Saving od to file...")
-    with open(f'data/od_path_matrix.json', 'w') as f:
+    with open(f'data/od_paths.json', 'w') as f:
         json.dump(od, f, indent=2)
     print("Done.")
 
