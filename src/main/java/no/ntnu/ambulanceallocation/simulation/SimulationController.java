@@ -91,7 +91,7 @@ public class SimulationController {
   private final Coordinate center = new Coordinate(59.929671, 10.738381);
   private final URL hospitalIcon = getClass().getResource("/images/hospital.png");
   private final URL baseStationIcon = getClass().getResource("/images/base_station.png");
-  private final URL ambulanceIcon = getClass().getResource("/images/ambulance_top.png");
+  private final URL ambulanceIcon = getClass().getResource("/images/ambulance.png");
   private final Map<no.ntnu.ambulanceallocation.simulation.grid.Coordinate, Coordinate>
       utmToLatLongMap = new HashMap<>();
   private final List<Coordinate> baseStationCoordinateList = new ArrayList<>();
@@ -141,7 +141,6 @@ public class SimulationController {
 
   @FXML private Label currentTime;
   @FXML private Label activeAmbulances;
-  @FXML private Label standbyAmbulances;
   @FXML private TextField numDayAmbulances;
   @FXML private TextField numNightAmbulances;
   @FXML private TextField dayShift;
@@ -186,11 +185,6 @@ public class SimulationController {
   private long lastUiUpdate = 0;
 
   public SimulationController() {
-    /*
-    logger.debug("Prefetching incidents and distances for simulation");
-    var distances = new DistanceIO();
-    var incidents = new IncidentIO();
-    */
 
     if (baseStationIcon == null || hospitalIcon == null) {
       throw new IllegalStateException("Missing one or more icons");
@@ -445,18 +439,14 @@ public class SimulationController {
   private void updateAmbulances(Collection<Ambulance> ambulanceList) {
     Platform.runLater(
         () -> {
-          updateStandbyAmbulanceCount(ambulanceList);
-
           if (ambulanceMarkers.size() > 0) {
 
             synchronized (ambulanceMarkers) {
               for (var ambulance : ambulanceList) {
 
-                var coordinate =
-                    utmToLatLongMap.get(
-                        ambulance.getCurrentLocationVisualized(currentTimeInternal));
+                var pos = ambulance.getCurrentLocationVisualized(currentTimeInternal);
+                var coordinate = utmToLatLongMap.get(pos);
                 var marker = ambulanceMarkers.get(ambulance);
-                // var markerLabel = marker.getMapLabel().get();
 
                 if (ambulance.isAtBaseStation() && ambulance.isOffDuty()) {
                   marker.setVisible(false);
@@ -486,31 +476,6 @@ public class SimulationController {
 
           activeAmbulances.setText("Active ambulances: " + activeCount + "");
         });
-  }
-
-  private void updateStandbyAmbulanceCount(Collection<Ambulance> ambulances) {
-    var baseStationMap = new HashMap<BaseStation, Integer>();
-
-    for (var baseStation : BaseStation.values()) {
-      baseStationMap.put(baseStation, 0);
-    }
-
-    for (var ambulance : ambulances) {
-      if (ambulance.isAvailable()) {
-        var key = ambulance.getBaseStation();
-        baseStationMap.put(key, baseStationMap.get(key) + 1);
-      }
-    }
-
-    var standbyAmbulancesString = new StringBuilder("Standby ambulances:\n");
-    for (var baseStation : baseStationMap.keySet()) {
-      var name = baseStationLabelList.get(baseStation.getId()).getText();
-      var count = baseStationMap.get(baseStation);
-
-      standbyAmbulancesString.append(String.format("%s: %s\n", name, count));
-    }
-
-    standbyAmbulances.setText(standbyAmbulancesString.toString());
   }
 
   private static int bearingInDegrees(Coordinate src, Coordinate dst) {
@@ -546,12 +511,12 @@ public class SimulationController {
     }
 
     var ambulanceDestination = utmToLatLongMap.get(ambulance.getDestination());
+    var currentPosition =
+        utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
 
     destinationLines.put(
         ambulance,
-        new CoordinateLine(
-                ambulanceDestination,
-                utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal)))
+        new CoordinateLine(ambulanceDestination, currentPosition)
             .setColor(color)
             .setVisible(checkShowPathLines.isSelected()));
     mapView.addCoordinateLine(destinationLines.get(ambulance));
@@ -645,12 +610,6 @@ public class SimulationController {
               .setVisible(checkShowAmbulances.isSelected());
 
       ambulanceMarkers.put(ambulance, marker);
-      /*
-      var label = new MapLabel("Responding", -25, 20)
-          .setVisible(false)
-          .setCssClass("orange-label");
-      marker.attachLabel(label).setVisible(true);
-      */
       mapView.addMarker(marker);
     }
   }
@@ -824,11 +783,7 @@ public class SimulationController {
 
   @FXML
   private void startSimulation() {
-    if (simulationThread != null && simulationThread.isAlive()) {
-      synchronized (simulationThread) {
-        simulationThread.notify();
-      }
-    } else {
+    if (simulationThread == null || !simulationThread.isAlive()) {
       var task =
           new Task<>() {
             @Override
@@ -844,8 +799,10 @@ public class SimulationController {
                       .boxed()
                       .toList();
 
+              var allocation = new Allocation(List.of(dayShiftAllocation, nightShiftAllocation));
+
               Simulation.visualizedSimulation(
-                  new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)),
+                  allocation,
                   (currentTime, ambulanceList, callQueue) -> {
                     if (System.currentTimeMillis() - lastUiUpdate > Parameters.GUI_UPDATE_INTERVAL
                         && ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
@@ -856,6 +813,7 @@ public class SimulationController {
                     }
                   },
                   simulationUpdateIntervalSlider.valueProperty());
+
               return null;
             }
           };

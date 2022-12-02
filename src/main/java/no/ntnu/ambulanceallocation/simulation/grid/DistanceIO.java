@@ -1,52 +1,64 @@
 package no.ntnu.ambulanceallocation.simulation.grid;
 
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import no.ntnu.ambulanceallocation.Parameters;
-import no.ntnu.ambulanceallocation.utils.Tuple;
-
 public final class DistanceIO {
 
-  public static final String distancesFilePath =
-      new File("src/main/resources/data/distance/od.json").getAbsolutePath();
-  public static final String neighborsFilePath =
-      new File("src/main/resources/data/distance/od_nearest_neighbors.json").getAbsolutePath();
+  public static final String routesFilePath =
+      new File("src/main/resources/data/od_paths.json").getAbsolutePath();
+  // Interval time for od_paths route coordinates
+  private static final double TRAVEL_TIME_INTERVAL = 5.0;
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
-  public static final Map<Coordinate, List<Coordinate>> coordinateNeighbors = new HashMap<>();
-  public static final Map<Tuple<Coordinate>, Double> distances = new HashMap<>();
+
+  public static final Map<Tuple<Coordinate>, Route> routes = new HashMap<>();
   public static final Map<String, Coordinate> coordinateCache = new HashMap<>();
   private static final Logger logger = LoggerFactory.getLogger(DistanceIO.class);
 
   static {
-    loadDistancesFromFile();
-    loadNearestNeighborsFromFile();
+    loadRoutesFromFile();
     coordinateCache.clear();
+  }
+
+  public static double getTravelTimeInterval() {
+    return TRAVEL_TIME_INTERVAL;
+  }
+
+  public static Route getRoute(Coordinate from, Coordinate to) {
+    if (!routes.containsKey(new Tuple<>(from, to))) {
+      logger.info("Failed to find route from {} to {}", from, to);
+      return new Route(new ArrayList<>(), 60 * 60);
+    }
+    return routes.get(new Tuple<>(from, to));
   }
 
   public static double getDistance(Coordinate from, Coordinate to) {
     if (from == to) {
       return 0.0;
     }
-    if (!distances.containsKey(new Tuple<>(from, to))) {
+    if (!routes.containsKey(new Tuple<>(from, to))) {
       logger.info("Failed to find distance from {} to {}", from, to);
       return 60.0;
     }
-    return distances.get(new Tuple<>(from, to));
+    return routes.get(new Tuple<>(from, to)).time();
   }
 
   private static Coordinate getCoordinateFromString(String coordinateString) {
@@ -69,61 +81,97 @@ public final class DistanceIO {
     return coordinate;
   }
 
-  private static void loadDistancesFromFile() {
-    logger.info("Loading distances from file...");
-
-    try {
-      var distanceJsonObject = new JSONObject(Files.readString(Path.of(distancesFilePath)));
-
-      for (var originKey : distanceJsonObject.names()) {
-        var origin = getCoordinateFromString(originKey.toString());
-        uniqueGridCoordinates.add(origin);
-        var destinationObject = (JSONObject) distanceJsonObject.get(originKey.toString());
-
-        if (destinationObject.names() != null) {
-          for (var destKey : destinationObject.names()) {
-            var time = destinationObject.getDouble(destKey.toString());
-            var destination = getCoordinateFromString(destKey.toString());
-            distances.put(new Tuple<>(origin, destination), (time * 60));
-          }
-        }
-      }
-    } catch (JSONException | IOException e) {
-      e.printStackTrace();
-      System.exit(1);
+  private static ArrayList<String> getRouteFromJsonArray(JSONArray jsonArray) {
+    var route = new ArrayList<String>();
+    for (var i = 0; i < jsonArray.length(); i++) {
+      route.add(jsonArray.getString(i));
     }
-
-    logger.info("Loaded {} distances.", distances.size());
+    return route;
   }
 
-  private static void loadNearestNeighborsFromFile() {
-    logger.info("Loading nearest grid coordinate neighbors from file...");
+  private static void loadRoutesFromFileOld() {
+    logger.info("Loading routes from file...");
 
     try {
-      var neighborsJsonObject = new JSONObject(Files.readString(Path.of(neighborsFilePath)));
+      var routeJsonObject = new JSONObject(Files.readString(Path.of(routesFilePath)));
 
-      for (var originKey : neighborsJsonObject.names()) {
-        var nearbyGridList = new ArrayList<Coordinate>();
+      for (var originKey : routeJsonObject.names()) {
         var origin = getCoordinateFromString(originKey.toString());
-        var neighborJsonArray = neighborsJsonObject.getJSONArray(originKey.toString());
+        uniqueGridCoordinates.add(origin);
+        var destinationsObject = (JSONObject) routeJsonObject.get(originKey.toString());
 
-        if (neighborJsonArray.length() < 1) {
-          throw new IllegalArgumentException("No neighbors found for coordinate " + origin);
-        }
-
-        for (var i = 0; i < neighborJsonArray.length(); i++) {
-          var neighbor = getCoordinateFromString(neighborJsonArray.getString(i));
-          if (neighbor.euclideanDistanceTo(origin) <= Parameters.COORDINATE_NEIGHBOR_DISTANCE) {
-            nearbyGridList.add(neighbor);
+        if (destinationsObject.names() != null) {
+          for (var destKey : destinationsObject.names()) {
+            var destinationObject = (JSONObject) destinationsObject.get(destKey.toString());
+            var destination = getCoordinateFromString(destKey.toString());
+            var route = getRouteFromJsonArray(destinationObject.getJSONArray("route"));
+            var time = destinationObject.getInt("travel_time");
+            routes.put(new Tuple<>(origin, destination), new Route(route, time));
           }
         }
-        coordinateNeighbors.put(origin, nearbyGridList);
       }
     } catch (JSONException | IOException e) {
       e.printStackTrace();
       System.exit(1);
     }
 
-    logger.info("Loaded neighbors for {} coordinates.", coordinateNeighbors.size());
+    logger.info("Loaded {} routes.", routes.size());
+  }
+
+  private static void loadRoutesFromFile() {
+    logger.info("Loading routes from file...");
+
+    try {
+      var inputStream = new FileInputStream(routesFilePath);
+      var reader = new JsonReader(new BufferedReader(new InputStreamReader(inputStream)));
+
+      reader.beginObject();
+      while (reader.hasNext()) {
+        if (reader.peek().equals(JsonToken.END_OBJECT)) {
+          reader.close();
+          return;
+        }
+
+        handleOriginObject(reader);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} routes.", routes.size());
+  }
+
+  private static void handleOriginObject(JsonReader reader) throws IOException {
+    var origin = getCoordinateFromString(reader.nextName());
+    uniqueGridCoordinates.add(origin);
+
+    reader.beginObject();
+    while (reader.peek().equals(JsonToken.NAME)) {
+      handleDestinationObject(reader, origin);
+    }
+
+    reader.endObject();
+  }
+
+  private static void handleDestinationObject(JsonReader reader, Coordinate origin)
+      throws IOException {
+    var destination = getCoordinateFromString(reader.nextName());
+    reader.beginObject();
+
+    reader.nextName();
+    var travelTime = reader.nextInt();
+
+    reader.nextName();
+    var route = new ArrayList<String>();
+    reader.beginArray();
+    while (reader.peek().equals(JsonToken.STRING)) {
+      route.add(reader.nextString());
+    }
+    reader.endArray();
+
+    routes.put(new Tuple<>(origin, destination), new Route(route, travelTime));
+
+    reader.endObject();
   }
 }

@@ -7,7 +7,7 @@ import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 
 public enum BaseStation {
   EIDSVOLL(0, false, 287187, 6692448, 36967),
-  NES(1, false, 304206, 6669953, 22392),
+  NES(1, false, 304199, 6669959, 22392),
   ULLENSAKER(2, false, 286455, 6671754, 44736),
   AURSKOG_HOLAND(3, false, 307577, 6642937, 18098),
   LORENSKOG(4, false, 275840, 6650643, 102552),

@@ -113,7 +113,7 @@ public class GeneticAlgorithm implements Optimizer {
           logger.info("GA finished successfully.");
         };
 
-    var optimizationTime = Utils.timeIt(optimizationWrapper, false);
+    var optimizationTime = Utils.timeIt(optimizationWrapper);
     logger.info("Total GA optimization time: " + optimizationTime + " seconds");
   }
 

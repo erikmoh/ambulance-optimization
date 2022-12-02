@@ -119,7 +119,7 @@ public class MemeticAlgorithm extends GeneticAlgorithm {
           logger.info("{} finished successfully.", getAbbreviation());
         };
 
-    var optimizationTime = Utils.timeIt(optimizationWrapper, false);
+    var optimizationTime = Utils.timeIt(optimizationWrapper);
     logger.info("Total {} optimization time: {} s", getAbbreviation(), optimizationTime);
   }
 

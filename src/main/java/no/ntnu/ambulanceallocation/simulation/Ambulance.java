@@ -1,43 +1,32 @@
 package no.ntnu.ambulanceallocation.simulation;
 
+import static java.lang.Math.round;
+
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
+import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
+import no.ntnu.ambulanceallocation.simulation.grid.Route;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 
 public class Ambulance {
 
-  private static final double CONVERSION_FACTOR = 3.6;
-
   // Only used for visualization
   private static LocalDateTime currentGlobalTime;
+  private final BaseStation baseStation;
+  private boolean isOffDuty = true;
+  private Coordinate hospitalLocation = null;
+  private Incident incident;
+
   private LocalDateTime travelStartTime;
   private Coordinate originatingLocation;
-
-  private final BaseStation baseStation;
-
+  private Route route;
   private Coordinate destination = null;
-  private int timeToDestination = 0;
   private Coordinate currentLocation;
-  private Coordinate hospitalLocation = null;
-  private boolean isOffDuty = true;
-
-  private Incident incident;
 
   public Ambulance(BaseStation baseStation) {
     this.baseStation = baseStation;
     this.currentLocation = baseStation.getCoordinate();
-  }
-
-  public static List<Ambulance> generateFromAllocation(Collection<Integer> allocation) {
-    return allocation.stream()
-        .map(id -> new Ambulance(BaseStation.get(id)))
-        .collect(Collectors.toList());
   }
 
   public static void setCurrentGlobalTime(LocalDateTime time) {
@@ -88,12 +77,12 @@ public class Ambulance {
     return incident == null && !isOffDuty;
   }
 
-  public boolean isTransport() {
-    return hospitalLocation != null;
+  public boolean isStationary() {
+    return currentLocation == destination || route == null;
   }
 
-  public boolean isNonTransport() {
-    return !isTransport();
+  public boolean isTransport() {
+    return hospitalLocation != null;
   }
 
   public void flagAsAvailable() {
@@ -102,7 +91,7 @@ public class Ambulance {
     destination = baseStation.getCoordinate();
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
-    timeToDestination = currentLocation.timeTo(destination);
+    route = DistanceIO.getRoute(originatingLocation, destination);
   }
 
   public void dispatch(Incident incident) {
@@ -110,7 +99,7 @@ public class Ambulance {
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
-    timeToDestination = currentLocation.timeTo(destination);
+    route = DistanceIO.getRoute(currentLocation, destination);
   }
 
   public void dispatchTransport(Incident incident, Coordinate hospitalLocation) {
@@ -118,62 +107,93 @@ public class Ambulance {
     this.hospitalLocation = hospitalLocation;
   }
 
+  public void transport() {
+    travelStartTime = currentGlobalTime;
+    originatingLocation = currentLocation;
+    destination = new Coordinate(hospitalLocation);
+    route = DistanceIO.getRoute(currentLocation, destination);
+  }
+
+  public void arriveAtHospital() {
+    currentLocation = new Coordinate(hospitalLocation);
+  }
+
   // Only used for visualization
   public Coordinate getCurrentLocationVisualized(LocalDateTime currentTime) {
-    if (isAvailable()) {
-      return currentLocation;
-    }
-    if (travelStartTime == null || currentLocation == destination) {
+    if (isAvailable() || isStationary()) {
       return currentLocation;
     }
 
+    if (travelStartTime == null) {
+      travelStartTime = currentTime;
+      return currentLocation;
+    }
+
+    var originTimeToDestination = route.time();
     var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
-    var originTimeToDestination = originatingLocation.timeTo(destination);
+
+    if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2) * 60) {
+      return currentLocation;
+    }
 
     if (elapsedTime >= originTimeToDestination) {
+      currentLocation = destination;
       return destination;
-    } else {
-      var timeDelta = originTimeToDestination - elapsedTime;
-
-      var closeNeighbor =
-          currentLocation.getNeighbors().stream()
-              .min(
-                  Comparator.comparingInt(
-                      c -> Math.abs(c.getNearbyAverageTravelTimeTo(destination) - timeDelta)))
-              .orElseThrow();
-
-      if (Math.abs(closeNeighbor.getNearbyAverageTravelTimeTo(destination) - timeDelta)
-          < Math.abs(currentLocation.timeTo(destination) - timeDelta)) {
-        return closeNeighbor;
-      }
     }
+
+    var routeCoordinates = route.routeCoordinates();
+
+    var nextRouteIndex = (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+    if (nextRouteIndex >= routeCoordinates.size()) {
+      currentLocation = destination;
+      return destination;
+    }
+    var nextLocationId = routeCoordinates.get(nextRouteIndex);
+    currentLocation = new Coordinate(Long.parseLong(nextLocationId));
     return currentLocation;
   }
 
   public void updateLocation(int timePeriod) {
     if (currentLocation == destination) {
-      timeToDestination = 0;
       return;
     }
 
-    timeToDestination -= timePeriod * 60;
+    if (timePeriod == DistanceIO.getTravelTimeInterval()) {
+      var routeCoordinates = route.routeCoordinates();
+      var currentLocationId = String.valueOf(currentLocation.getIdNum());
+      var routeIndex = routeCoordinates.indexOf(currentLocationId);
 
-    if (timeToDestination <= 0) {
-      currentLocation = destination;
-      timeToDestination = 0;
-    } else {
-      var previousTimeToDestination = currentLocation.timeTo(destination);
-
-      var closeNeighbor =
-          currentLocation.getNeighbors().stream()
-              .min(
-                  Comparator.comparingInt(c -> Math.abs(c.timeTo(destination) - timeToDestination)))
-              .orElseThrow();
-
-      if (Math.abs(closeNeighbor.timeTo(destination) - timeToDestination)
-          < Math.abs(previousTimeToDestination - timeToDestination)) {
-        currentLocation = closeNeighbor;
+      if (routeIndex + 1 >= routeCoordinates.size()) {
+        currentLocation = destination;
+        return;
       }
+
+      var nextLocationId = routeCoordinates.get(routeIndex + 1);
+      currentLocation = new Coordinate(Long.parseLong(nextLocationId));
+    } else {
+      var originTimeToDestination = route.time();
+      var previousTimeToDestination = currentLocation.timeTo(destination);
+      var elapsedTime = previousTimeToDestination + timePeriod;
+
+      if (elapsedTime <= (timePeriod / 2.0) * 60) {
+        return;
+      }
+
+      if (elapsedTime >= originTimeToDestination) {
+        currentLocation = destination;
+        return;
+      }
+
+      var routeCoordinates = route.routeCoordinates();
+
+      var nextRouteIndex =
+          (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+      if (nextRouteIndex >= routeCoordinates.size()) {
+        currentLocation = destination;
+        return;
+      }
+      var nextLocationId = routeCoordinates.get(nextRouteIndex);
+      currentLocation = new Coordinate(Long.parseLong(nextLocationId));
     }
   }
 
@@ -181,22 +201,8 @@ public class Ambulance {
     return currentLocation.equals(destination);
   }
 
-  public void transport() {
-    travelStartTime = currentGlobalTime;
-    originatingLocation = currentLocation;
-    destination = new Coordinate(hospitalLocation);
-  }
-
-  public void arriveAtHospital() {
-    currentLocation = new Coordinate(hospitalLocation);
-  }
-
   public int timeTo(Incident incident) {
-    return Math.round(this.currentLocation.timeTo(incident.getLocation()));
-  }
-
-  public static Comparator<Ambulance> closestTo(Incident incident) {
-    return Comparator.comparingDouble(ambulance -> ambulance.timeTo(incident));
+    return round(this.currentLocation.timeTo(incident.getLocation()));
   }
 
   @Override
