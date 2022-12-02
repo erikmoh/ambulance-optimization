@@ -1,3 +1,5 @@
+__pycache__/
+
 target/
 
 .idea/
@@ -5,7 +7,6 @@ target/
 output/
 
 scripts/data/
-scripts/proprietary_data/
 
 src/main/resources/data/incidents.csv
 src/main/resources/data/od_paths.json
