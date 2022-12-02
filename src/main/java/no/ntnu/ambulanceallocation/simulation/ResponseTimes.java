@@ -1,15 +1,36 @@
 package no.ntnu.ambulanceallocation.simulation;
 
-import no.ntnu.ambulanceallocation.utils.TimeSeries;
-import no.ntnu.ambulanceallocation.utils.Utils;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
+import no.ntnu.ambulanceallocation.utils.ResponseTime;
 
-public class ResponseTimes extends TimeSeries<Integer> {
+public class ResponseTimes {
 
-  public double average() {
-    return Utils.average(values());
+  private final List<ResponseTime> responseTimes = new ArrayList<>();
+
+  public void add(ResponseTime responseTime) {
+    responseTimes.add(responseTime);
   }
 
-  public double median() {
-    return Utils.median(values());
+  public List<LocalDateTime> getCallTimes() {
+    return responseTimes.stream().map(ResponseTime::callTimestamp).toList();
+  }
+
+  public List<Integer> getResponseTimes() {
+    return responseTimes.stream().map(ResponseTime::responseTime).toList();
+  }
+
+  public List<UrgencyLevel> getUrgencyLevels() {
+    return responseTimes.stream().map(ResponseTime::urgencyLevel).toList();
+  }
+
+  public double average() {
+    return responseTimes.stream()
+        .map(ResponseTime::responseTime)
+        .mapToLong(Integer::valueOf)
+        .average()
+        .orElseThrow();
   }
 }

@@ -24,6 +24,7 @@ import no.ntnu.ambulanceallocation.simulation.event.SceneDeparture;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
+import no.ntnu.ambulanceallocation.utils.ResponseTime;
 import no.ntnu.ambulanceallocation.utils.TriConsumer;
 import no.ntnu.ambulanceallocation.utils.Utils;
 
@@ -372,7 +373,7 @@ public final class Simulation {
     }
   }
 
-  private void saveResponseTime(NewCall newCall, Integer travelTime) {
+  private void saveResponseTime(NewCall newCall, int travelTime) {
     if (newCall.providesResponseTime) {
       var incident = newCall.incident;
 
@@ -385,7 +386,9 @@ public final class Simulation {
         throw new IllegalStateException("Response time should never be negative");
       }
 
-      responseTimes.add(incident.callReceived(), responseTime);
+      var urgency = incident.urgencyLevel();
+
+      responseTimes.add(new ResponseTime(incident.callReceived(), responseTime, urgency));
     }
   }
 

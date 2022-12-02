@@ -32,4 +32,9 @@ public enum UrgencyLevel {
   public static UrgencyLevel get(String symbol) {
     return urgencyLevels.get(symbol);
   }
+
+  @Override
+  public String toString() {
+    return symbol;
+  }
 }

@@ -1,14 +1,12 @@
-package no.ntnu.ambulanceallocation.experiments;
+package no.ntnu.ambulanceallocation.experiments.old;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import no.ntnu.ambulanceallocation.experiments.Experiment;
+import no.ntnu.ambulanceallocation.experiments.Result;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.optimization.Optimizer;
 import no.ntnu.ambulanceallocation.optimization.Solution;
@@ -18,6 +16,8 @@ import no.ntnu.ambulanceallocation.simulation.Config;
 import no.ntnu.ambulanceallocation.simulation.ResponseTimes;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
 import no.ntnu.ambulanceallocation.utils.Tuple;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FourthExperiment implements Experiment {
 
