@@ -6,9 +6,11 @@ public abstract sealed class Event implements Comparable<Event>
     permits NewCall, SceneDeparture, JobCompletion, LocationUpdate {
 
   private final LocalDateTime time;
+  public final NewCall newCall;
 
-  public Event(LocalDateTime time) {
+  public Event(LocalDateTime time, NewCall newCall) {
     this.time = time;
+    this.newCall = newCall;
   }
 
   @Override

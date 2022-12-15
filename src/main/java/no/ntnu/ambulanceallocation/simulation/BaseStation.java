@@ -1,8 +1,8 @@
 package no.ntnu.ambulanceallocation.simulation;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 
 public enum BaseStation {
@@ -30,12 +30,21 @@ public enum BaseStation {
   private final boolean isStandbyPoint;
   private final Coordinate coordinate;
   private final int population;
+  private final List<Ambulance> ambulances = new ArrayList<>();
 
   BaseStation(int id, boolean isStandbyPoint, int easting, int northing, int population) {
     this.id = id;
     this.isStandbyPoint = isStandbyPoint;
     this.coordinate = new Coordinate(easting, northing);
     this.population = population;
+  }
+
+  public void addAmbulance(Ambulance ambulance) {
+    this.ambulances.add(ambulance);
+  }
+
+  public List<Ambulance> getAmbulances() {
+    return ambulances;
   }
 
   public static List<Integer> ids() {

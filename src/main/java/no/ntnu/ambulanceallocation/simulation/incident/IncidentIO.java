@@ -10,11 +10,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
+import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class IncidentIO {
 
@@ -47,12 +46,25 @@ public class IncidentIO {
       logger.info("Incident CSV header: {}", header);
 
       var line = bufferedReader.readLine();
+      var numSinceChanged = 1;
 
       while (line != null) {
         var values = Arrays.asList(line.split(","));
 
         if (isValid(values)) {
-          incidents.add(createIncident(values));
+          var urgencyLevel = UrgencyLevel.get(values.get(3));
+          var changeUrgency =
+              numSinceChanged == Parameters.CHANGE_URGENCY_INTERVAL
+                  && urgencyLevel.equals(UrgencyLevel.ACUTE);
+
+          incidents.add(createIncident(values, changeUrgency));
+
+          if (urgencyLevel.equals(UrgencyLevel.ACUTE)) {
+            numSinceChanged++;
+          }
+          if (changeUrgency) {
+            numSinceChanged = 1;
+          }
 
           processedLines++;
         } else {
@@ -77,13 +89,16 @@ public class IncidentIO {
     return incidents;
   }
 
-  private static Incident createIncident(List<String> values) {
+  private static Incident createIncident(List<String> values, boolean changeUrgency) {
     var callReceived = LocalDateTime.parse(values.get(0), dateTimeFormatter);
 
     var xCoordinate = Integer.parseInt(values.get(1));
     var yCoordinate = Integer.parseInt(values.get(2));
 
     var urgencyLevel = UrgencyLevel.get(values.get(3));
+    if (changeUrgency) {
+      urgencyLevel = UrgencyLevel.URGENT;
+    }
     // String dispatchType = values.get(4); // Always ambulance
 
     var dispatched = LocalDateTime.parse(values.get(5), dateTimeFormatter);

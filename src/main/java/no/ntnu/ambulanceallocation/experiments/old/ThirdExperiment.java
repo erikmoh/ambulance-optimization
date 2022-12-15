@@ -7,8 +7,8 @@ import java.util.Map;
 import no.ntnu.ambulanceallocation.experiments.Experiment;
 import no.ntnu.ambulanceallocation.experiments.Result;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
-import no.ntnu.ambulanceallocation.simulation.ResponseTimes;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
+import no.ntnu.ambulanceallocation.simulation.SimulationResults;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,7 +142,7 @@ public class ThirdExperiment implements Experiment {
                   .forEach(
                       allocationName -> {
                         Allocation allocation = allocations.get(allocationName);
-                        ResponseTimes results =
+                        SimulationResults results =
                             Simulation.withinPeriod(
                                     simulations.get(simulationPeriod).first(),
                                     simulations.get(simulationPeriod).second())

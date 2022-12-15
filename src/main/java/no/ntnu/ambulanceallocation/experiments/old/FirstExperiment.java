@@ -64,7 +64,7 @@ public class FirstExperiment implements Experiment {
     responseTimeResult.saveColumn("timestamp", responseTimes.getCallTimes());
     responseTimeResult.saveColumn(name, responseTimes.getResponseTimes());
     stochasticResponseTimeResult.saveColumn(
-        name, Collections.nCopies(Parameters.RUNS, responseTimes.average()));
+        name, Collections.nCopies(Parameters.RUNS, responseTimes.averageResponseTimes()));
 
     logger.info("Done");
   }
@@ -81,7 +81,7 @@ public class FirstExperiment implements Experiment {
       var nightShiftAllocation = initializer.initialize(Parameters.NUMBER_OF_AMBULANCES_NIGHT);
       allocations.add(new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)));
       var responseTimes = Simulation.simulate(dayShiftAllocation, nightShiftAllocation);
-      fitness.add(responseTimes.average());
+      fitness.add(responseTimes.averageResponseTimes());
     }
 
     var medianIndex = Utils.medianIndexOf(fitness);

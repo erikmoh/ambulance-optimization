@@ -7,10 +7,11 @@ target/
 output/
 
 scripts/data/
+scripts/proprietary_data/
 
 src/main/resources/data/incidents.csv
 src/main/resources/data/od_paths.json
-src/main/resources/data/distance/od.json
+src/main/resources/data/old/od.json
 
 pom.xml.tag
 pom.xml.releaseBackup

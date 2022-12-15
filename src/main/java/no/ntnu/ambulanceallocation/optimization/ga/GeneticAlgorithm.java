@@ -6,17 +6,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.experiments.Result;
 import no.ntnu.ambulanceallocation.optimization.Optimizer;
 import no.ntnu.ambulanceallocation.optimization.Solution;
 import no.ntnu.ambulanceallocation.simulation.Config;
-import no.ntnu.ambulanceallocation.utils.Tuple;
 import no.ntnu.ambulanceallocation.utils.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GeneticAlgorithm implements Optimizer {
 
@@ -27,7 +24,6 @@ public class GeneticAlgorithm implements Optimizer {
   private final List<Double> bestFitness = new ArrayList<>();
   private final List<Double> averageFitness = new ArrayList<>();
   private final List<Double> diversity = new ArrayList<>();
-  private long executionTime = System.nanoTime();
 
   protected Config config;
   protected Population population;
@@ -59,11 +55,9 @@ public class GeneticAlgorithm implements Optimizer {
           var generation = 0;
           var startTime = System.nanoTime();
 
-          while (elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME
-              && generation < Parameters.GENERATIONS) {
+          while (generation < Parameters.GENERATIONS) {
 
             printAndSaveSummary(logger, generation, population);
-            executionTime = System.nanoTime();
 
             var elite = population.elite(Parameters.ELITE_SIZE);
             var nextPopulation = new Population(elite);

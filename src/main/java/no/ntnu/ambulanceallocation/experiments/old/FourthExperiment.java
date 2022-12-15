@@ -13,8 +13,8 @@ import no.ntnu.ambulanceallocation.optimization.Solution;
 import no.ntnu.ambulanceallocation.optimization.ga.GeneticAlgorithm;
 import no.ntnu.ambulanceallocation.optimization.initializer.PopulationProportionate;
 import no.ntnu.ambulanceallocation.simulation.Config;
-import no.ntnu.ambulanceallocation.simulation.ResponseTimes;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
+import no.ntnu.ambulanceallocation.simulation.SimulationResults;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,8 +62,8 @@ public class FourthExperiment implements Experiment {
                       List.of(
                           populationProportionate.initialize(numDayAmbulances),
                           populationProportionate.initialize(numNightAmbulances)));
-              ResponseTimes results = Simulation.withDefaultConfig().simulate(allocation);
-              averageResponseTimes1.put(numDayAmbulances, results.average());
+              SimulationResults results = Simulation.withDefaultConfig().simulate(allocation);
+              averageResponseTimes1.put(numDayAmbulances, results.averageResponseTimes());
             });
 
     logger.info("Using model 'GA'");
@@ -81,9 +81,9 @@ public class FourthExperiment implements Experiment {
                       Config.withNumAmbulances(numDayAmbulances, numNightAmbulances));
               ga.optimize();
               Solution solution = ga.getOptimalSolution();
-              ResponseTimes results =
+              SimulationResults results =
                   Simulation.withDefaultConfig().simulate(solution.getAllocation());
-              averageResponseTimes2.put(numDayAmbulances, results.average());
+              averageResponseTimes2.put(numDayAmbulances, results.averageResponseTimes());
             });
 
     logger.info(
@@ -107,9 +107,11 @@ public class FourthExperiment implements Experiment {
                                 List.of(
                                     populationProportionate.initialize(numDayAmbulances),
                                     populationProportionate.initialize(numNightAmbulances)));
-                        ResponseTimes results = Simulation.withDefaultConfig().simulate(allocation);
+                        SimulationResults results =
+                            Simulation.withDefaultConfig().simulate(allocation);
                         averageResponseTimes3.put(
-                            new Tuple<>(numDayAmbulances, numNightAmbulances), results.average());
+                            new Tuple<>(numDayAmbulances, numNightAmbulances),
+                            results.averageResponseTimes());
                       });
             });
   }

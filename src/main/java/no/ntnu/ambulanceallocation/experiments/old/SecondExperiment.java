@@ -13,8 +13,8 @@ import no.ntnu.ambulanceallocation.optimization.ma.EvolutionStrategy;
 import no.ntnu.ambulanceallocation.optimization.ma.MemeticAlgorithm;
 import no.ntnu.ambulanceallocation.optimization.sls.NeighborhoodFunction;
 import no.ntnu.ambulanceallocation.optimization.sls.StochasticLocalSearch;
-import no.ntnu.ambulanceallocation.simulation.ResponseTimes;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
+import no.ntnu.ambulanceallocation.simulation.SimulationResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,12 +71,13 @@ public class SecondExperiment implements Experiment {
       logger.info("{} run {}/{} completed.", optimizerName, i + 1, Parameters.RUNS);
     }
 
-    ResponseTimes overallBestResponseTimes =
+    SimulationResults overallBestSimulationResults =
         Simulation.withDefaultConfig().simulate(overallBestAllocation);
     bestFitnessAtTerminationResult.saveColumn(optimizerName, bestFitnessAtTermination);
-    overallBestResponseTimesResult.saveColumn("timestamp", overallBestResponseTimes.getCallTimes());
     overallBestResponseTimesResult.saveColumn(
-        optimizerName, overallBestResponseTimes.getResponseTimes());
+        "timestamp", overallBestSimulationResults.getCallTimes());
+    overallBestResponseTimesResult.saveColumn(
+        optimizerName, overallBestSimulationResults.getResponseTimes());
     overallBestAllocationResult.saveColumn(
         optimizerName + "_d", overallBestAllocation.getDayShiftAllocationSorted());
     overallBestAllocationResult.saveColumn(
