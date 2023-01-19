@@ -164,7 +164,7 @@ def shortest_paths(G, ids, from_ids, ssb_ids, nearest_nodes, closest_grids, conn
             target_node = nearest_nodes[id2]
 
             # find shortest path (by travel time)
-            route = nx.shortest_path(G, source_node, target_node, weight="travel_time", method="bellman-ford")
+            route = nx.shortest_path(G, source_node, target_node, weight="travel_time")
 
             # get travel time and route grids
             travel_time, route_grids = get_route_info(G, ssb_ids, route, UPDATE_LOCATION_PERIOD, closest_grids)
