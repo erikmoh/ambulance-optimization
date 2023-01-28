@@ -26,7 +26,7 @@ public final class DistanceIO {
   public static final String routesFilePath =
       new File("src/main/resources/data/od_paths.json").getAbsolutePath();
   // Interval time for od_paths route coordinates
-  private static final double TRAVEL_TIME_INTERVAL = 5.0;
+  private static int TRAVEL_TIME_INTERVAL;
   public static final Set<Coordinate> uniqueGridCoordinates = new HashSet<>();
 
   public static final Map<Tuple<Coordinate>, Route> routes = new HashMap<>();
@@ -38,7 +38,7 @@ public final class DistanceIO {
     coordinateCache.clear();
   }
 
-  public static double getTravelTimeInterval() {
+  public static int getTravelTimeInterval() {
     return TRAVEL_TIME_INTERVAL;
   }
 
@@ -143,7 +143,14 @@ public final class DistanceIO {
   }
 
   private static void handleOriginObject(JsonReader reader) throws IOException {
-    var origin = getCoordinateFromString(reader.nextName());
+    var name = reader.nextName();
+
+    if (name.equals("update_period_minutes")) {
+      TRAVEL_TIME_INTERVAL = reader.nextInt();
+      return;
+    }
+
+    var origin = getCoordinateFromString(name);
     uniqueGridCoordinates.add(origin);
 
     reader.beginObject();

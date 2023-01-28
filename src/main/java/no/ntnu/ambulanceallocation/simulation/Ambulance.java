@@ -132,13 +132,14 @@ public class Ambulance {
     var originTimeToDestination = route.time();
     var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
 
-    if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2) * 60) {
-      return currentLocation;
-    }
-
     if (elapsedTime >= originTimeToDestination) {
       currentLocation = destination;
       return destination;
+    }
+
+    var halfway = (DistanceIO.getTravelTimeInterval() / 2.0) * 60;
+    if (elapsedTime <= halfway) {
+      return currentLocation;
     }
 
     var routeCoordinates = route.routeCoordinates();
@@ -173,14 +174,14 @@ public class Ambulance {
     } else {
       var originTimeToDestination = route.time();
       var previousTimeToDestination = currentLocation.timeTo(destination);
-      var elapsedTime = previousTimeToDestination + timePeriod;
-
-      if (elapsedTime <= (timePeriod / 2.0) * 60) {
-        return;
-      }
+      var elapsedTime = originTimeToDestination - previousTimeToDestination + timePeriod;
 
       if (elapsedTime >= originTimeToDestination) {
         currentLocation = destination;
+        return;
+      }
+
+      if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2.0) * 60) {
         return;
       }
 
