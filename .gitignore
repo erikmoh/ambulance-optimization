@@ -3,6 +3,7 @@ __pycache__/
 target/
 
 .idea/
+.vscode/
 
 output/simulation/logs
 
@@ -11,7 +12,7 @@ scripts/proprietary_data/
 
 src/main/resources/data/incidents.csv
 src/main/resources/data/od_paths.json
-src/main/resources/data/old/od.json
+src/main/resources/data/old/
 
 pom.xml.tag
 pom.xml.releaseBackup
