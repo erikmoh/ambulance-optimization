@@ -25,7 +25,7 @@ import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
-import no.ntnu.ambulanceallocation.utils.SimulationResult;
+import no.ntnu.ambulanceallocation.utils.SimulatedIncidentResult;
 import no.ntnu.ambulanceallocation.utils.TriConsumer;
 import no.ntnu.ambulanceallocation.utils.Utils;
 
@@ -446,7 +446,7 @@ public final class Simulation {
 
     var urgency = incident.urgencyLevel();
 
-    simulationResults.add(new SimulationResult(incident.callReceived(), responseTime, urgency));
+    simulationResults.add(new SimulatedIncidentResult(incident.callReceived(), responseTime, urgency));
   }
 
   private void visualizationCallback() {

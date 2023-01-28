@@ -3,7 +3,7 @@ package no.ntnu.ambulanceallocation.utils;
 import java.time.LocalDateTime;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 
-public record SimulationResult(
+public record SimulatedIncidentResult(
     LocalDateTime callTimestamp, int responseTime, UrgencyLevel urgencyLevel) {
 
   @Override

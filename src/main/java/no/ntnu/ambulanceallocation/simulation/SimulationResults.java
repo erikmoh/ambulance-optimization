@@ -7,32 +7,32 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
-import no.ntnu.ambulanceallocation.utils.SimulationResult;
+import no.ntnu.ambulanceallocation.utils.SimulatedIncidentResult;
 
 public class SimulationResults {
 
-  private final List<SimulationResult> simulationResults = new ArrayList<>();
+  private final List<SimulatedIncidentResult> simulatedIncidents = new ArrayList<>();
   private final List<Double> survivalRates = new ArrayList<>();
 
-  public void add(SimulationResult simulationResult) {
-    simulationResults.add(simulationResult);
+  public void add(SimulatedIncidentResult simulatedIncidentResult) {
+    simulatedIncidents.add(simulatedIncidentResult);
   }
 
   public List<LocalDateTime> getCallTimes() {
-    return simulationResults.stream().map(SimulationResult::callTimestamp).toList();
+    return simulatedIncidents.stream().map(SimulatedIncidentResult::callTimestamp).toList();
   }
 
   public List<Integer> getResponseTimes() {
-    return simulationResults.stream().map(SimulationResult::responseTime).toList();
+    return simulatedIncidents.stream().map(SimulatedIncidentResult::responseTime).toList();
   }
 
   public List<UrgencyLevel> getUrgencyLevels() {
-    return simulationResults.stream().map(SimulationResult::urgencyLevel).toList();
+    return simulatedIncidents.stream().map(SimulatedIncidentResult::urgencyLevel).toList();
   }
 
   public double averageResponseTimes() {
-    return simulationResults.stream()
-        .map(SimulationResult::responseTime)
+    return simulatedIncidents.stream()
+        .map(SimulatedIncidentResult::responseTime)
         .mapToLong(Integer::valueOf)
         .average()
         .orElseThrow();
