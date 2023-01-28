@@ -52,7 +52,7 @@ nbformat==5.3.0
 nbstripout==0.5.0
 nest-asyncio==1.5.4
 notebook==6.4.10
-numpy==1.22.3
+numpy==1.23.5
 outcome==1.1.0
 packaging==21.3
 pandas==1.4.0
@@ -99,6 +99,7 @@ tornado==6.1
 traitlets==5.1.1
 trio==0.20.0
 trio-websocket==0.9.2
+tqdm==4.64.1
 urllib3==1.26.9
 utm==0.7.0
 wcwidth==0.2.5
@@ -110,3 +111,4 @@ psycopg2==2.9.4
 scikit-learn==1.1.2
 pyrosm==0.6.1
 osmnx==1.2.2
+pygeos==0.13
