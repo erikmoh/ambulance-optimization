@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class Utils {
 
@@ -37,7 +38,7 @@ public class Utils {
   }
 
   public static <T> List<T> filterList(Collection<T> list, Predicate<T> predicate) {
-    return list.stream().filter(predicate).toList();
+    return list.stream().filter(predicate).collect(Collectors.toList());
   }
 
   public static double round(double number, double decimalPoints) {

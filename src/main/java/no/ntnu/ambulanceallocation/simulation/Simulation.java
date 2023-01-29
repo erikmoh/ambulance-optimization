@@ -249,8 +249,7 @@ public final class Simulation {
 
   private void handleSceneDeparture(SceneDeparture sceneDeparture) {
     var assignedAmbulances =
-        Utils.filterList(
-            ambulances, (ambulance) -> ambulance.getIncident() == sceneDeparture.incident);
+        Utils.filterList(ambulances, a -> a.getIncident() == sceneDeparture.incident);
 
     if (sceneDeparture.newCall.providesResponseTime && !assignedAmbulances.isEmpty()) {
       Integer shortest = null;
@@ -337,7 +336,7 @@ public final class Simulation {
 
     if (!newCall.incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
       if (config.DISPATCH_POLICY().equals(DispatchPolicy.CoverageBaseStation)) {
-        availableAmbulances.forEach(Ambulance::updateCoveragePenaltyBaseStation);
+        availableAmbulances.forEach(a -> a.updateCoveragePenaltyBaseStation(baseStationAmbulances));
       } else {
         List<Ambulance> finalAvailableAmbulances = availableAmbulances;
         availableAmbulances.forEach(a -> a.updateCoveragePenaltyNearby(finalAvailableAmbulances));
