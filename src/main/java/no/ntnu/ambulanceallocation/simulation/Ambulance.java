@@ -5,6 +5,7 @@ import static java.lang.Math.round;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
@@ -29,9 +30,9 @@ public class Ambulance {
   private Coordinate currentLocation;
   private int coveragePenalty;
   private NewCall oldCall;
+  private int currentRouteIndex;
 
   public Ambulance(BaseStation baseStation) {
-    baseStation.addAmbulance(this);
     this.baseStation = baseStation;
     this.currentLocation = baseStation.getCoordinate();
   }
@@ -116,6 +117,7 @@ public class Ambulance {
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     route = DistanceIO.getRoute(originatingLocation, destination);
+    currentRouteIndex = 0;
   }
 
   public void dispatch(NewCall newCall) {
@@ -125,6 +127,7 @@ public class Ambulance {
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
     route = DistanceIO.getRoute(currentLocation, destination);
+    currentRouteIndex = 0;
   }
 
   public void dispatchTransport(NewCall newCall, Coordinate hospitalLocation) {
@@ -137,6 +140,7 @@ public class Ambulance {
     originatingLocation = currentLocation;
     destination = new Coordinate(hospitalLocation);
     route = DistanceIO.getRoute(currentLocation, destination);
+    currentRouteIndex = 0;
   }
 
   public void arriveAtHospital() {
@@ -186,15 +190,15 @@ public class Ambulance {
 
     if (timePeriod == DistanceIO.getTravelTimeInterval()) {
       var routeCoordinates = route.routeCoordinates();
-      var currentLocationId = String.valueOf(currentLocation.getIdNum());
-      var routeIndex = routeCoordinates.indexOf(currentLocationId);
 
-      if (routeIndex + 1 >= routeCoordinates.size()) {
+      currentRouteIndex++;
+
+      if (currentRouteIndex >= routeCoordinates.size()) {
         currentLocation = destination;
         return;
       }
 
-      var nextLocationId = routeCoordinates.get(routeIndex + 1);
+      var nextLocationId = routeCoordinates.get(currentRouteIndex);
       currentLocation = new Coordinate(Long.parseLong(nextLocationId));
     } else {
       var originTimeToDestination = route.time();
@@ -231,9 +235,9 @@ public class Ambulance {
     return round(this.currentLocation.timeTo(incident.getLocation()));
   }
 
-  public void updateCoveragePenaltyBaseStation() {
+  public void updateCoveragePenaltyBaseStation(Map<BaseStation, List<Ambulance>> baseStationAmbulances) {
     var numAvailable =
-        (int) this.baseStation.getAmbulances().stream().filter(Ambulance::isAvailable).count();
+        (int) baseStationAmbulances.get(baseStation).stream().filter(Ambulance::isAvailable).count();
 
     coveragePenalty =
         switch (numAvailable - 1) {
