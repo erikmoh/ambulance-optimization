@@ -9,7 +9,7 @@ import no.ntnu.ambulanceallocation.simulation.DispatchPolicy;
 public final class Parameters {
   // General
   public static final int RUNS = 5;
-  public static final int MAX_RUNNING_TIME = (int) (3.0 * 60); // minutes
+  public static final int MAX_RUNNING_TIME = (int) (3.0 * 60); // 3 minutes
 
   // Simulation
   public static final int BUFFER_SIZE = 4; // hours
@@ -22,7 +22,7 @@ public final class Parameters {
   public static final LocalTime DAY_SHIFT_START = LocalTime.of(8, 0);
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
-  public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoverageBaseStation;
+  public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.Fastest;
   public static final boolean ENABLE_REDISPATCH = false;
   public static final int REDISPATCH_TIME = 10; // minutes
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
@@ -46,6 +46,7 @@ public final class Parameters {
   public static final double MUTATION_PROBABILITY = 0.05;
   public static final double IMPROVE_PROBABILITY = 0.25;
 
-  public static final boolean USE_URGENCY_FITNESS = true;
-  public static final int CHANGE_URGENCY_INTERVAL = 3000; // change every 3rd acute incident
+  public static final boolean USE_URGENCY_FITNESS = false;
+  public static final boolean PRESET_URGENCY = false;
+  public static final double PRESET_URGENCY_PROBABILITY = 0.67; // change every 3rd acute incident
 }

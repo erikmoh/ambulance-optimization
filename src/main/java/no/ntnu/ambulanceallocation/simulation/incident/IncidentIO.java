@@ -53,18 +53,11 @@ public class IncidentIO {
 
         if (isValid(values)) {
           var urgencyLevel = UrgencyLevel.get(values.get(3));
-          var changeUrgency =
-              numSinceChanged == Parameters.CHANGE_URGENCY_INTERVAL
-                  && urgencyLevel.equals(UrgencyLevel.ACUTE);
+          var changeUrgency = Parameters.PRESET_URGENCY
+                  && urgencyLevel.equals(UrgencyLevel.ACUTE)
+                  && Utils.randomDouble() < Parameters.PRESET_URGENCY_PROBABILITY;
 
           incidents.add(createIncident(values, changeUrgency));
-
-          if (urgencyLevel.equals(UrgencyLevel.ACUTE)) {
-            numSinceChanged++;
-          }
-          if (changeUrgency) {
-            numSinceChanged = 1;
-          }
 
           processedLines++;
         } else {
