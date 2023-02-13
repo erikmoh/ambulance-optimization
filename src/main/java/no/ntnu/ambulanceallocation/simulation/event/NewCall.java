@@ -1,7 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation.event;
 
 import java.time.LocalDateTime;
-
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 
 public sealed class NewCall extends Event permits PartiallyRespondedCall {
@@ -10,13 +9,13 @@ public sealed class NewCall extends Event permits PartiallyRespondedCall {
   public final boolean providesResponseTime;
 
   public NewCall(Incident incident, boolean providesResponseTime) {
-    super(incident.callReceived());
+    super(incident.callReceived(), null);
     this.incident = incident;
     this.providesResponseTime = providesResponseTime;
   }
 
   public NewCall(NewCall newCall, LocalDateTime newTime) {
-    super(newTime);
+    super(newTime, null);
     this.incident = newCall.incident;
     this.providesResponseTime = newCall.providesResponseTime;
   }

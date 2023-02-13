@@ -46,7 +46,7 @@ public class PriorityQueueTest {
   @Test
   public void shouldPollEventsInCorrectOrderWhenInserted() {
     for (var i = 0; i < 30; i++) {
-      eventQueue.add(new JobCompletion(startDateTime.plusSeconds(40 * i + i), null));
+      eventQueue.add(new JobCompletion(startDateTime.plusSeconds(40 * i + i), null, null));
     }
 
     var testResult = true;

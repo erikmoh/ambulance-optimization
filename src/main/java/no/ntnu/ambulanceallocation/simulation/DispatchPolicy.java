@@ -1,7 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation;
 
 import java.util.Comparator;
-
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 
 public enum DispatchPolicy {
@@ -24,6 +23,25 @@ public enum DispatchPolicy {
     public Comparator<Ambulance> useOn(Incident incident) {
       return Comparator.comparingDouble(
           ambulance -> ambulance.getCurrentLocation().timeTo(incident.getLocation()));
+    }
+  },
+  CoverageBaseStation {
+    @Override
+    public Comparator<Ambulance> useOn(Incident incident) {
+      return Comparator.comparingDouble(
+          ambulance ->
+              ambulance.getCurrentLocation().timeTo(incident.getLocation())
+                  + ambulance.getCoveragePenalty());
+    }
+  },
+
+  CoverageNearby {
+    @Override
+    public Comparator<Ambulance> useOn(Incident incident) {
+      return Comparator.comparingDouble(
+          ambulance ->
+              ambulance.getCurrentLocation().timeTo(incident.getLocation())
+                  + ambulance.getCoveragePenalty());
     }
   };
 

@@ -3,7 +3,6 @@ package no.ntnu.ambulanceallocation.experiments;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import no.ntnu.ambulanceallocation.CSV;
 
 public class Result {

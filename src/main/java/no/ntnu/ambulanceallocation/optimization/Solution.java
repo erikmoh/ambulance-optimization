@@ -5,10 +5,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-
+import javax.annotation.Nonnull;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.simulation.Config;
-import no.ntnu.ambulanceallocation.simulation.ResponseTimes;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
 
 public abstract class Solution implements Comparable<Solution> {
@@ -60,8 +59,13 @@ public abstract class Solution implements Comparable<Solution> {
   }
 
   private void calculateFitness() {
-    var responseTimes = Simulation.withConfig(config).simulate(allocation);
-    fitness = responseTimes.average();
+    var simulationResults = Simulation.withConfig(config).simulate(allocation);
+
+    if (Config.defaultConfig().USE_URGENCY_FITNESS()) {
+      fitness = 1 - simulationResults.averageSurvivalRate();
+    } else {
+      fitness = simulationResults.averageResponseTimes();
+    }
   }
 
   public Allocation getAllocation() {
@@ -101,7 +105,7 @@ public abstract class Solution implements Comparable<Solution> {
   }
 
   @Override
-  public int compareTo(Solution otherSolution) {
+  public int compareTo(@Nonnull Solution otherSolution) {
     return Comparator.comparing(Solution::getFitness).compare(this, otherSolution);
   }
 

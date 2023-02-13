@@ -258,10 +258,6 @@ public class SimulationController {
                   .setCssClass("coordinate-label")
                   .setVisible(false));
         });
-
-    var markerClick = Marker.createProvided(Marker.Provided.ORANGE).setVisible(false);
-    var labelClick = new MapLabel("click!", 10, -10).setVisible(false).setCssClass("orange-label");
-    markerClick.attachLabel(labelClick);
   }
 
   /**
@@ -459,7 +455,6 @@ public class SimulationController {
                   updateAmbulanceDestinationLine(ambulance);
                 }
 
-                updateAmbulanceUrgencyMarker();
                 updateAmbulanceDestinationCircle(ambulance);
 
                 animateMarker(marker, marker.getPosition(), coordinate);
@@ -520,23 +515,6 @@ public class SimulationController {
             .setColor(color)
             .setVisible(checkShowPathLines.isSelected()));
     mapView.addCoordinateLine(destinationLines.get(ambulance));
-  }
-
-  private void updateAmbulanceUrgencyMarker() {
-    /*if (ambulance.isAvailable()) {
-        markerLabel.setVisible(false);
-    } else if (!ambulance.isOffDuty()) {
-        if (!ambulance.isAvailable() && !ambulance.isTransport()) {
-            UrgencyLevel urgencyLevel = ambulance.getIncident().urgencyLevel();
-            markerLabel
-                    .setCssClass(urgencyLevel == UrgencyLevel.ACUTE ? "red-label" : "orange-label")
-                    .setVisible(checkShowAmbulances.isSelected());
-        } else if (!ambulance.isAvailable()
-                && ambulance.isTransport()
-                && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
-            markerLabel.setCssClass("green-label").setVisible(checkShowAmbulances.isSelected());
-        }
-    }*/
   }
 
   private void updateAmbulanceDestinationCircle(Ambulance ambulance) {

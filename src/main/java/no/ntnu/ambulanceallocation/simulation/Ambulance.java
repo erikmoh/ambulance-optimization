@@ -4,10 +4,15 @@ import static java.lang.Math.round;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
 import no.ntnu.ambulanceallocation.simulation.grid.Route;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
+import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 
 public class Ambulance {
 
@@ -23,6 +28,9 @@ public class Ambulance {
   private Route route;
   private Coordinate destination = null;
   private Coordinate currentLocation;
+  private int coveragePenalty;
+  private NewCall oldCall;
+  private int currentRouteIndex;
 
   public Ambulance(BaseStation baseStation) {
     this.baseStation = baseStation;
@@ -69,12 +77,29 @@ public class Ambulance {
     return currentLocation;
   }
 
+  public Coordinate getOriginatingLocation() {
+    return originatingLocation;
+  }
+
   public Incident getIncident() {
     return incident;
   }
 
+  public NewCall getOldCall() {
+    return oldCall;
+  }
+
   public boolean isAvailable() {
     return incident == null && !isOffDuty;
+  }
+
+  public boolean canBeReassigned() {
+    return !isOffDuty
+        && (incident == null
+            || (incident.urgencyLevel() != UrgencyLevel.ACUTE
+                && !Objects.equals(currentLocation, incident.getLocation())
+                && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1
+                && destination != hospitalLocation));
   }
 
   public boolean isStationary() {
@@ -92,18 +117,21 @@ public class Ambulance {
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     route = DistanceIO.getRoute(originatingLocation, destination);
+    currentRouteIndex = 0;
   }
 
-  public void dispatch(Incident incident) {
-    this.incident = incident;
+  public void dispatch(NewCall newCall) {
+    this.incident = newCall.incident;
+    this.oldCall = newCall;
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
     route = DistanceIO.getRoute(currentLocation, destination);
+    currentRouteIndex = 0;
   }
 
-  public void dispatchTransport(Incident incident, Coordinate hospitalLocation) {
-    dispatch(incident);
+  public void dispatchTransport(NewCall newCall, Coordinate hospitalLocation) {
+    dispatch(newCall);
     this.hospitalLocation = hospitalLocation;
   }
 
@@ -112,6 +140,7 @@ public class Ambulance {
     originatingLocation = currentLocation;
     destination = new Coordinate(hospitalLocation);
     route = DistanceIO.getRoute(currentLocation, destination);
+    currentRouteIndex = 0;
   }
 
   public void arriveAtHospital() {
@@ -161,15 +190,15 @@ public class Ambulance {
 
     if (timePeriod == DistanceIO.getTravelTimeInterval()) {
       var routeCoordinates = route.routeCoordinates();
-      var currentLocationId = String.valueOf(currentLocation.getIdNum());
-      var routeIndex = routeCoordinates.indexOf(currentLocationId);
 
-      if (routeIndex + 1 >= routeCoordinates.size()) {
+      currentRouteIndex++;
+
+      if (currentRouteIndex >= routeCoordinates.size()) {
         currentLocation = destination;
         return;
       }
 
-      var nextLocationId = routeCoordinates.get(routeIndex + 1);
+      var nextLocationId = routeCoordinates.get(currentRouteIndex);
       currentLocation = new Coordinate(Long.parseLong(nextLocationId));
     } else {
       var originTimeToDestination = route.time();
@@ -204,6 +233,38 @@ public class Ambulance {
 
   public int timeTo(Incident incident) {
     return round(this.currentLocation.timeTo(incident.getLocation()));
+  }
+
+  public void updateCoveragePenaltyBaseStation(Map<BaseStation, List<Ambulance>> baseStationAmbulances) {
+    var numAvailable =
+        (int) baseStationAmbulances.get(baseStation).stream().filter(Ambulance::isAvailable).count();
+
+    coveragePenalty =
+        switch (numAvailable - 1) {
+          case 0 -> 600;
+          case 1 -> 180;
+          default -> 0;
+        };
+  }
+
+  public void updateCoveragePenaltyNearby(List<Ambulance> availableAmbulances) {
+    var closeAmbulances =
+        (int)
+            availableAmbulances.stream()
+                .mapToLong(a -> this.currentLocation.timeTo(a.currentLocation))
+                .filter(distance -> distance < 7.0 * 60)
+                .count();
+
+    coveragePenalty =
+        switch (closeAmbulances - 1) {
+          case 0 -> 600;
+          case 1 -> 180;
+          default -> 0;
+        };
+  }
+
+  public int getCoveragePenalty() {
+    return coveragePenalty;
   }
 
   @Override

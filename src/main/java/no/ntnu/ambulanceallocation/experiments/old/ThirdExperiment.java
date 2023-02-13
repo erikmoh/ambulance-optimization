@@ -1,17 +1,17 @@
-package no.ntnu.ambulanceallocation.experiments;
+package no.ntnu.ambulanceallocation.experiments.old;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
+import no.ntnu.ambulanceallocation.experiments.Experiment;
+import no.ntnu.ambulanceallocation.experiments.Result;
+import no.ntnu.ambulanceallocation.optimization.Allocation;
+import no.ntnu.ambulanceallocation.simulation.Simulation;
+import no.ntnu.ambulanceallocation.simulation.SimulationResults;
+import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import no.ntnu.ambulanceallocation.optimization.Allocation;
-import no.ntnu.ambulanceallocation.simulation.ResponseTimes;
-import no.ntnu.ambulanceallocation.simulation.Simulation;
-import no.ntnu.ambulanceallocation.utils.Tuple;
 
 public class ThirdExperiment implements Experiment {
 
@@ -142,14 +142,15 @@ public class ThirdExperiment implements Experiment {
                   .forEach(
                       allocationName -> {
                         Allocation allocation = allocations.get(allocationName);
-                        ResponseTimes results =
+                        SimulationResults results =
                             Simulation.withinPeriod(
                                     simulations.get(simulationPeriod).first(),
                                     simulations.get(simulationPeriod).second())
                                 .simulate(allocation);
                         logger.info(
                             "{} simulation finished for {}", simulationPeriod, allocationName);
-                        periodResponseTimeResults.saveColumn(allocationName, results.values());
+                        periodResponseTimeResults.saveColumn(
+                            allocationName, results.getResponseTimes());
                       });
               periodResponseTimeResults.saveResults(
                   "third_experiment_response_times_" + simulationPeriod);
