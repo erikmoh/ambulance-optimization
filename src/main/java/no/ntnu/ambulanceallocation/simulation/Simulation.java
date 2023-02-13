@@ -213,6 +213,10 @@ public final class Simulation {
       var firstAmbulance = dispatchedAmbulances.get(0);
       var travelTime = firstAmbulance.timeTo(incident);
 
+      if (newCall.providesResponseTime && incident.arrivalAtScene().isPresent()) {
+        saveResponseTime(newCall, travelTime);
+      }
+
       if (incident.departureFromScene().isPresent()) {
         // An ambulance transported patients to a hospital
         if (incident.arrivalAtScene().isPresent()) {
@@ -250,18 +254,6 @@ public final class Simulation {
   private void handleSceneDeparture(SceneDeparture sceneDeparture) {
     var assignedAmbulances =
         Utils.filterList(ambulances, a -> a.getIncident() == sceneDeparture.incident);
-
-    if (sceneDeparture.newCall.providesResponseTime && !assignedAmbulances.isEmpty()) {
-      Integer shortest = null;
-      for (var ambulance : assignedAmbulances) {
-        var travelTime =
-            ambulance.getOriginatingLocation().timeTo(sceneDeparture.incident.getLocation());
-        if (shortest == null || travelTime < shortest) {
-          shortest = travelTime;
-        }
-      }
-      saveResponseTime(sceneDeparture.newCall, shortest);
-    }
 
     for (var ambulance : assignedAmbulances) {
       if (ambulance.isTransport()) {
@@ -337,7 +329,7 @@ public final class Simulation {
     if (!newCall.incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
       if (config.DISPATCH_POLICY().equals(DispatchPolicy.CoverageBaseStation)) {
         availableAmbulances.forEach(a -> a.updateCoveragePenaltyBaseStation(baseStationAmbulances));
-      } else {
+      } else if (config.DISPATCH_POLICY().equals(DispatchPolicy.CoverageNearby)) {
         List<Ambulance> finalAvailableAmbulances = availableAmbulances;
         availableAmbulances.forEach(a -> a.updateCoveragePenaltyNearby(finalAvailableAmbulances));
       }
@@ -345,7 +337,7 @@ public final class Simulation {
 
     // Sort based on dispatch policy
     List<Ambulance> nearestAmbulances = new ArrayList<>(availableAmbulances);
-    availableAmbulances.sort(config.DISPATCH_POLICY().useOn(newCall.incident));
+    nearestAmbulances.sort(config.DISPATCH_POLICY().useOn(newCall.incident));
 
     // Dispatch busy ambulance and reassign if assumed advantageous
     if (checkReDispatch(newCall.incident, availableAmbulances)) {
@@ -438,7 +430,7 @@ public final class Simulation {
     var simulatedDispatchTime =
         (int) ChronoUnit.SECONDS.between(incident.callReceived(), newCall.getTime());
 
-    var responseTime = simulatedDispatchTime + travelTime;
+    var responseTime = config.DISPATCH_DELAY().get(incident) + simulatedDispatchTime + travelTime;
     if (responseTime < 0) {
       throw new IllegalStateException("Response time should never be negative");
     }
