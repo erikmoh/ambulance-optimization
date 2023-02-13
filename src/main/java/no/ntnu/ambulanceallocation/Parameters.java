@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.optimization.initializer.Random;
+import no.ntnu.ambulanceallocation.simulation.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.DispatchPolicy;
 
 public final class Parameters {
@@ -23,6 +24,7 @@ public final class Parameters {
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.Fastest;
+  public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.SIMULATED;
   public static final boolean ENABLE_REDISPATCH = false;
   public static final int REDISPATCH_TIME = 10; // minutes
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes

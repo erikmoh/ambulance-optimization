@@ -13,7 +13,8 @@ public record Config(
     int UPDATE_LOCATION_PERIOD,
     boolean USE_URGENCY_FITNESS,
     boolean ENABLE_REDISPATCH,
-    int REDISPATCH_TIME) {
+    int REDISPATCH_TIME,
+    DispatchDelay DISPATCH_DELAY) {
 
   public static Config defaultConfig() {
     return new Config(
@@ -26,7 +27,8 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME);
+        Parameters.REDISPATCH_TIME,
+        Parameters.DISPATCH_DELAY);
   }
 
   public static Config withinPeriod(LocalDateTime start, LocalDateTime end) {
@@ -40,7 +42,8 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME);
+        Parameters.REDISPATCH_TIME,
+        Parameters.DISPATCH_DELAY);
   }
 
   public static Config withNumAmbulances(int day, int night) {
@@ -54,6 +57,7 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME);
+        Parameters.REDISPATCH_TIME,
+        Parameters.DISPATCH_DELAY);
   }
 }
