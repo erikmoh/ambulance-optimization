@@ -46,7 +46,6 @@ public class IncidentIO {
       logger.info("Incident CSV header: {}", header);
 
       var line = bufferedReader.readLine();
-      var numSinceChanged = 1;
 
       while (line != null) {
         var values = Arrays.asList(line.split(","));
