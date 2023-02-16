@@ -5,12 +5,12 @@ import warnings
 
 import pandas as pd
 
-from pandas.core.common import SettingWithCopyWarning
+# from pandas.core.common import SettingWithCopyWarning
 from statistics import mode
 from time import time
-from plots.funnel import plot_funnel
+# from plots.funnel import plot_funnel
 
-warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+# warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
 
 def print_step(func):
@@ -37,8 +37,8 @@ def build_pipeline(*steps, step_decorator=print_step):
 
 
 def filter_regions(df):
-  oslo = pd.read_csv('../data/oslo.csv', encoding='utf-8', index_col=4)
-  akershus = pd.read_csv('../data/akershus.csv', encoding='utf-8', index_col=4)
+  oslo = pd.read_csv('data/oslo.csv', encoding='utf-8', index_col=4)
+  akershus = pd.read_csv('data/akershus.csv', encoding='utf-8', index_col=4)
   oslo_and_akershus_data = pd.concat([oslo, akershus])
 
   # Create indices based on SSB grids
@@ -63,9 +63,11 @@ def filter_incomplete_years(df):
 
 def keep_period_of_interest(df, buffer_size=0):
   time = df.index + pd.Timedelta(hours=buffer_size)
-  august_2017 = df[time.year == 2017]
+  all_2015 = df[time.year == 2015]
+  all_2016 = df[time.year == 2016]
+  all_2017 = df[time.year == 2017]
   all_2018 = df[time.year == 2018]
-  return pd.concat([august_2017, all_2018])
+  return pd.concat([all_2015, all_2016, all_2017, all_2018])
 
 
 def filter_urgency_levels(df):
@@ -164,12 +166,12 @@ def get_args():
 
 
 def save_data(df, output_data_file):
-  plot_funnel(*zip(*funnel_statistics))
+  # plot_funnel(*zip(*funnel_statistics))
 
   df.to_csv(output_data_file, index=False)
 
-  destination_file = '../src/main/resources/incidents.csv'
-  shutil.copyfile(output_data_file, destination_file)
+  #destination_file = '../src/main/resources/incidents.csv'
+  #shutil.copyfile(output_data_file, destination_file)
 
 
 def main():
