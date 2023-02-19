@@ -4,8 +4,6 @@ import static java.lang.Math.round;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
@@ -28,9 +26,11 @@ public class Ambulance {
   private Route route;
   private Coordinate destination = null;
   private Coordinate currentLocation;
-  private int coveragePenalty;
   private NewCall oldCall;
   private int currentRouteIndex;
+
+  private int timeToIncident;
+  private int coveragePenalty = 0;
 
   public Ambulance(BaseStation baseStation) {
     this.baseStation = baseStation;
@@ -77,10 +77,6 @@ public class Ambulance {
     return currentLocation;
   }
 
-  public Coordinate getOriginatingLocation() {
-    return originatingLocation;
-  }
-
   public Incident getIncident() {
     return incident;
   }
@@ -95,11 +91,10 @@ public class Ambulance {
 
   public boolean canBeReassigned() {
     return !isOffDuty
-        && (incident == null
-            || (incident.urgencyLevel() != UrgencyLevel.ACUTE
-                && !Objects.equals(currentLocation, incident.getLocation())
-                && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1
-                && destination != hospitalLocation));
+        && (incident.urgencyLevel() != UrgencyLevel.ACUTE
+            && !Objects.equals(currentLocation, incident.getLocation())
+            && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1
+            && destination != hospitalLocation);
   }
 
   public boolean isStationary() {
@@ -235,32 +230,24 @@ public class Ambulance {
     return round(this.currentLocation.timeTo(incident.getLocation()));
   }
 
-  public void updateCoveragePenaltyBaseStation(Map<BaseStation, List<Ambulance>> baseStationAmbulances) {
-    var numAvailable =
-        (int) baseStationAmbulances.get(baseStation).stream().filter(Ambulance::isAvailable).count();
-
-    coveragePenalty =
-        switch (numAvailable - 1) {
-          case 0 -> 600;
-          case 1 -> 180;
-          default -> 0;
-        };
+  public int timeTo(Ambulance other) {
+    return round(this.currentLocation.timeTo(other.getCurrentLocation()));
   }
 
-  public void updateCoveragePenaltyNearby(List<Ambulance> availableAmbulances) {
-    var closeAmbulances =
-        (int)
-            availableAmbulances.stream()
-                .mapToLong(a -> this.currentLocation.timeTo(a.currentLocation))
-                .filter(distance -> distance < 7.0 * 60)
-                .count();
+  public void updateTimeTo(Incident incident) {
+    timeToIncident = timeTo(incident);
+  }
 
-    coveragePenalty =
-        switch (closeAmbulances - 1) {
-          case 0 -> 600;
-          case 1 -> 180;
-          default -> 0;
-        };
+  public void updateTimeTo(int time) {
+    timeToIncident = time;
+  }
+
+  public int getTimeToIncident() {
+    return timeToIncident;
+  }
+
+  public void updateCoveragePenalty(int penalty) {
+    coveragePenalty = penalty;
   }
 
   public int getCoveragePenalty() {

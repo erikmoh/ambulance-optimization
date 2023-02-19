@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -303,55 +304,52 @@ public final class Simulation {
   }
 
   private void handleLocationUpdate(LocationUpdate locationUpdate) {
-    locationUpdate.ambulance.updateLocation(config.UPDATE_LOCATION_PERIOD());
+    var ambulance = locationUpdate.ambulance;
+    ambulance.updateLocation(config.UPDATE_LOCATION_PERIOD());
 
-    if (!locationUpdate.ambulance.endOfJourney()) {
+    if (!ambulance.endOfJourney()) {
       eventQueue.add(
-          new LocationUpdate(
-              time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), locationUpdate.ambulance));
+          new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
     }
   }
 
   private List<Ambulance> dispatch(NewCall newCall) {
     var availableAmbulances = Utils.filterList(ambulances, Ambulance::isAvailable);
+    var incident = newCall.incident;
+
+    // update
+    availableAmbulances.forEach(
+        a -> config.DISPATCH_POLICY().updateAmbulance(a, availableAmbulances, incident));
+
+    // add busy ambulances to dispatch pool
+    if (checkReDispatch(incident, availableAmbulances)) {
+      var reassignAmbulances = Utils.filterList(ambulances, Ambulance::canBeReassigned);
+      if (!reassignAmbulances.isEmpty()) {
+        reassignAmbulances.forEach(
+            a -> config.DISPATCH_POLICY().updateAmbulance(a, availableAmbulances, incident));
+        availableAmbulances.addAll(reassignAmbulances);
+      }
+    }
 
     var supply = availableAmbulances.size();
-
     if (supply == 0) {
       callQueue.add(newCall);
       return Collections.emptyList();
     }
 
-    var numberOfTransportAmbulances = newCall.getTransportingVehicleDemand();
-    var numberOfNonTransportAmbulances = newCall.getNonTransportingVehicleDemand();
-    var hospitalLocation = findNearestHospital(newCall.incident);
-
-    if (!newCall.incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
-      if (config.DISPATCH_POLICY().equals(DispatchPolicy.CoverageBaseStation)) {
-        availableAmbulances.forEach(a -> a.updateCoveragePenaltyBaseStation(baseStationAmbulances));
-      } else if (config.DISPATCH_POLICY().equals(DispatchPolicy.CoverageNearby)) {
-        List<Ambulance> finalAvailableAmbulances = availableAmbulances;
-        availableAmbulances.forEach(a -> a.updateCoveragePenaltyNearby(finalAvailableAmbulances));
-      }
-    }
-
-    // Sort based on dispatch policy
+    // sort all available ambulances based on dispatch strategy
     List<Ambulance> nearestAmbulances = new ArrayList<>(availableAmbulances);
-    nearestAmbulances.sort(config.DISPATCH_POLICY().useOn(newCall.incident));
+    nearestAmbulances.sort(
+        Comparator.comparingDouble(
+            ambulance -> ambulance.getTimeToIncident() + ambulance.getCoveragePenalty()));
 
-    // Dispatch busy ambulance and reassign if assumed advantageous
-    if (checkReDispatch(newCall.incident, availableAmbulances)) {
-      availableAmbulances = Utils.filterList(ambulances, Ambulance::canBeReassigned);
+    // get incident details
+    var transportCount = newCall.getTransportingVehicleDemand();
+    var nonTransportCount = newCall.getNonTransportingVehicleDemand();
+    var hospitalLocation = findNearestHospital(incident);
 
-      if (availableAmbulances.size() > nearestAmbulances.size()) {
-        availableAmbulances.sort(config.DISPATCH_POLICY().useOn(newCall.incident));
-        nearestAmbulances = availableAmbulances;
-      }
-    }
-
-    // Transport ambulances first
-    var transportAmbulances =
-        nearestAmbulances.subList(0, Math.min(supply, numberOfTransportAmbulances));
+    // dispatch transport ambulances
+    var transportAmbulances = nearestAmbulances.subList(0, Math.min(supply, transportCount));
     if (config.ENABLE_REDISPATCH()) {
       removeOldDispatchEvents(transportAmbulances, newCall);
     } else {
@@ -361,13 +359,12 @@ public final class Simulation {
     var dispatchedAmbulances = new ArrayList<>(transportAmbulances);
 
     // Remove transport ambulances from the pool
-    nearestAmbulances =
-        nearestAmbulances.subList(Math.min(supply, numberOfTransportAmbulances), supply);
+    nearestAmbulances = nearestAmbulances.subList(Math.min(supply, transportCount), supply);
 
-    // Non-transport ambulances second
+    // dispatch non-transport ambulances
     var nonTransportAmbulances =
         nearestAmbulances.subList(
-            0, Math.min(supply - transportAmbulances.size(), numberOfNonTransportAmbulances));
+            0, Math.min(supply - transportAmbulances.size(), nonTransportCount));
     if (config.ENABLE_REDISPATCH()) {
       removeOldDispatchEvents(nonTransportAmbulances, newCall);
     } else {
@@ -391,7 +388,8 @@ public final class Simulation {
   private boolean checkReDispatch(Incident incident, List<Ambulance> ambulances) {
     return config.ENABLE_REDISPATCH()
         && incident.urgencyLevel().equals(UrgencyLevel.ACUTE)
-        && ambulances.get(0).timeTo(incident) > config.REDISPATCH_TIME() * 60;
+        && ambulances.stream().mapToInt(Ambulance::getTimeToIncident).min().orElseThrow()
+            > config.REDISPATCH_TIME() * 60;
   }
 
   private void removeOldDispatchEvents(List<Ambulance> ambulances, NewCall newCall) {
@@ -437,7 +435,8 @@ public final class Simulation {
 
     var urgency = incident.urgencyLevel();
 
-    simulationResults.add(new SimulatedIncidentResult(incident.callReceived(), responseTime, urgency));
+    simulationResults.add(
+        new SimulatedIncidentResult(incident.callReceived(), responseTime, urgency));
   }
 
   private void visualizationCallback() {
