@@ -116,8 +116,8 @@ public class Ambulance {
   }
 
   public void dispatch(NewCall newCall) {
-    this.incident = newCall.incident;
-    this.oldCall = newCall;
+    incident = newCall.incident;
+    oldCall = newCall;
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());

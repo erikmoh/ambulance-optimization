@@ -41,6 +41,13 @@ public class Utils {
     return list.stream().filter(predicate).collect(Collectors.toList());
   }
 
+  public static <T> List<T> concatenateLists(List<T> list1, List<T> list2) {
+    List<T> result = new ArrayList<>(list1.size() + list2.size());
+    result.addAll(list1);
+    result.addAll(list2);
+    return result;
+  }
+
   public static double round(double number, double decimalPoints) {
     double multiplier = Math.pow(10, decimalPoints);
     return Math.round(multiplier * number) / multiplier;
