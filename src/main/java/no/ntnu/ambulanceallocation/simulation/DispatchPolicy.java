@@ -112,11 +112,7 @@ public enum DispatchPolicy {
       var totalAreaDemand = 0.0;
       for (var neighbour : neighbours) {
         var distribution = IncidentIO.distributions.get(neighbour);
-        var historicAverageDemand =
-            distribution.getHourAverage(
-                arrivalTime.getMonth().getValue(),
-                arrivalTime.getDayOfWeek().getValue(),
-                arrivalTime.getHour());
+        var historicAverageDemand = distribution.getHourAverage(arrivalTime);
         totalAreaDemand += historicAverageDemand;
       }
 

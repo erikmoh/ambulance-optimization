@@ -1,5 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 public class IncidentDistribution {
@@ -10,7 +11,10 @@ public class IncidentDistribution {
     this.distribution = distribution;
   }
 
-  public Double getHourAverage(Integer month, Integer weekday, Integer hour) {
-    return distribution.get(month).get(weekday).get(hour);
+  public Double getHourAverage(LocalDateTime arrivalTime) {
+    return distribution
+        .get(arrivalTime.getMonth().getValue())
+        .get(arrivalTime.getDayOfWeek().getValue())
+        .get(arrivalTime.getHour());
   }
 }
