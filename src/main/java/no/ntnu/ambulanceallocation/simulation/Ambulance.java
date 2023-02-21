@@ -4,7 +4,6 @@ import static java.lang.Math.round;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Objects;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
@@ -26,7 +25,7 @@ public class Ambulance {
   private Route route;
   private Coordinate destination = null;
   private Coordinate currentLocation;
-  private NewCall oldCall;
+  private NewCall currentCall;
   private int currentRouteIndex;
 
   private int timeToIncident;
@@ -81,8 +80,8 @@ public class Ambulance {
     return incident;
   }
 
-  public NewCall getOldCall() {
-    return oldCall;
+  public NewCall getCurrentCall() {
+    return currentCall;
   }
 
   public boolean isAvailable() {
@@ -91,14 +90,18 @@ public class Ambulance {
 
   public boolean canBeReassigned() {
     return !isOffDuty
-        && (incident.urgencyLevel() != UrgencyLevel.ACUTE
-            && !Objects.equals(currentLocation, incident.getLocation())
-            && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1
-            && destination != hospitalLocation);
+        && incident != null
+        && incident.urgencyLevel() != UrgencyLevel.ACUTE
+        // not at scene
+        && !currentLocation.equals(incident.getLocation())
+        // not transporting
+        && !destination.equals(hospitalLocation)
+        // only one dispatched ambulance (easier to reassign)
+        && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1;
   }
 
   public boolean isStationary() {
-    return currentLocation == destination || route == null;
+    return currentLocation.equals(destination) || route == null;
   }
 
   public boolean isTransport() {
@@ -107,6 +110,7 @@ public class Ambulance {
 
   public void flagAsAvailable() {
     incident = null;
+    currentCall = null;
     hospitalLocation = null;
     destination = baseStation.getCoordinate();
     travelStartTime = currentGlobalTime;
@@ -117,7 +121,7 @@ public class Ambulance {
 
   public void dispatch(NewCall newCall) {
     incident = newCall.incident;
-    oldCall = newCall;
+    currentCall = newCall;
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
@@ -179,7 +183,7 @@ public class Ambulance {
   }
 
   public void updateLocation(int timePeriod) {
-    if (currentLocation == destination) {
+    if (currentLocation.equals(destination)) {
       return;
     }
 
@@ -198,7 +202,7 @@ public class Ambulance {
     } else {
       var originTimeToDestination = route.time();
       var previousTimeToDestination = currentLocation.timeTo(destination);
-      var elapsedTime = originTimeToDestination - previousTimeToDestination + timePeriod;
+      var elapsedTime = originTimeToDestination - previousTimeToDestination + (timePeriod * 60);
 
       if (elapsedTime >= originTimeToDestination) {
         currentLocation = destination;

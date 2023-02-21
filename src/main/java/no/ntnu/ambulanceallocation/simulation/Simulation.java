@@ -105,11 +105,16 @@ public final class Simulation {
       time = event.getTime();
       setCurrentShift();
 
-      switch (event) {
-        case NewCall newCall -> handleNewCall(newCall);
-        case SceneDeparture sceneDeparture -> handleSceneDeparture(sceneDeparture);
-        case JobCompletion jobCompletion -> handleJobCompletion(jobCompletion);
-        case LocationUpdate locationUpdate -> handleLocationUpdate(locationUpdate);
+      try {
+        switch (event) {
+          case NewCall newCall -> handleNewCall(newCall);
+          case SceneDeparture sceneDeparture -> handleSceneDeparture(sceneDeparture);
+          case JobCompletion jobCompletion -> handleJobCompletion(jobCompletion);
+          case LocationUpdate locationUpdate -> handleLocationUpdate(locationUpdate);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        System.exit(0);
       }
 
       if (visualizationMode) {
@@ -219,6 +224,7 @@ public final class Simulation {
     var travelTime = firstAmbulance.timeTo(incident);
 
     if (newCall.providesResponseTime && incident.arrivalAtScene().isPresent()) {
+      // TODO: move to after incident is completed or scene departure
       saveResponseTime(newCall, travelTime);
     }
 
@@ -261,20 +267,19 @@ public final class Simulation {
 
     for (var ambulance : assignedAmbulances) {
       if (ambulance.isTransport()) {
+
         ambulance.transport();
         var transportTime = sceneDeparture.incident.getTimeFromDepartureToAvailableTransport();
         var availableTime = time.plusSeconds(transportTime);
         eventQueue.add(new JobCompletion(availableTime, ambulance, sceneDeparture.newCall));
       } else {
+
         ambulance.flagAsAvailable();
-
         var ambulancesToReturn = remainingOffDutyAmbulances.get(ambulance.getBaseStation());
-
         if (ambulancesToReturn > 0) {
           ambulance.finishShift();
           remainingOffDutyAmbulances.put(ambulance.getBaseStation(), --ambulancesToReturn);
         }
-
         eventQueue.add(
             new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
       }
@@ -325,8 +330,9 @@ public final class Simulation {
         a -> config.DISPATCH_POLICY().updateAmbulance(a, availableAmbulances, incident));
 
     // add busy ambulances to dispatch pool
-    if (checkReDispatch(incident, availableAmbulances)) {
-      var reassignAmbulances = Utils.filterList(ambulances, Ambulance::canBeReassigned);
+    List<Ambulance> reassignAmbulances = new ArrayList<>();
+    if (doReDispatch(incident, availableAmbulances)) {
+      reassignAmbulances = Utils.filterList(ambulances, Ambulance::canBeReassigned);
       if (!reassignAmbulances.isEmpty()) {
         reassignAmbulances.forEach(
             a -> config.DISPATCH_POLICY().updateAmbulance(a, availableAmbulances, incident));
@@ -340,7 +346,8 @@ public final class Simulation {
       return Collections.emptyList();
     }
 
-    // sort ambulances based on dispatch score
+    // sort ambulances based on dispatch score.
+    // if reassign score is equal to regular, regular ambulance will be first when sorted
     var nearestAmbulances =
         availableAmbulances.stream()
             .sorted(Comparator.comparing(a -> a.getTimeToIncident() + a.getCoveragePenalty()))
@@ -350,69 +357,56 @@ public final class Simulation {
     var nonTransportDemand = newCall.getNonTransportingVehicleDemand();
 
     // dispatch transport ambulances
-    var transportAmbulances =
-        nearestAmbulances.subList(0, Math.min(transportDemand, supply)).stream()
-            .peek(
-                ambulance -> {
-                  if (config.ENABLE_REDISPATCH()) {
-                    ambulance.dispatch(newCall);
-                    removeOldDispatchEvents(ambulance);
-                  } else {
-                    ambulance.dispatchTransport(newCall, findNearestHospital(incident));
-                  }
-                })
-            .toList();
+    var transportAmbulances = nearestAmbulances.subList(0, Math.min(transportDemand, supply));
+    for (var ambulance : transportAmbulances) {
+      if (config.ENABLE_REDISPATCH() && reassignAmbulances.contains(ambulance)) {
+        removeOldDispatchEvents(ambulance);
+      }
+      ambulance.dispatchTransport(newCall, findNearestHospital(incident));
+    }
     var dispatchedTransport = transportAmbulances.size();
 
     // dispatch non-transport ambulances
     var nonTransportAmbulances =
-        nearestAmbulances
-            .subList(
-                dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply))
-            .stream()
-            .peek(
-                ambulance -> {
-                  if (config.ENABLE_REDISPATCH()) {
-                    ambulance.dispatch(newCall);
-                    removeOldDispatchEvents(ambulance);
-                  } else {
-                    ambulance.dispatch(newCall);
-                  }
-                })
-            .toList();
+        nearestAmbulances.subList(
+            dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply));
+    for (var ambulance : nonTransportAmbulances) {
+      if (config.ENABLE_REDISPATCH() && reassignAmbulances.contains(ambulance)) {
+        removeOldDispatchEvents(ambulance);
+      }
+      ambulance.dispatch(newCall);
+    }
     var dispatchedNonTransport = nonTransportAmbulances.size();
 
     // create partially responded call
     if (dispatchedTransport < transportDemand || dispatchedNonTransport < nonTransportDemand) {
       var partiallyRespondedCall = new PartiallyRespondedCall(newCall);
       partiallyRespondedCall.respondWithTransportingVehicles(transportAmbulances.size());
-      partiallyRespondedCall.respondWithNonTransportingVehicles(nonTransportAmbulances.size());
+      partiallyRespondedCall.respondWithNonTransportingVehicles(dispatchedNonTransport);
       callQueue.add(partiallyRespondedCall);
     }
 
     return Utils.concatenateLists(transportAmbulances, nonTransportAmbulances);
   }
 
-  private boolean checkReDispatch(Incident incident, List<Ambulance> ambulances) {
+  private boolean doReDispatch(Incident incident, List<Ambulance> ambulances) {
     return config.ENABLE_REDISPATCH()
         && incident.urgencyLevel().equals(UrgencyLevel.ACUTE)
-        && ambulances.stream().mapToInt(Ambulance::getTimeToIncident).min().orElseThrow()
-            > config.REDISPATCH_TIME() * 60;
+        && !ambulances.isEmpty();
   }
 
   private void removeOldDispatchEvents(Ambulance ambulance) {
-    var oldCall = ambulance.getOldCall();
-    if (ambulance.getIncident() != null) {
-      eventQueue.removeIf(event -> event.newCall != null && event.newCall.equals(oldCall));
-      handleNewCall(oldCall);
+    var currentCall = ambulance.getCurrentCall();
+    if (eventQueue.removeIf(event -> event.newCall != null && event.newCall.equals(currentCall))) {
+      handleNewCall(currentCall);
     }
   }
 
   private static Coordinate findNearestHospital(Incident incident) {
-    var nearestHospitals = Arrays.asList(Hospital.values());
-    nearestHospitals.sort(Hospital.closestTo(incident));
-
-    return nearestHospitals.get(0).getCoordinate();
+    return Arrays.stream(Hospital.values())
+        .min(Hospital.closestTo(incident))
+        .map(Hospital::getCoordinate)
+        .orElseThrow();
   }
 
   private void checkQueue() {

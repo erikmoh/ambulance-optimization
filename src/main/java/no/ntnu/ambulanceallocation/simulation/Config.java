@@ -13,7 +13,6 @@ public record Config(
     int UPDATE_LOCATION_PERIOD,
     boolean USE_URGENCY_FITNESS,
     boolean ENABLE_REDISPATCH,
-    int REDISPATCH_TIME,
     DispatchDelay DISPATCH_DELAY) {
 
   public static Config defaultConfig() {
@@ -27,7 +26,6 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME,
         Parameters.DISPATCH_DELAY);
   }
 
@@ -42,7 +40,6 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME,
         Parameters.DISPATCH_DELAY);
   }
 
@@ -57,7 +54,6 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME,
         Parameters.DISPATCH_DELAY);
   }
 }
