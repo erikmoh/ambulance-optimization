@@ -41,6 +41,7 @@ public final class Simulation {
   private final List<Ambulance> ambulances = new ArrayList<>();
   private final Queue<NewCall> callQueue = new LinkedList<>();
   private final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
+  private final Map<NewCall, Integer> plannedTravelTimes = new HashMap<>();
   private final Map<ShiftType, Map<BaseStation, Integer>> baseStationShiftCount = new HashMap<>();
   private final Map<BaseStation, List<Ambulance>> baseStationAmbulances = new HashMap<>();
   private final Map<BaseStation, Integer> remainingOffDutyAmbulances = new HashMap<>();
@@ -223,10 +224,8 @@ public final class Simulation {
     var firstAmbulance = dispatchedAmbulances.get(0);
     var travelTime = firstAmbulance.timeTo(incident);
 
-    if (newCall.providesResponseTime && incident.arrivalAtScene().isPresent()) {
-      // TODO: move to after incident is completed or scene departure
-      saveResponseTime(newCall, travelTime);
-    }
+    // set or update travel time
+    plannedTravelTimes.put(newCall, travelTime);
 
     if (incident.departureFromScene().isPresent()) {
       // An ambulance transported patients to a hospital
@@ -262,16 +261,23 @@ public final class Simulation {
   }
 
   private void handleSceneDeparture(SceneDeparture sceneDeparture) {
-    var assignedAmbulances =
-        Utils.filterList(ambulances, a -> a.getIncident() == sceneDeparture.incident);
+    var incident = sceneDeparture.incident;
+    var call = sceneDeparture.newCall;
+
+    var travelTime = plannedTravelTimes.remove(call);
+    if (call.providesResponseTime && travelTime != null) {
+      saveResponseTime(call, travelTime);
+    }
+
+    var assignedAmbulances = Utils.filterList(ambulances, a -> a.getIncident() == incident);
 
     for (var ambulance : assignedAmbulances) {
       if (ambulance.isTransport()) {
 
         ambulance.transport();
-        var transportTime = sceneDeparture.incident.getTimeFromDepartureToAvailableTransport();
+        var transportTime = incident.getTimeFromDepartureToAvailableTransport();
         var availableTime = time.plusSeconds(transportTime);
-        eventQueue.add(new JobCompletion(availableTime, ambulance, sceneDeparture.newCall));
+        eventQueue.add(new JobCompletion(availableTime, ambulance, call));
       } else {
 
         ambulance.flagAsAvailable();
@@ -291,6 +297,12 @@ public final class Simulation {
   private void handleJobCompletion(JobCompletion jobCompletion) {
     if (jobCompletion.ambulance.isTransport()) {
       jobCompletion.ambulance.arriveAtHospital();
+    }
+
+    var call = jobCompletion.newCall;
+    var travelTime = plannedTravelTimes.remove(call);
+    if (call.providesResponseTime && travelTime != null) {
+      saveResponseTime(call, travelTime);
     }
 
     jobCompletion.ambulance.flagAsAvailable();
