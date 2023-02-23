@@ -273,21 +273,12 @@ public final class Simulation {
 
     for (var ambulance : assignedAmbulances) {
       if (ambulance.isTransport()) {
-
         ambulance.transport();
         var transportTime = incident.getTimeFromDepartureToAvailableTransport();
         var availableTime = time.plusSeconds(transportTime);
         eventQueue.add(new JobCompletion(availableTime, ambulance, call));
       } else {
-
-        ambulance.flagAsAvailable();
-        var ambulancesToReturn = remainingOffDutyAmbulances.get(ambulance.getBaseStation());
-        if (ambulancesToReturn > 0) {
-          ambulance.finishShift();
-          remainingOffDutyAmbulances.put(ambulance.getBaseStation(), --ambulancesToReturn);
-        }
-        eventQueue.add(
-            new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
+        jobCompleted(ambulance);
       }
     }
 
@@ -305,20 +296,7 @@ public final class Simulation {
       saveResponseTime(call, travelTime);
     }
 
-    jobCompletion.ambulance.flagAsAvailable();
-
-    var ambulancesToReturn =
-        remainingOffDutyAmbulances.get(jobCompletion.ambulance.getBaseStation());
-
-    if (ambulancesToReturn > 0) {
-      jobCompletion.ambulance.finishShift();
-      remainingOffDutyAmbulances.put(
-          jobCompletion.ambulance.getBaseStation(), --ambulancesToReturn);
-    }
-
-    eventQueue.add(
-        new LocationUpdate(
-            time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), jobCompletion.ambulance));
+    jobCompleted(jobCompletion.ambulance);
 
     checkQueue();
   }
@@ -419,6 +397,17 @@ public final class Simulation {
         .min(Hospital.closestTo(incident))
         .map(Hospital::getCoordinate)
         .orElseThrow();
+  }
+
+  private void jobCompleted(Ambulance ambulance) {
+    ambulance.flagAsAvailable();
+    var ambulancesToReturn = remainingOffDutyAmbulances.get(ambulance.getBaseStation());
+    if (ambulancesToReturn > 0) {
+      ambulance.finishShift();
+      remainingOffDutyAmbulances.put(ambulance.getBaseStation(), --ambulancesToReturn);
+    }
+    eventQueue.add(
+        new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
   }
 
   private void checkQueue() {
