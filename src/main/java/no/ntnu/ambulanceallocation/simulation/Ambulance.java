@@ -20,18 +20,22 @@ public class Ambulance {
   private Coordinate hospitalLocation = null;
   private Incident incident;
 
+  @SuppressWarnings({"unused", "FieldCanBeLocal"})
+  private final int id; // for testing only, can be removed
+
   private LocalDateTime travelStartTime;
   private Coordinate originatingLocation;
   private Route route;
   private Coordinate destination = null;
   private Coordinate currentLocation;
-  private NewCall currentCall;
+  private NewCall call;
   private int currentRouteIndex;
 
   private int timeToIncident;
   private int coveragePenalty = 0;
 
-  public Ambulance(BaseStation baseStation) {
+  public Ambulance(BaseStation baseStation, int id) {
+    this.id = id;
     this.baseStation = baseStation;
     this.currentLocation = baseStation.getCoordinate();
   }
@@ -80,8 +84,12 @@ public class Ambulance {
     return incident;
   }
 
-  public NewCall getCurrentCall() {
-    return currentCall;
+  public NewCall getCall() {
+    return call;
+  }
+
+  public void setCall(NewCall newCall) {
+    call = newCall;
   }
 
   public boolean isAvailable() {
@@ -94,9 +102,10 @@ public class Ambulance {
         && incident.urgencyLevel() != UrgencyLevel.ACUTE
         // not at scene
         && !currentLocation.equals(incident.getLocation())
-        // not transporting
+        // not transporting to hospital
         && !destination.equals(hospitalLocation)
-        // only one dispatched ambulance (easier to reassign)
+        // only one dispatched ambulance
+        // (easier to reassign, could implement reassign solution for multiple ambulances)
         && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1;
   }
 
@@ -110,18 +119,17 @@ public class Ambulance {
 
   public void flagAsAvailable() {
     incident = null;
-    currentCall = null;
+    call = null;
     hospitalLocation = null;
-    destination = baseStation.getCoordinate();
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
+    destination = baseStation.getCoordinate();
     route = DistanceIO.getRoute(originatingLocation, destination);
     currentRouteIndex = 0;
   }
 
-  public void dispatch(NewCall newCall) {
+  private void dispatch(NewCall newCall) {
     incident = newCall.incident;
-    currentCall = newCall;
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
@@ -132,6 +140,11 @@ public class Ambulance {
   public void dispatchTransport(NewCall newCall, Coordinate hospitalLocation) {
     dispatch(newCall);
     this.hospitalLocation = hospitalLocation;
+  }
+
+  public void dispatchNonTransport(NewCall newCall) {
+    dispatch(newCall);
+    this.hospitalLocation = null;
   }
 
   public void transport() {

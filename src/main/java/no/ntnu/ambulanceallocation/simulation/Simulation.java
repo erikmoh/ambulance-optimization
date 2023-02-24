@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
-import java.util.stream.Stream;
+import java.util.stream.IntStream;
 import javafx.beans.property.DoubleProperty;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
@@ -170,8 +170,8 @@ public final class Simulation {
 
       baseStationAmbulances.put(
           baseStation,
-          Stream.generate(() -> new Ambulance(baseStation))
-              .limit(maxBaseStationAmbulances)
+          IntStream.rangeClosed(1, maxBaseStationAmbulances)
+              .mapToObj(i -> new Ambulance(baseStation, i))
               .toList());
       baseStationShiftCount.get(ShiftType.DAY).put(baseStation, dayShiftCount);
       baseStationShiftCount.get(ShiftType.NIGHT).put(baseStation, nightShiftCount);
@@ -320,13 +320,13 @@ public final class Simulation {
         a -> config.DISPATCH_POLICY().updateAmbulance(a, availableAmbulances, incident));
 
     // add busy ambulances to dispatch pool
-    List<Ambulance> reassignAmbulances = new ArrayList<>();
+    List<Ambulance> reassignableAmbulances = new ArrayList<>();
     if (doReDispatch(incident, availableAmbulances)) {
-      reassignAmbulances = Utils.filterList(ambulances, Ambulance::canBeReassigned);
-      if (!reassignAmbulances.isEmpty()) {
-        reassignAmbulances.forEach(
+      reassignableAmbulances = Utils.filterList(ambulances, Ambulance::canBeReassigned);
+      if (!reassignableAmbulances.isEmpty()) {
+        reassignableAmbulances.forEach(
             a -> config.DISPATCH_POLICY().updateAmbulance(a, availableAmbulances, incident));
-        availableAmbulances.addAll(reassignAmbulances);
+        availableAmbulances.addAll(reassignableAmbulances);
       }
     }
 
@@ -347,26 +347,30 @@ public final class Simulation {
     var nonTransportDemand = newCall.getNonTransportingVehicleDemand();
 
     // dispatch transport ambulances
-    var transportAmbulances = nearestAmbulances.subList(0, Math.min(transportDemand, supply));
-    for (var ambulance : transportAmbulances) {
-      if (config.ENABLE_REDISPATCH() && reassignAmbulances.contains(ambulance)) {
-        removeOldDispatchEvents(ambulance);
-      }
-      ambulance.dispatchTransport(newCall, findNearestHospital(incident));
-    }
+    var transportAmbulances =
+        nearestAmbulances.subList(0, Math.min(transportDemand, supply)).stream()
+            .peek(a -> a.dispatchTransport(newCall, findNearestHospital(incident)))
+            .toList();
     var dispatchedTransport = transportAmbulances.size();
 
     // dispatch non-transport ambulances
     var nonTransportAmbulances =
-        nearestAmbulances.subList(
-            dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply));
-    for (var ambulance : nonTransportAmbulances) {
-      if (config.ENABLE_REDISPATCH() && reassignAmbulances.contains(ambulance)) {
-        removeOldDispatchEvents(ambulance);
-      }
-      ambulance.dispatch(newCall);
-    }
+        nearestAmbulances
+            .subList(
+                dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply))
+            .stream()
+            .peek(a -> a.dispatchNonTransport(newCall))
+            .toList();
     var dispatchedNonTransport = nonTransportAmbulances.size();
+
+    var dispatchedAmbulances = Utils.concatenateLists(transportAmbulances, nonTransportAmbulances);
+    // remove old events for dispatched reassigned ambulances
+    if (config.ENABLE_REDISPATCH()) {
+      reassignableAmbulances.stream()
+          .filter(dispatchedAmbulances::contains)
+          .forEach(this::removeOldDispatchEvents);
+      dispatchedAmbulances.forEach(ambulance -> ambulance.setCall(newCall));
+    }
 
     // create partially responded call
     if (dispatchedTransport < transportDemand || dispatchedNonTransport < nonTransportDemand) {
@@ -376,7 +380,7 @@ public final class Simulation {
       callQueue.add(partiallyRespondedCall);
     }
 
-    return Utils.concatenateLists(transportAmbulances, nonTransportAmbulances);
+    return dispatchedAmbulances;
   }
 
   private boolean doReDispatch(Incident incident, List<Ambulance> ambulances) {
@@ -386,9 +390,9 @@ public final class Simulation {
   }
 
   private void removeOldDispatchEvents(Ambulance ambulance) {
-    var currentCall = ambulance.getCurrentCall();
-    if (eventQueue.removeIf(e -> e instanceof SceneDeparture && e.newCall.equals(currentCall))) {
-      handleNewCall(currentCall);
+    var oldCall = ambulance.getCall();
+    if (eventQueue.removeIf(e -> e instanceof SceneDeparture && e.newCall.equals(oldCall))) {
+      handleNewCall(oldCall);
     }
   }
 
