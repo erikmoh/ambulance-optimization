@@ -1,7 +1,5 @@
 package no.ntnu.ambulanceallocation.simulation;
 
-import static java.lang.Math.round;
-
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
@@ -170,10 +168,9 @@ public class Ambulance {
       return currentLocation;
     }
 
-    var originTimeToDestination = route.time();
     var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
 
-    if (elapsedTime >= originTimeToDestination) {
+    if (elapsedTime >= route.time()) {
       currentLocation = destination;
       return destination;
     }
@@ -185,7 +182,8 @@ public class Ambulance {
 
     var routeCoordinates = route.routeCoordinates();
 
-    var nextRouteIndex = (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+    var nextRouteIndex =
+        (int) Math.round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
     if (nextRouteIndex >= routeCoordinates.size()) {
       currentLocation = destination;
       return destination;
@@ -212,6 +210,7 @@ public class Ambulance {
 
       var nextLocationId = routeCoordinates.get(currentRouteIndex);
       currentLocation = new Coordinate(Long.parseLong(nextLocationId));
+
     } else {
       var originTimeToDestination = route.time();
       var previousTimeToDestination = currentLocation.timeTo(destination);
@@ -229,7 +228,7 @@ public class Ambulance {
       var routeCoordinates = route.routeCoordinates();
 
       var nextRouteIndex =
-          (int) round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+          (int) Math.round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
       if (nextRouteIndex >= routeCoordinates.size()) {
         currentLocation = destination;
         return;
@@ -244,11 +243,11 @@ public class Ambulance {
   }
 
   public int timeTo(Incident incident) {
-    return round(this.currentLocation.timeTo(incident.getLocation()));
+    return Math.round(this.currentLocation.timeTo(incident.getLocation()));
   }
 
   public int timeTo(Ambulance other) {
-    return round(this.currentLocation.timeTo(other.getCurrentLocation()));
+    return Math.round(this.currentLocation.timeTo(other.getCurrentLocation()));
   }
 
   public void updateTimeTo(Incident incident) {

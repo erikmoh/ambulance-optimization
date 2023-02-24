@@ -168,29 +168,34 @@ public final class Simulation {
           Collections.frequency(allocation.getNightShiftAllocation(), baseStation.getId());
       var maxBaseStationAmbulances = Math.max(dayShiftCount, nightShiftCount);
 
-      baseStationAmbulances.put(
-          baseStation,
+      var ambulancesStation =
           IntStream.rangeClosed(1, maxBaseStationAmbulances)
               .mapToObj(i -> new Ambulance(baseStation, i))
-              .toList());
+              .toList();
+
+      baseStationAmbulances.put(baseStation, ambulancesStation);
       baseStationShiftCount.get(ShiftType.DAY).put(baseStation, dayShiftCount);
       baseStationShiftCount.get(ShiftType.NIGHT).put(baseStation, nightShiftCount);
-      ambulances.addAll(baseStationAmbulances.get(baseStation));
+
+      ambulances.addAll(ambulancesStation);
       remainingOffDutyAmbulances.put(baseStation, 0);
-      baseStationAmbulances.get(baseStation).stream()
+      ambulancesStation.stream()
           .limit(baseStationShiftCount.get(currentShift).get(baseStation))
           .forEach(Ambulance::startNewShift);
     }
   }
 
   private void setCurrentShift() {
-    if (ShiftType.get(time) != currentShift) {
-      currentShift = ShiftType.get(time);
+    var newShift = ShiftType.get(time);
+    if (newShift != currentShift) {
+      currentShift = newShift;
 
       for (var baseStation : baseStationAmbulances.keySet()) {
+        var shiftCountMap = baseStationShiftCount.get(currentShift);
+        var prevShiftCountMap = baseStationShiftCount.get(currentShift.previous());
         var ambulanceDifference =
-            baseStationShiftCount.get(currentShift.previous()).get(baseStation)
-                - baseStationShiftCount.get(currentShift).get(baseStation);
+            prevShiftCountMap.get(baseStation) - shiftCountMap.get(baseStation);
+
         if (ambulanceDifference > 0) {
           var availableAmbulances =
               baseStationAmbulances.get(baseStation).stream()
@@ -431,10 +436,9 @@ public final class Simulation {
       throw new IllegalStateException("Response time should never be negative");
     }
 
-    var urgency = incident.urgencyLevel();
-
     simulationResults.add(
-        new SimulatedIncidentResult(incident.callReceived(), responseTime, urgency));
+        new SimulatedIncidentResult(
+            incident.callReceived(), responseTime, incident.urgencyLevel()));
   }
 
   private void visualizationCallback() {

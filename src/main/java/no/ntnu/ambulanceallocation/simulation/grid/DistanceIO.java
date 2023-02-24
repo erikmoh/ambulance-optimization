@@ -15,7 +15,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import no.ntnu.ambulanceallocation.utils.Tuple;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -90,43 +89,6 @@ public final class DistanceIO {
 
     coordinateCache.put(coordinateString, coordinate);
     return coordinate;
-  }
-
-  private static ArrayList<String> getRouteFromJsonArray(JSONArray jsonArray) {
-    var route = new ArrayList<String>();
-    for (var i = 0; i < jsonArray.length(); i++) {
-      route.add(jsonArray.getString(i));
-    }
-    return route;
-  }
-
-  private static void loadRoutesFromFileOld() {
-    logger.info("Loading routes from file...");
-
-    try {
-      var routeJsonObject = new JSONObject(Files.readString(Path.of(routesFilePath)));
-
-      for (var originKey : routeJsonObject.names()) {
-        var origin = getCoordinateFromString(originKey.toString());
-        uniqueGridCoordinates.add(origin);
-        var destinationsObject = (JSONObject) routeJsonObject.get(originKey.toString());
-
-        if (destinationsObject.names() != null) {
-          for (var destKey : destinationsObject.names()) {
-            var destinationObject = (JSONObject) destinationsObject.get(destKey.toString());
-            var destination = getCoordinateFromString(destKey.toString());
-            var route = getRouteFromJsonArray(destinationObject.getJSONArray("route"));
-            var time = destinationObject.getInt("travel_time");
-            routes.put(new Tuple<>(origin, destination), new Route(route, time));
-          }
-        }
-      }
-    } catch (JSONException | IOException e) {
-      e.printStackTrace();
-      System.exit(1);
-    }
-
-    logger.info("Loaded {} routes.", routes.size());
   }
 
   private static void loadRoutesFromFile() {
