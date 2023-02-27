@@ -52,11 +52,4 @@ public record Incident(
     }
     return (int) ChronoUnit.SECONDS.between(dispatched, availableNonTransport);
   }
-
-  public int getTimeFromDepartureToAvailableTransport() {
-    if (departureFromScene.isEmpty()) {
-      throw new IllegalStateException("Cannot compute duration without departure time");
-    }
-    return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableTransport);
-  }
 }

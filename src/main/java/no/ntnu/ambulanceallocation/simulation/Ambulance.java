@@ -27,6 +27,7 @@ public class Ambulance {
   private Coordinate destination = null;
   private Coordinate currentLocation;
   private NewCall call;
+  private NextCall nextCall;
   private int currentRouteIndex;
 
   private int timeToIncident;
@@ -107,6 +108,15 @@ public class Ambulance {
         && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1;
   }
 
+  public boolean canBeQueued() {
+    return !isOffDuty
+        && incident != null
+        // transporting to hospital
+        && destination.equals(hospitalLocation)
+        // cannot already have a next call
+        && nextCall == null;
+  }
+
   public boolean isStationary() {
     return currentLocation.equals(destination) || route == null;
   }
@@ -126,23 +136,25 @@ public class Ambulance {
     currentRouteIndex = 0;
   }
 
-  private void dispatch(NewCall newCall) {
+  public void dispatch(NewCall newCall, Coordinate hospital, boolean isNextCall) {
+    if (isNextCall) {
+      nextCall = new NextCall(newCall, hospital);
+      return;
+    }
     incident = newCall.incident;
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
+    hospitalLocation = hospital;
     route = DistanceIO.getRoute(currentLocation, destination);
     currentRouteIndex = 0;
   }
 
-  public void dispatchTransport(NewCall newCall, Coordinate hospitalLocation) {
-    dispatch(newCall);
-    this.hospitalLocation = hospitalLocation;
-  }
-
-  public void dispatchNonTransport(NewCall newCall) {
-    dispatch(newCall);
-    this.hospitalLocation = null;
+  public void dispatchNextCall() {
+    if (nextCall != null) {
+      dispatch(nextCall.newCall, nextCall.hospitalLocation, false);
+    }
+    nextCall = null;
   }
 
   public void transport() {
@@ -154,6 +166,9 @@ public class Ambulance {
   }
 
   public void arriveAtHospital() {
+    if (hospitalLocation == null) {
+      throw new IllegalStateException("Cannot arrive at hospital when it is null");
+    }
     currentLocation = new Coordinate(hospitalLocation);
   }
 
@@ -262,6 +277,10 @@ public class Ambulance {
     return timeToIncident;
   }
 
+  public int getTimeToHospital() {
+    return currentLocation.timeTo(hospitalLocation);
+  }
+
   public void updateCoveragePenalty(int penalty) {
     coveragePenalty = penalty;
   }
@@ -276,4 +295,6 @@ public class Ambulance {
         "Ambulance[baseStation=%s, destination=%s, currentLocation=%s, hospitalLocation=%s]",
         baseStation, destination, currentLocation, hospitalLocation);
   }
+
+  private record NextCall(NewCall newCall, Coordinate hospitalLocation) {}
 }

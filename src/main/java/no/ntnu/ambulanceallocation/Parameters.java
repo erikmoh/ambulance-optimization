@@ -26,6 +26,7 @@ public final class Parameters {
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.SIMULATED;
   public static final boolean ENABLE_REDISPATCH = true;
+  public static final boolean ENABLE_QUEUE_NEXT = true;
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
