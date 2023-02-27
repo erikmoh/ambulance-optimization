@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.optimization.initializer.Random;
-import no.ntnu.ambulanceallocation.simulation.DispatchDelay;
-import no.ntnu.ambulanceallocation.simulation.DispatchPolicy;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 
 public final class Parameters {
   // General

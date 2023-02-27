@@ -2,6 +2,8 @@ package no.ntnu.ambulanceallocation.simulation;
 
 import java.time.LocalDateTime;
 import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 
 public record Config(
     LocalDateTime START_DATE_TIME,

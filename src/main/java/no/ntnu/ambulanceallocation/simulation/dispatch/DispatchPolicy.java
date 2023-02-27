@@ -1,8 +1,9 @@
-package no.ntnu.ambulanceallocation.simulation;
+package no.ntnu.ambulanceallocation.simulation.dispatch;
 
 import static java.lang.Math.max;
 
 import java.util.List;
+import no.ntnu.ambulanceallocation.simulation.Ambulance;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;

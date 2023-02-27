@@ -1,4 +1,4 @@
-package no.ntnu.ambulanceallocation.simulation;
+package no.ntnu.ambulanceallocation.simulation.dispatch;
 
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
@@ -26,12 +26,13 @@ public enum DispatchDelay {
   private static final int medianDispatchTime = getMedianDispatchTime();
 
   private static int getMedianDispatchTime() {
-    var sortedIncidents = IncidentIO.incidents.stream().map(Incident::getDispatchDelay).sorted().toList();
+    var sortedIncidents =
+        IncidentIO.incidents.stream().map(Incident::getDispatchDelay).sorted().toList();
     var size = sortedIncidents.size();
     if (size % 2 == 0) {
-      return sortedIncidents.get(size/2 - 1);
+      return sortedIncidents.get(size / 2 - 1);
     }
-    return sortedIncidents.get(size/2);
+    return sortedIncidents.get(size / 2);
   }
 
   public abstract int get(Incident incident);
