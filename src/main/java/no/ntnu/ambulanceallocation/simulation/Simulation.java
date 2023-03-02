@@ -408,6 +408,8 @@ public final class Simulation {
   }
 
   private boolean doQueueNext(int totalDemand) {
+    // problems occur when multiple ambulances is needed
+    // (could potentially be fixed, but might be complicated and slow for little gain)
     return config.ENABLE_QUEUE_NEXT() && totalDemand == 1;
   }
 
@@ -424,6 +426,7 @@ public final class Simulation {
                     e -> e instanceof SceneDeparture && e.newCall.equals(oldCall))) {
                   handleNewCall(oldCall);
                 }
+                ambulance.setWasReassigned(true);
               });
       dispatchedAmbulances.forEach(ambulance -> ambulance.setCall(newCall));
     }

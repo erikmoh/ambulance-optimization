@@ -18,8 +18,9 @@ public class Ambulance {
   private Coordinate hospitalLocation = null;
   private Incident incident;
 
-  @SuppressWarnings({"unused", "FieldCanBeLocal"})
-  private final int id; // for testing only, can be removed
+  // only used for debugging
+  public final int id;
+  public boolean wasReassigned = false;
 
   private LocalDateTime travelStartTime;
   private Coordinate originatingLocation;
@@ -134,6 +135,7 @@ public class Ambulance {
     destination = baseStation.getCoordinate();
     route = DistanceIO.getRoute(originatingLocation, destination);
     currentRouteIndex = 0;
+    wasReassigned = false;
   }
 
   public void dispatch(NewCall newCall, Coordinate hospital, boolean isNextCall) {
@@ -287,6 +289,14 @@ public class Ambulance {
 
   public int getCoveragePenalty() {
     return coveragePenalty;
+  }
+
+  public void setWasReassigned(boolean status) {
+    wasReassigned = status;
+  }
+
+  public boolean wasReassigned() {
+    return wasReassigned;
   }
 
   @Override

@@ -59,7 +59,6 @@ import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.util.Duration;
 import no.ntnu.ambulanceallocation.Parameters;
@@ -109,6 +108,8 @@ public class SimulationController {
       Collections.synchronizedList(new ArrayList<>());
   private final Map<Ambulance, Marker> ambulanceMarkers =
       Collections.synchronizedMap(new HashMap<>());
+  private final Map<Ambulance, MapLabel> ambulanceLabels =
+      Collections.synchronizedMap(new HashMap<>());
   private final Map<Ambulance, MapCircle> destinationCircles =
       Collections.synchronizedMap(new HashMap<>());
   private final Map<Ambulance, CoordinateLine> destinationLines =
@@ -126,10 +127,6 @@ public class SimulationController {
   @FXML private Button startSimulationButton;
   /** the MapView containing the map */
   @FXML private MapView mapView;
-  /** the box containing the top controls, must be enabled when mapView is initialized */
-  @FXML private HBox topControls;
-  /** Slider to change the zoom value */
-  @FXML private Slider sliderZoom;
   /** Accordion for all the different options */
   @FXML private Accordion leftControls;
   /** section containing the location button */
@@ -137,9 +134,8 @@ public class SimulationController {
   /** for editing the animation duration */
   @FXML private TextField animationDuration;
   /** the BIng Maps API Key. */
-  @FXML private TextField bingMapsApiKey;
-
   @FXML private Label currentTime;
+
   @FXML private Label activeAmbulances;
   @FXML private TextField numDayAmbulances;
   @FXML private TextField numNightAmbulances;
@@ -147,22 +143,10 @@ public class SimulationController {
   @FXML private TextField nightShift;
   /** Label to display the current center */
   @FXML private Label labelCenter;
-  /** Label to display the current zoom */
-  @FXML private Label labelZoom;
   /** RadioButton for MapStyle OSM */
   @FXML private RadioButton radioMsOSM;
   /** RadioButton for MapStyle Bing Roads */
   @FXML private RadioButton radioMsBR;
-  /** RadioButton for MapStyle Bing Roads - dark */
-  @FXML private RadioButton radioMsCd;
-  /** RadioButton for MapStyle Bing Roads - grayscale */
-  @FXML private RadioButton radioMsCg;
-  /** RadioButton for MapStyle Bing Roads - light */
-  @FXML private RadioButton radioMsCl;
-  /** RadioButton for MapStyle Bing Aerial */
-  @FXML private RadioButton radioMsBA;
-  /** RadioButton for MapStyle Bing Aerial with Label */
-  @FXML private RadioButton radioMsBAwL;
   /** RadioButton for MapStyle WMS. */
   @FXML private RadioButton radioMsWMS;
   /** RadioButton for MapStyle XYZ */
@@ -178,6 +162,7 @@ public class SimulationController {
   @FXML private CheckBox checkShowBaseStations;
   @FXML private CheckBox checkShowIncidents;
   @FXML private CheckBox checkShowAmbulances;
+  @FXML private CheckBox checkShowAmbulanceLabels;
   @FXML private Slider simulationUpdateIntervalSlider;
   private List<MapCircle> incidentCircleList = Collections.synchronizedList(new ArrayList<>());
   private LocalDateTime currentTimeInternal = LocalDateTime.MIN;
@@ -248,12 +233,7 @@ public class SimulationController {
                   .setVisible(false));
 
           gridCentroidLabelList.add(
-              new MapLabel(
-                      String.format(
-                          "x:%s y:%s id:%s",
-                          utmCoordinate.x(), utmCoordinate.y(), utmCoordinate.getIdNum()),
-                      0,
-                      10)
+              new MapLabel(String.format("x:%s\ny:%s", utmCoordinate.x(), utmCoordinate.y()), 0, 10)
                   .setPosition(coordinate)
                   .setCssClass("coordinate-label")
                   .setVisible(false));
@@ -298,8 +278,6 @@ public class SimulationController {
     // set the controls to disabled, this will be changed when the MapView is initialized
     setControlsDisable(true);
 
-    sliderZoom.valueProperty().bindBidirectional(mapView.zoomProperty());
-
     // add a listener to the animationDuration field and make sure we only accept int values
     animationDuration
         .textProperty()
@@ -317,9 +295,8 @@ public class SimulationController {
             });
     animationDuration.setText("500");
 
-    // bind the map's center and zoom properties to the corresponding labels and format them
+    // bind the map's center to the corresponding labels and format them
     labelCenter.textProperty().bind(Bindings.format("center: %s", mapView.centerProperty()));
-    labelZoom.textProperty().bind(Bindings.format("zoom: %.0f", mapView.zoomProperty()));
     logger.trace("options and labels done");
 
     // watch the MapView's initialized property to finish initialization
@@ -341,16 +318,6 @@ public class SimulationController {
               var mapType = MapType.OSM;
               if (newValue == radioMsBR) {
                 mapType = MapType.BINGMAPS_ROAD;
-              } else if (newValue == radioMsCd) {
-                mapType = MapType.BINGMAPS_CANVAS_DARK;
-              } else if (newValue == radioMsCg) {
-                mapType = MapType.BINGMAPS_CANVAS_GRAY;
-              } else if (newValue == radioMsCl) {
-                mapType = MapType.BINGMAPS_CANVAS_LIGHT;
-              } else if (newValue == radioMsBA) {
-                mapType = MapType.BINGMAPS_AERIAL;
-              } else if (newValue == radioMsBAwL) {
-                mapType = MapType.BINGMAPS_AERIAL_WITH_LABELS;
               } else if (newValue == radioMsWMS) {
                 mapView.setWMSParam(wmsParam);
                 mapType = MapType.WMS;
@@ -358,7 +325,6 @@ public class SimulationController {
                 mapView.setXYZParam(xyzParams);
                 mapType = MapType.XYZ;
               }
-              mapView.setBingMapsApiKey(bingMapsApiKey.getText());
               mapView.setMapType(mapType);
             });
     mapTypeGroup.selectToggle(radioMsOSM);
@@ -376,7 +342,6 @@ public class SimulationController {
    * @param flag if true the controls are disabled
    */
   private void setControlsDisable(boolean flag) {
-    topControls.setDisable(flag);
     leftControls.setDisable(flag);
   }
 
@@ -443,11 +408,14 @@ public class SimulationController {
                 var pos = ambulance.getCurrentLocationVisualized(currentTimeInternal);
                 var coordinate = utmToLatLongMap.get(pos);
                 var marker = ambulanceMarkers.get(ambulance);
+                var label = ambulanceLabels.get(ambulance);
 
                 if (ambulance.isAtBaseStation() && ambulance.isOffDuty()) {
                   marker.setVisible(false);
+                  label.setVisible(false);
                 } else {
                   marker.setVisible(checkShowAmbulances.isSelected());
+                  label.setVisible(checkShowAmbulanceLabels.isSelected());
                 }
 
                 if (!marker.getPosition().equals(coordinate)) {
@@ -457,7 +425,7 @@ public class SimulationController {
 
                 updateAmbulanceDestinationCircle(ambulance);
 
-                animateMarker(marker, marker.getPosition(), coordinate);
+                animateMarker(marker, marker.getPosition(), coordinate, label);
               }
             }
           } else {
@@ -497,6 +465,8 @@ public class SimulationController {
     } else if (ambulance.isAvailable()
         && ambulance.getDestination() == ambulance.getBaseStationLocation()) {
       color = Color.web("#0000ff", 0.9);
+    } else if (ambulance.wasReassigned()) {
+      color = Color.web("#ff00ff", 0.9);
     } else {
       color = Color.web("#00ff00", 0.9);
     }
@@ -549,7 +519,8 @@ public class SimulationController {
     }
   }
 
-  private void animateMarker(Marker marker, Coordinate oldPosition, Coordinate newPosition) {
+  private void animateMarker(
+      Marker marker, Coordinate oldPosition, Coordinate newPosition, MapLabel label) {
     // animate the marker to the new position
     final Transition transition =
         new Transition() {
@@ -561,6 +532,7 @@ public class SimulationController {
           {
             setCycleDuration(Duration.seconds(0.5));
             setOnFinished(evt -> marker.setPosition(newPosition));
+            setOnFinished(evt -> label.setPosition(newPosition));
           }
 
           @Override
@@ -568,6 +540,7 @@ public class SimulationController {
             final var latitude = oldPosition.getLatitude() + v * deltaLatitude;
             final var longitude = oldPosition.getLongitude() + v * deltaLongitude;
             marker.setPosition(new Coordinate(latitude, longitude));
+            label.setPosition(new Coordinate(latitude, longitude));
           }
         };
     transition.play();
@@ -586,9 +559,16 @@ public class SimulationController {
           new Marker(ambulanceIcon, -15, -15)
               .setPosition(coordinates)
               .setVisible(checkShowAmbulances.isSelected());
+      var label =
+          new MapLabel(String.valueOf(ambulance.id), 5, 5)
+              .setPosition(coordinates)
+              .setCssClass("ambulance-label")
+              .setVisible(checkShowAmbulanceLabels.isSelected());
 
       ambulanceMarkers.put(ambulance, marker);
+      ambulanceLabels.put(ambulance, label);
       mapView.addMarker(marker);
+      mapView.addLabel(label);
     }
   }
 
@@ -708,12 +688,21 @@ public class SimulationController {
 
   @FXML
   private void setVisibilityAmbulances() {
-    logger.info("Setting ambulance layer visibility to " + checkShowAmbulances.isSelected());
+    logger.info("Setting ambulance visibility to " + checkShowAmbulances.isSelected());
     ambulanceMarkers.values().forEach(mapView::removeMarker);
-    ambulanceMarkers
-        .values()
-        .forEach(marker -> marker.setVisible(checkShowAmbulances.isSelected()));
+    ambulanceLabels.values().forEach(mapView::removeLabel);
+    ambulanceMarkers.values().forEach(m -> m.setVisible(checkShowAmbulances.isSelected()));
+    ambulanceLabels.values().forEach(l -> l.setVisible(checkShowAmbulances.isSelected()));
     ambulanceMarkers.values().forEach(mapView::addMarker);
+    ambulanceLabels.values().forEach(mapView::addLabel);
+  }
+
+  @FXML
+  private void setVisibilityAmbulanceLabels() {
+    logger.info("Setting ambulance labels visibility to " + checkShowAmbulanceLabels.isSelected());
+    ambulanceLabels.values().forEach(mapView::removeLabel);
+    ambulanceLabels.values().forEach(l -> l.setVisible(checkShowAmbulanceLabels.isSelected()));
+    ambulanceLabels.values().forEach(mapView::addLabel);
   }
 
   @FXML
