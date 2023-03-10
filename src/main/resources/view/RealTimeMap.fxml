@@ -29,35 +29,23 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Separator?>
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
-  prefHeight="800.0"
-  prefWidth="1200.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+  prefHeight="900.0"
+  prefWidth="1400.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
   fx:controller="no.ntnu.ambulanceallocation.simulation.SimulationController">
-
-  <top>
-    <HBox fx:id="topControls" alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
-      <padding>
-        <Insets bottom="5.0" left="10.0" right="10.0" top="5.0"/>
-      </padding>
-      <Button fx:id="centerMap" text="Center map" onAction="#centerMap"/>
-      <Slider fx:id="sliderZoom" blockIncrement="1.0" majorTickUnit="7.0" max="28.0"
-        minorTickCount="6"
-        showTickLabels="true" showTickMarks="true" snapToTicks="true" value="14.0"
-        HBox.hgrow="ALWAYS"/>
-    </HBox>
-  </top>
 
   <center>
     <MapView fx:id="mapView" BorderPane.alignment="CENTER"/>
   </center>
 
   <bottom>
-    <HBox alignment="CENTER_LEFT" spacing="5.0" BorderPane.alignment="CENTER">
+    <HBox alignment="CENTER_RIGHT" spacing="20.0" BorderPane.alignment="CENTER">
       <padding>
         <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
       </padding>
       <Label fx:id="labelCenter" text="Center: "/>
-      <Label fx:id="labelZoom" text="Zoom: "/>
+      <Button fx:id="centerMap" text="Center map" onAction="#centerMap"/>
     </HBox>
   </bottom>
 
@@ -94,10 +82,8 @@
             <Label fx:id="currentTime" text="Current time: "/>
             <Label fx:id="activeAmbulances" text="Active ambulances: "/>
             <Label text="Simulation update interval:"/>
-            <Slider fx:id="simulationUpdateIntervalSlider" blockIncrement="1.0"
-              majorTickUnit="50.0" max="1000.0" min="5.0" minorTickCount="10"
-              showTickLabels="true" showTickMarks="true" value="400.0"
-              HBox.hgrow="ALWAYS"/>
+            <Slider fx:id="simulationUpdateIntervalSlider" min="5.0" max="500.0" value="250.0"
+              majorTickUnit="100.0" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
             <Button fx:id="startSimulationButton" text="Start simulation"
               onAction="#startSimulation" maxWidth="Infinity"/>
           </VBox>
@@ -105,22 +91,28 @@
 
         <TitledPane text="Layers">
           <VBox spacing="10.0">
+            <CheckBox fx:id="checkShowHospitals" text="Hospitals" maxWidth="Infinity"
+              onAction="#setVisibilityHospitals"/>
+            <CheckBox fx:id="checkShowBaseStations" text="Base stations" maxWidth="Infinity"
+              onAction="#setVisibilityBaseStations"/>
+            <CheckBox fx:id="checkShowAmbulances" text="Ambulances" maxWidth="Infinity"
+              onAction="#setVisibilityAmbulances"/>
+            <CheckBox fx:id="checkShowIncidents" text="Incidents" maxWidth="Infinity"
+              onAction="#setVisibilityIncidents"/>
+            <CheckBox fx:id="checkShowPathLines" text="Path lines" maxWidth="Infinity"
+              onAction="#setVisibilityPathLines"/>
+            <CheckBox fx:id="checkShowLabels" text="Labels" maxWidth="Infinity"
+              onAction="#setVisibilityLabels"/>
+
+            <Separator/>
+            <Label text="Debugging:"/>
+
+            <CheckBox fx:id="checkShowAmbulanceLabels" text="Ambulance labels" maxWidth="Infinity"
+              onAction="#setVisibilityAmbulanceLabels"/>
             <CheckBox fx:id="checkShowGridCentroids" text="Grid centroids" maxWidth="Infinity"
               onAction="#setVisibilityGridCentroids"/>
             <CheckBox fx:id="checkShowGridLabels" text="Grid labels" maxWidth="Infinity"
               onAction="#setVisibilityGridLabels"/>
-            <CheckBox fx:id="checkShowPathLines" text="Path lines" maxWidth="Infinity"
-              onAction="#setVisibilityPathLines"/>
-            <CheckBox fx:id="checkShowHospitals" text="Hospitals" maxWidth="Infinity"
-              onAction="#setVisibilityHospitals"/>
-            <CheckBox fx:id="checkShowLabels" text="Labels" maxWidth="Infinity"
-              onAction="#setVisibilityLabels"/>
-            <CheckBox fx:id="checkShowBaseStations" text="Base stations" maxWidth="Infinity"
-              onAction="#setVisibilityBaseStations"/>
-            <CheckBox fx:id="checkShowIncidents" text="Incidents" maxWidth="Infinity"
-              onAction="#setVisibilityIncidents"/>
-            <CheckBox fx:id="checkShowAmbulances" text="Ambulances" maxWidth="Infinity"
-              onAction="#setVisibilityAmbulances"/>
           </VBox>
         </TitledPane>
 
@@ -134,24 +126,11 @@
               toggleGroup="$mapTypeGroup"/>
             <RadioButton fx:id="radioMsXYZ" text="XYZ source" toggleGroup="$mapTypeGroup"/>
             <RadioButton fx:id="radioMsBR" text="Bing Roads" toggleGroup="$mapTypeGroup"/>
-            <RadioButton fx:id="radioMsCd" text="Bing Roads - dark"
-              toggleGroup="$mapTypeGroup"/>
-            <RadioButton fx:id="radioMsCg" text="Bing Roads - grayscale"
-              toggleGroup="$mapTypeGroup"/>
-            <RadioButton fx:id="radioMsCl" text="Bing Roads - light"
-              toggleGroup="$mapTypeGroup"/>
-            <RadioButton fx:id="radioMsBA" text="Bing Aerial" toggleGroup="$mapTypeGroup"/>
-            <RadioButton fx:id="radioMsBAwL" text="Bing Aerial with Labels"
-              toggleGroup="$mapTypeGroup"/>
-          </VBox>
-        </TitledPane>
 
-        <TitledPane text="Misc.">
-          <VBox spacing="10.0">
-            <Label text="animation duration"/>
-            <TextField fx:id="animationDuration" prefWidth="120.0" promptText="milliseconds"/>
-            <Label text="Bing Maps API-Key"/>
-            <TextField fx:id="bingMapsApiKey" prefWidth="120.0" promptText="API-Key"/>
+            <Separator/>
+
+            <Label text="zoom animation duration"/>
+            <TextField fx:id="animationDuration" prefWidth="120.0" promptText="milliseconds" text="Zoom animation duration"/>
           </VBox>
         </TitledPane>
 

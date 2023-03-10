@@ -2,6 +2,8 @@ package no.ntnu.ambulanceallocation.simulation;
 
 import java.time.LocalDateTime;
 import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 
 public record Config(
     LocalDateTime START_DATE_TIME,
@@ -13,7 +15,7 @@ public record Config(
     int UPDATE_LOCATION_PERIOD,
     boolean USE_URGENCY_FITNESS,
     boolean ENABLE_REDISPATCH,
-    int REDISPATCH_TIME,
+    boolean ENABLE_QUEUE_NEXT,
     DispatchDelay DISPATCH_DELAY) {
 
   public static Config defaultConfig() {
@@ -27,7 +29,7 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME,
+        Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY);
   }
 
@@ -42,7 +44,7 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME,
+        Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY);
   }
 
@@ -57,7 +59,7 @@ public record Config(
         Parameters.UPDATE_LOCATION_PERIOD,
         Parameters.USE_URGENCY_FITNESS,
         Parameters.ENABLE_REDISPATCH,
-        Parameters.REDISPATCH_TIME,
+        Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY);
   }
 }

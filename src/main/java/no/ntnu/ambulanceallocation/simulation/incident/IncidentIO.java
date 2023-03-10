@@ -1,17 +1,26 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
+import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.getCoordinateFromString;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.utils.Utils;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,13 +30,17 @@ public class IncidentIO {
 
   public static final String incidentsFilePath =
       new File("src/main/resources/data/incidents.csv").getAbsolutePath();
+  public static final String incidentDistributionFilePath =
+      new File("src/main/resources/data/incidents_distribution.json").getAbsolutePath();
   public static final DateTimeFormatter dateTimeFormatter =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   public static final List<Incident> incidents;
+  public static final Map<Coordinate, IncidentDistribution> distributions;
 
   static {
     incidents = loadIncidentsFromFile();
+    distributions = loadDistributionsFromFile();
   }
 
   public static List<Incident> loadIncidentsFromFile() {
@@ -52,7 +65,8 @@ public class IncidentIO {
 
         if (isValid(values)) {
           var urgencyLevel = UrgencyLevel.get(values.get(3));
-          var changeUrgency = Parameters.PRESET_URGENCY
+          var changeUrgency =
+              Parameters.PRESET_URGENCY
                   && urgencyLevel.equals(UrgencyLevel.ACUTE)
                   && Utils.randomDouble() < Parameters.PRESET_URGENCY_PROBABILITY;
 
@@ -125,5 +139,47 @@ public class IncidentIO {
       return Optional.empty();
     }
     return Optional.of(LocalDateTime.parse(dateTime, dateTimeFormatter));
+  }
+
+  private static Map<Coordinate, IncidentDistribution> loadDistributionsFromFile() {
+    logger.info("Loading distributions from file...");
+    var distributions = new HashMap<Coordinate, IncidentDistribution>();
+
+    try {
+      var distributionJsonObject =
+          new JSONObject(Files.readString(Path.of(incidentDistributionFilePath)));
+
+      for (var originKey : distributionJsonObject.names()) {
+        var origin = getCoordinateFromString(originKey.toString());
+        var monthJsonObject = (JSONObject) distributionJsonObject.get(originKey.toString());
+        var monthMap = new HashMap<Integer, Map<Integer, Map<Integer, Double>>>();
+
+        for (var monthKey : monthJsonObject.names()) {
+          var month = Integer.parseInt(monthKey.toString());
+          var weekdayJsonObject = (JSONObject) monthJsonObject.get(monthKey.toString());
+          var weekdayMap = new HashMap<Integer, Map<Integer, Double>>();
+
+          for (var weekdayKey : weekdayJsonObject.names()) {
+            var weekday = Integer.parseInt(weekdayKey.toString());
+            var hourJsonObject = (JSONObject) weekdayJsonObject.get(weekdayKey.toString());
+            var hourMap = new HashMap<Integer, Double>();
+
+            for (var hourKey : hourJsonObject.names()) {
+              var hour = Integer.parseInt(hourKey.toString());
+              hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+            }
+            weekdayMap.put(weekday, hourMap);
+          }
+          monthMap.put(month, weekdayMap);
+        }
+        distributions.put(origin, new IncidentDistribution(monthMap));
+      }
+    } catch (JSONException | IOException e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} distributions.", distributions.size());
+    return distributions;
   }
 }

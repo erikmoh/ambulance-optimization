@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.PriorityQueue;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
-import no.ntnu.ambulanceallocation.simulation.event.JobCompletion;
+import no.ntnu.ambulanceallocation.simulation.event.HospitalArrival;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
@@ -46,7 +46,7 @@ public class PriorityQueueTest {
   @Test
   public void shouldPollEventsInCorrectOrderWhenInserted() {
     for (var i = 0; i < 30; i++) {
-      eventQueue.add(new JobCompletion(startDateTime.plusSeconds(40 * i + i), null, null));
+      eventQueue.add(new HospitalArrival(startDateTime.plusSeconds(40 * i + i), null, null));
     }
 
     var testResult = true;

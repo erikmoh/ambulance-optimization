@@ -3,7 +3,7 @@ package no.ntnu.ambulanceallocation.simulation.event;
 import java.time.LocalDateTime;
 
 public abstract sealed class Event implements Comparable<Event>
-    permits NewCall, SceneDeparture, JobCompletion, LocationUpdate {
+    permits NewCall, SceneDeparture, HospitalArrival, LocationUpdate {
 
   private final LocalDateTime time;
   public final NewCall newCall;
