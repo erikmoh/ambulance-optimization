@@ -58,6 +58,11 @@ public enum DispatchPolicy {
         return;
       }
 
+      var coveragePenaltyImportance = 1;
+      if (!incident.urgencyLevel().equals(UrgencyLevel.URGENT)) {
+        coveragePenaltyImportance = 2;
+      }
+
       var numAvailable =
           (int) baseStationAmbulances.stream().filter(Ambulance::isAvailable).count();
 
@@ -68,7 +73,7 @@ public enum DispatchPolicy {
             default -> 0;
           };
 
-      ambulance.updateCoveragePenalty(penalty);
+      ambulance.updateCoveragePenalty(penalty * coveragePenaltyImportance);
     }
   },
 
@@ -93,6 +98,11 @@ public enum DispatchPolicy {
         return;
       }
 
+      var coveragePenaltyImportance = 1;
+      if (!incident.urgencyLevel().equals(UrgencyLevel.URGENT)) {
+        coveragePenaltyImportance = 2;
+      }
+
       var closeAmbulances =
           (int)
               availableAmbulances.stream()
@@ -113,7 +123,7 @@ public enum DispatchPolicy {
             default -> 0;
           };
 
-      ambulance.updateCoveragePenalty(penalty);
+      ambulance.updateCoveragePenalty(penalty * coveragePenaltyImportance);
     }
   },
 
@@ -136,6 +146,11 @@ public enum DispatchPolicy {
       if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
         ambulance.updateCoveragePenalty(0);
         return;
+      }
+
+      var coveragePenaltyImportance = 1;
+      if (!incident.urgencyLevel().equals(UrgencyLevel.URGENT)) {
+        coveragePenaltyImportance = 2;
       }
 
       // using the hour when the ambulance will arrive at incident instead of when the ambulance is
@@ -170,7 +185,7 @@ public enum DispatchPolicy {
 
       var uncoveredDemand = max(0.0, totalAreaDemand - (neighbourAmbulanceCount - 1));
 
-      ambulance.updateCoveragePenalty((int) uncoveredDemand * 180);
+      ambulance.updateCoveragePenalty((int) uncoveredDemand * 180 * coveragePenaltyImportance);
     }
   };
 
