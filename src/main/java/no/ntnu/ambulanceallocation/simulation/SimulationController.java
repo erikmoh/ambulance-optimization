@@ -506,13 +506,17 @@ public class SimulationController {
       if (!baseStationCoordinateList.contains(destinationCoordinate)
           && !hospitalCoordinateList.contains(destinationCoordinate)) {
 
+        var color =
+            switch (ambulance.getIncident().urgencyLevel()) {
+              case ACUTE -> "#ff0000";
+              case URGENT -> "#ffff00";
+              default -> "0000ff";
+            };
+
         destinationCircles.put(
             ambulance,
             new MapCircle(destinationCoordinate, 1000)
-                .setColor(
-                    ambulance.getIncident().urgencyLevel() == UrgencyLevel.ACUTE
-                        ? Color.web("#ff0000", 0.7)
-                        : Color.web("#ffff00", 0.7))
+                .setColor(Color.web(color, 0.7))
                 .setVisible(checkShowIncidents.isSelected()));
         mapView.addMapCircle(destinationCircles.get(ambulance));
       }

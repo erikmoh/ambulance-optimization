@@ -125,9 +125,9 @@ public enum DispatchPolicy {
       ambulance.updateTimeTo(incident);
 
       var hospitalLocation = ambulance.getHospitalLocation();
-      var isTransporting =
+      var travelingToHospital =
           ambulance.isTransport() && ambulance.getDestination().equals(hospitalLocation);
-      if (isTransporting) {
+      if (travelingToHospital) {
         // time from prev incident to hospital + time to this next incident
         ambulance.updateTimeTo(
             ambulance.getTimeToHospital() + hospitalLocation.timeTo(incident.getLocation()));
@@ -138,11 +138,12 @@ public enum DispatchPolicy {
         return;
       }
 
-      // using the hour when the ambulance will arrive at incident
+      // using the hour when the ambulance will arrive at incident instead of when the ambulance is
+      // ready, since arrival time can be approximated using the known travel time
       var arrivalTime = incident.callReceived().plusSeconds(ambulance.getTimeToIncident());
 
       var location = ambulance.getCurrentLocation();
-      if (isTransporting) {
+      if (travelingToHospital) {
         // if the ambulance is transporting to hospital, use the location of hospital
         location = hospitalLocation;
       }

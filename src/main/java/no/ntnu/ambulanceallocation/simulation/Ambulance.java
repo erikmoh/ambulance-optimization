@@ -96,10 +96,12 @@ public class Ambulance {
     return incident == null && !isOffDuty;
   }
 
-  public boolean canBeReassigned() {
+  public boolean canBeReassigned(Incident newIncident) {
     return !isOffDuty
         && incident != null
         && incident.urgencyLevel() != UrgencyLevel.ACUTE
+        // only reassign if new incident is more urgent
+        && incident.urgencyLevel() != newIncident.urgencyLevel()
         // not at scene
         && !currentLocation.equals(incident.getLocation())
         // not transporting to hospital
@@ -287,8 +289,8 @@ public class Ambulance {
     coveragePenalty = penalty;
   }
 
-  public int getCoveragePenalty() {
-    return coveragePenalty;
+  public int getDispatchScore() {
+    return timeToIncident + coveragePenalty;
   }
 
   public void setWasReassigned(boolean status) {

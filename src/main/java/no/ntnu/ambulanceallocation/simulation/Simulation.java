@@ -341,9 +341,7 @@ public final class Simulation {
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted
     var nearestAmbulances =
-        available.stream()
-            .sorted(Comparator.comparing(a -> a.getTimeToIncident() + a.getCoveragePenalty()))
-            .toList();
+        available.stream().sorted(Comparator.comparing(Ambulance::getDispatchScore)).toList();
 
     // dispatch transport ambulances
     var hospital = transportDemand > 0 ? findNearestHospital(incident) : null;
@@ -391,8 +389,7 @@ public final class Simulation {
 
     // add ambulances that are already on their way to an incident
     if (doReDispatch(incident)) {
-      //
-      reassignAmbulances.addAll(Utils.filterList(ambulances, Ambulance::canBeReassigned));
+      reassignAmbulances.addAll(Utils.filterList(ambulances, a -> a.canBeReassigned(incident)));
       availableAmbulances.addAll(reassignAmbulances);
     }
 
@@ -404,7 +401,8 @@ public final class Simulation {
   }
 
   private boolean doReDispatch(Incident incident) {
-    return config.ENABLE_REDISPATCH() && incident.urgencyLevel().equals(UrgencyLevel.ACUTE);
+    return config.ENABLE_REDISPATCH() && incident.urgencyLevel().equals(UrgencyLevel.ACUTE)
+        || incident.urgencyLevel().equals(UrgencyLevel.URGENT);
   }
 
   private boolean doQueueNext(int totalDemand) {

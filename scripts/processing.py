@@ -63,11 +63,9 @@ def filter_incomplete_years(df):
 
 def keep_period_of_interest(df, buffer_size=0):
   time = df.index + pd.Timedelta(hours=buffer_size)
-  all_2015 = df[time.year == 2015]
-  all_2016 = df[time.year == 2016]
   all_2017 = df[time.year == 2017]
   all_2018 = df[time.year == 2018]
-  return pd.concat([all_2015, all_2016, all_2017, all_2018])
+  return pd.concat([all_2017, all_2018])
 
 
 def filter_urgency_levels(df):
@@ -181,7 +179,7 @@ def main():
   funnel_statistics = []
 
   input_data_file = 'proprietary_data/cleaned_data.csv'
-  output_data_file = 'proprietary_data/processed_data.csv'
+  output_data_file = 'proprietary_data/incidents_all.csv'
 
   buffer_size = 4  # hours
 
@@ -218,7 +216,7 @@ def main():
     select_features,
     save_intermediate,
     filter_dispatch_types,
-    filter_urgency_levels,
+    #filter_urgency_levels,
     aggregate_concurrent_incidents,
     set_index,
     sort_index,

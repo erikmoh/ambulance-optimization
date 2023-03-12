@@ -49,6 +49,7 @@ public final class Parameters {
   public static final double MUTATION_PROBABILITY = 0.05;
   public static final double IMPROVE_PROBABILITY = 0.25;
 
+  public static final boolean INCLUDE_REGULAR_INCIDENTS = true;
   public static final boolean USE_URGENCY_FITNESS = false;
   public static final boolean PRESET_URGENCY = false;
   public static final double PRESET_URGENCY_PROBABILITY = 0.67; // change every 3rd acute incident

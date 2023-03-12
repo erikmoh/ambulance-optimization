@@ -131,6 +131,13 @@ public class IncidentIO {
   }
 
   private static boolean isValid(List<String> values) {
+    var urgency = UrgencyLevel.get(values.get(3));
+    if (!Parameters.INCLUDE_REGULAR_INCIDENTS
+        && !urgency.equals(UrgencyLevel.ACUTE)
+        && !urgency.equals(UrgencyLevel.URGENT)) {
+      return false;
+    }
+
     return !values.get(5).isBlank() && !values.get(8).isBlank();
   }
 
