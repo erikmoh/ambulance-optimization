@@ -1,16 +1,13 @@
 import argparse
 import functools
 import shutil
-import warnings
 
 import pandas as pd
+pd.options.mode.chained_assignment = None  # default='warn'
 
-# from pandas.core.common import SettingWithCopyWarning
 from statistics import mode
 from time import time
-# from plots.funnel import plot_funnel
-
-# warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+from plots.funnel import plot_funnel
 
 
 def print_step(func):
@@ -115,6 +112,14 @@ def aggregate_concurrent_incidents(df):
   df[['non_transporting_vehicles', 'transporting_vehicles']] = df[[
     'non_transporting_vehicles', 'transporting_vehicles']].astype(int)
 
+  df.loc[df.avg_hentested < df.ank_hentested, 'ank_hentested'] = None
+
+  return df
+
+
+def calltime_to_datetime(df):
+  df['tidspunkt'] = pd.to_datetime(df['tidspunkt'], dayfirst=True)
+  df = df.set_index('tidspunkt')
   return df
 
 
@@ -125,8 +130,6 @@ def convert_to_datetime(df):
   df['avg_hentested'] = pd.to_datetime(df['avg_hentested'], dayfirst=True)
   df['ank_levsted'] = pd.to_datetime(df['ank_levsted'], dayfirst=True)
   df['ledig'] = pd.to_datetime(df['ledig'], dayfirst=True)
-  df['tidspunkt'] = pd.to_datetime(df['tidspunkt'], dayfirst=True)
-  df = df.set_index('tidspunkt')
   return df
 
 
@@ -164,12 +167,12 @@ def get_args():
 
 
 def save_data(df, output_data_file):
-  # plot_funnel(*zip(*funnel_statistics))
+  #plot_funnel(*zip(*funnel_statistics))
 
   df.to_csv(output_data_file, index=False)
 
-  #destination_file = '../src/main/resources/incidents.csv'
-  #shutil.copyfile(output_data_file, destination_file)
+  destination_file = '../src/main/resources/incidents.csv'
+  shutil.copyfile(output_data_file, destination_file)
 
 
 def main():
@@ -183,13 +186,13 @@ def main():
 
   buffer_size = 4  # hours
 
-  fields = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
-            'avg_hentested',
-            'ank_levsted', 'ledig', 'xcoor', 'ycoor', 'hastegrad',
-            'tiltak_type', 'ssbid1000M']
+  fields = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested', 'avg_hentested',
+            'ank_levsted', 'ledig', 'xcoor', 'ycoor', 'hastegrad', 'tiltak_type', 'ssbid1000M']
 
   df = pd.read_csv(input_data_file, encoding='utf-8', escapechar='\\',
-                   usecols=fields, parse_dates=True)
+                   usecols=fields, parse_dates=True, low_memory=False)
+  
+  # df = pd.read_pickle("proprietary_data/df.pkl")
 
   def filter_years(df):
     if args.keep_all_years:
@@ -197,6 +200,7 @@ def main():
     return keep_period_of_interest(df, buffer_size=buffer_size)
 
   def save_intermediate(df):
+    df.to_pickle("proprietary_data/df.pkl")
     if args.keep_all_years:
       intermediate_data_file = 'proprietary_data/half_processed_data.csv'
       temp_df = df[['xcoor', 'ycoor', 'hastegrad', 'tiltak_type',
@@ -207,16 +211,19 @@ def main():
     return df
 
   steps = [
-    convert_to_datetime,
+    calltime_to_datetime,
+    filter_incomplete_years,
     filter_years,
     filter_regions,
-    filter_incomplete_years,
+    convert_to_datetime,
     filter_erroneous_timestamps,
-    filter_response_time_outliers,
+    # keeping response time outliers because we only use simulated response time, 
+    # and put less interest in comparing to historic response times. 
+    # filter_response_time_outliers,
     select_features,
     save_intermediate,
     filter_dispatch_types,
-    #filter_urgency_levels,
+    # filter_urgency_levels,
     aggregate_concurrent_incidents,
     set_index,
     sort_index,
