@@ -25,7 +25,6 @@ import no.ntnu.ambulanceallocation.simulation.event.SceneDeparture;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
-import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 import no.ntnu.ambulanceallocation.utils.SimulatedIncidentResult;
 import no.ntnu.ambulanceallocation.utils.TriConsumer;
 import no.ntnu.ambulanceallocation.utils.Utils;
@@ -145,7 +144,9 @@ public final class Simulation {
   }
 
   private NewCall toNewCall(Incident incident) {
-    var providesResponseTime = incident.callReceived().isAfter(config.START_DATE_TIME());
+    var providesResponseTime =
+        incident.callReceived().isAfter(config.START_DATE_TIME())
+            && !incident.urgencyLevel().isRegular();
     return new NewCall(incident, providesResponseTime);
   }
 
@@ -280,11 +281,13 @@ public final class Simulation {
   }
 
   private void handleHospitalArrival(HospitalArrival hospitalArrival) {
-    hospitalArrival.ambulance.arriveAtHospital();
+    var ambulance = hospitalArrival.ambulance;
 
-    jobCompleted(hospitalArrival.ambulance, hospitalArrival.newCall);
+    ambulance.arriveAtHospital();
 
-    hospitalArrival.ambulance.dispatchNextCall();
+    jobCompleted(ambulance, hospitalArrival.newCall);
+
+    ambulance.dispatchNextCall();
   }
 
   private void jobCompleted(Ambulance ambulance, NewCall newCall) {
@@ -401,8 +404,7 @@ public final class Simulation {
   }
 
   private boolean doReDispatch(Incident incident) {
-    return config.ENABLE_REDISPATCH() && incident.urgencyLevel().equals(UrgencyLevel.ACUTE)
-        || incident.urgencyLevel().equals(UrgencyLevel.URGENT);
+    return config.ENABLE_REDISPATCH() && !incident.urgencyLevel().isRegular();
   }
 
   private boolean doQueueNext(int totalDemand) {
