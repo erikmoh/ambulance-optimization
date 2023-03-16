@@ -105,18 +105,20 @@ public class IncidentIO {
     if (changeUrgency) {
       urgencyLevel = UrgencyLevel.URGENT;
     }
-    // String dispatchType = values.get(4); // Always ambulance
+    // var dispatchType = values.get(4); // Always ambulance
 
-    var dispatched = LocalDateTime.parse(values.get(5), dateTimeFormatter);
-    var arrivalAtScene = parseDateTime(values.get(6));
-    var departureFromScene = parseDateTime(values.get(7));
-    var availableNonTransport = LocalDateTime.parse(values.get(8), dateTimeFormatter);
-    var availableTransport = LocalDateTime.parse(values.get(9), dateTimeFormatter);
+    var ambulanceNotified = parseDateTime(values.get(5));
+    var dispatched = LocalDateTime.parse(values.get(6), dateTimeFormatter);
+    var arrivalAtScene = parseDateTime(values.get(7));
+    var departureFromScene = parseDateTime(values.get(8));
+    var availableNonTransport = LocalDateTime.parse(values.get(9), dateTimeFormatter);
+    var availableTransport = LocalDateTime.parse(values.get(10), dateTimeFormatter);
 
-    var nonTransportingVehicles = Integer.parseInt(values.get(10));
-    var transportingVehicles = Integer.parseInt(values.get(11));
+    var nonTransportingVehicles = Integer.parseInt(values.get(11));
+    var transportingVehicles = Integer.parseInt(values.get(12));
 
     return new Incident(
+        ambulanceNotified,
         callReceived,
         xCoordinate,
         yCoordinate,
@@ -136,7 +138,7 @@ public class IncidentIO {
       return false;
     }
 
-    return !values.get(5).isBlank() && !values.get(8).isBlank();
+    return !values.get(6).isBlank() && !values.get(9).isBlank();
   }
 
   private static Optional<LocalDateTime> parseDateTime(String dateTime) {

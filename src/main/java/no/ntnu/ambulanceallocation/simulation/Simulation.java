@@ -230,10 +230,11 @@ public final class Simulation {
 
     var incident = newCall.incident;
     var firstAmbulance = dispatchedAmbulances.get(0);
+    var delay = firstAmbulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
     var travelTime = firstAmbulance.timeTo(incident);
 
     // set or update travel time
-    plannedTravelTimes.put(newCall, travelTime);
+    plannedTravelTimes.put(newCall, delay + travelTime);
 
     var timeToNextEvent = 0;
 
@@ -462,7 +463,7 @@ public final class Simulation {
     var simulatedDispatchTime =
         (int) ChronoUnit.SECONDS.between(incident.callReceived(), newCall.getTime());
 
-    var responseTime = config.DISPATCH_DELAY().get(incident) + simulatedDispatchTime + travelTime;
+    var responseTime = simulatedDispatchTime + travelTime;
     if (responseTime < 0) {
       throw new IllegalStateException("Response time should never be negative");
     }

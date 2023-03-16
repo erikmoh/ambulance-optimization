@@ -48,7 +48,8 @@ def filter_regions(df):
 
 
 def select_features(df):
-  features_to_keep = ['rykker_ut', 'ank_hentested', 'avg_hentested',
+  # in addition to index (tidspunkt)
+  features_to_keep = ['varslet', 'rykker_ut', 'ank_hentested', 'avg_hentested',
                       'ank_levsted', 'ledig', 'xcoor', 'ycoor', 'hastegrad',
                       'tiltak_type']
   return df[features_to_keep]
@@ -96,6 +97,7 @@ def aggregate_concurrent_incidents(df):
 
   agg_strategy = {
     'tiltak_type': mode,
+    'varslet': min,
     'rykker_ut': min,
     'ank_hentested': min,
     'avg_hentested': min,
