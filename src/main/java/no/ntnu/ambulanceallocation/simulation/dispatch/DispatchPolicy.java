@@ -42,19 +42,8 @@ public enum DispatchPolicy {
     public void updateAmbulance(
         Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
 
-      ambulance.updateTimeTo(incident);
-
-      var hospitalLocation = ambulance.getHospitalLocation();
-      var isTransporting =
-          ambulance.isTransport() && ambulance.getDestination().equals(hospitalLocation);
-      if (isTransporting) {
-        // time from prev incident to hospital + time to this next incident
-        ambulance.updateTimeTo(
-            ambulance.getTimeToHospital() + hospitalLocation.timeTo(incident.getLocation()));
-      }
-
-      if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
-        ambulance.updateCoveragePenalty(0);
+      int coveragePenaltyImportance = updateCoverage(ambulance, incident);
+      if (coveragePenaltyImportance == 0) {
         return;
       }
 
@@ -68,7 +57,7 @@ public enum DispatchPolicy {
             default -> 0;
           };
 
-      ambulance.updateCoveragePenalty(penalty);
+      ambulance.updateCoveragePenalty(penalty * coveragePenaltyImportance);
     }
   },
 
@@ -77,28 +66,19 @@ public enum DispatchPolicy {
     public void updateAmbulance(
         Ambulance ambulance, List<Ambulance> availableAmbulances, Incident incident) {
 
-      ambulance.updateTimeTo(incident);
-
-      var hospitalLocation = ambulance.getHospitalLocation();
-      var isTransporting =
-          ambulance.isTransport() && ambulance.getDestination().equals(hospitalLocation);
-      if (isTransporting) {
-        // time from prev incident to hospital + time to this next incident
-        ambulance.updateTimeTo(
-            ambulance.getTimeToHospital() + hospitalLocation.timeTo(incident.getLocation()));
-      }
-
-      if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
-        ambulance.updateCoveragePenalty(0);
+      int coveragePenaltyImportance = updateCoverage(ambulance, incident);
+      if (coveragePenaltyImportance == 0) {
         return;
       }
+
+      var hospitalLocation = ambulance.getHospitalLocation();
 
       var closeAmbulances =
           (int)
               availableAmbulances.stream()
                   .mapToLong(
                       a -> {
-                        if (isTransporting) {
+                        if (ambulance.isTransportingPatient()) {
                           return a.getCurrentLocation().timeTo(hospitalLocation);
                         }
                         return ambulance.timeTo(a);
@@ -113,7 +93,7 @@ public enum DispatchPolicy {
             default -> 0;
           };
 
-      ambulance.updateCoveragePenalty(penalty);
+      ambulance.updateCoveragePenalty(penalty * coveragePenaltyImportance);
     }
   },
 
@@ -122,29 +102,19 @@ public enum DispatchPolicy {
     public void updateAmbulance(
         Ambulance ambulance, List<Ambulance> availableAmbulances, Incident incident) {
 
-      ambulance.updateTimeTo(incident);
-
-      var hospitalLocation = ambulance.getHospitalLocation();
-      var isTransporting =
-          ambulance.isTransport() && ambulance.getDestination().equals(hospitalLocation);
-      if (isTransporting) {
-        // time from prev incident to hospital + time to this next incident
-        ambulance.updateTimeTo(
-            ambulance.getTimeToHospital() + hospitalLocation.timeTo(incident.getLocation()));
-      }
-
-      if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
-        ambulance.updateCoveragePenalty(0);
+      int coveragePenaltyImportance = updateCoverage(ambulance, incident);
+      if (coveragePenaltyImportance == 0) {
         return;
       }
 
-      // using the hour when the ambulance will arrive at incident
+      // using the hour when the ambulance will arrive at incident instead of when the ambulance is
+      // ready, since arrival time can be approximated using the known travel time
       var arrivalTime = incident.callReceived().plusSeconds(ambulance.getTimeToIncident());
 
       var location = ambulance.getCurrentLocation();
-      if (isTransporting) {
+      if (ambulance.isTransportingPatient()) {
         // if the ambulance is transporting to hospital, use the location of hospital
-        location = hospitalLocation;
+        location = ambulance.getHospitalLocation();
       }
 
       // average demand in neighbourhood
@@ -169,9 +139,32 @@ public enum DispatchPolicy {
 
       var uncoveredDemand = max(0.0, totalAreaDemand - (neighbourAmbulanceCount - 1));
 
-      ambulance.updateCoveragePenalty((int) uncoveredDemand * 180);
+      ambulance.updateCoveragePenalty((int) uncoveredDemand * 180 * coveragePenaltyImportance);
     }
   };
+
+  private static Integer updateCoverage(Ambulance ambulance, Incident incident) {
+    ambulance.updateTimeTo(incident);
+
+    if (ambulance.isTransportingPatient()) {
+      // time from prev incident to hospital + time to this next incident
+      ambulance.updateTimeTo(
+          ambulance.getTimeToHospital()
+              + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+    }
+
+    if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
+      ambulance.updateCoveragePenalty(0);
+      return 0;
+    }
+
+    if (incident.urgencyLevel().isRegular()) {
+      // incident is unimportant, avoid dispatching ambulance in potentially busy area
+      return 2;
+    }
+
+    return 1;
+  }
 
   public abstract void updateAmbulance(
       Ambulance ambulance, List<Ambulance> otherAmbulances, Incident incident);

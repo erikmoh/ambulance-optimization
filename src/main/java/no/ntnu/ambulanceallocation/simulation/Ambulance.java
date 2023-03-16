@@ -30,6 +30,7 @@ public class Ambulance {
   private NewCall call;
   private NextCall nextCall;
   private int currentRouteIndex;
+  private boolean transportingPatient = false;
 
   private int timeToIncident;
   private int coveragePenalty = 0;
@@ -96,14 +97,28 @@ public class Ambulance {
     return incident == null && !isOffDuty;
   }
 
-  public boolean canBeReassigned() {
+  public boolean isStationary() {
+    return currentLocation.equals(destination) || route == null;
+  }
+
+  public boolean isTransport() {
+    return hospitalLocation != null;
+  }
+
+  public boolean isTransportingPatient() {
+    return transportingPatient;
+  }
+
+  public boolean canBeReassigned(Incident newIncident) {
     return !isOffDuty
         && incident != null
         && incident.urgencyLevel() != UrgencyLevel.ACUTE
+        // only reassign if new incident is more urgent
+        && incident.urgencyLevel() != newIncident.urgencyLevel()
         // not at scene
         && !currentLocation.equals(incident.getLocation())
-        // not transporting to hospital
-        && !destination.equals(hospitalLocation)
+        // not transporting a patient
+        && !transportingPatient
         // only one dispatched ambulance
         // (easier to reassign, could implement reassign solution for multiple ambulances)
         && incident.nonTransportingVehicles() + incident.transportingVehicles() == 1;
@@ -113,17 +128,9 @@ public class Ambulance {
     return !isOffDuty
         && incident != null
         // transporting to hospital
-        && destination.equals(hospitalLocation)
+        && transportingPatient
         // cannot already have a next call
         && nextCall == null;
-  }
-
-  public boolean isStationary() {
-    return currentLocation.equals(destination) || route == null;
-  }
-
-  public boolean isTransport() {
-    return hospitalLocation != null;
   }
 
   public void flagAsAvailable() {
@@ -136,6 +143,7 @@ public class Ambulance {
     route = DistanceIO.getRoute(originatingLocation, destination);
     currentRouteIndex = 0;
     wasReassigned = false;
+    transportingPatient = false;
   }
 
   public void dispatch(NewCall newCall, Coordinate hospital, boolean isNextCall) {
@@ -155,11 +163,12 @@ public class Ambulance {
   public void dispatchNextCall() {
     if (nextCall != null) {
       dispatch(nextCall.newCall, nextCall.hospitalLocation, false);
+      nextCall = null;
     }
-    nextCall = null;
   }
 
   public void transport() {
+    transportingPatient = true;
     travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(hospitalLocation);
@@ -287,8 +296,8 @@ public class Ambulance {
     coveragePenalty = penalty;
   }
 
-  public int getCoveragePenalty() {
-    return coveragePenalty;
+  public int getDispatchScore() {
+    return timeToIncident + coveragePenalty;
   }
 
   public void setWasReassigned(boolean status) {

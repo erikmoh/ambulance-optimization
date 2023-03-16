@@ -7,6 +7,7 @@ import java.util.Optional;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 
 public record Incident(
+    Optional<LocalDateTime> ambulanceNotified,
     LocalDateTime callReceived,
     int xCoordinate,
     int yCoordinate,
@@ -24,7 +25,12 @@ public record Incident(
   }
 
   public int getDispatchDelay() {
-    return (int) ChronoUnit.SECONDS.between(callReceived, dispatched);
+    if (ambulanceNotified.isEmpty() || ambulanceNotified.get().isAfter(dispatched)) {
+      // will be ignored
+      return 0;
+    }
+
+    return (int) ChronoUnit.SECONDS.between(ambulanceNotified.get(), dispatched);
   }
 
   public int getTimeSpentAtScene() {

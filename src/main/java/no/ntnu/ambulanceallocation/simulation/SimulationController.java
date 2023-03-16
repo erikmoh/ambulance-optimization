@@ -70,7 +70,7 @@ import no.ntnu.ambulanceallocation.optimization.initializer.Uniform;
 import no.ntnu.ambulanceallocation.optimization.initializer.UniformRandom;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
-import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
+import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -386,12 +386,8 @@ public class SimulationController {
               callQueue.stream()
                   .map(
                       call ->
-                          new MapCircle(utmToLatLongMap.get(call.incident.getLocation()), 1000)
-                              .setColor(
-                                  call.incident.urgencyLevel() == UrgencyLevel.ACUTE
-                                      ? Color.web("#ff0000", 0.7)
-                                      : Color.web("#ffff00", 0.7))
-                              .setVisible(checkShowIncidents.isSelected()))
+                          createIncidentCircle(
+                              call.incident, utmToLatLongMap.get(call.incident.getLocation())))
                   .toList();
           incidentCircleList.forEach(mapView::addMapCircle);
         });
@@ -458,9 +454,7 @@ public class SimulationController {
 
   private void updateAmbulanceDestinationLine(Ambulance ambulance) {
     Color color;
-    if (!ambulance.isAvailable()
-        && ambulance.isTransport()
-        && ambulance.getDestination().equals(ambulance.getHospitalLocation())) {
+    if (!ambulance.isAvailable() && ambulance.isTransportingPatient()) {
       color = Color.web("#ff0000", 0.9);
     } else if (ambulance.isAvailable()
         && ambulance.getDestination() == ambulance.getBaseStationLocation()) {
@@ -507,16 +501,24 @@ public class SimulationController {
           && !hospitalCoordinateList.contains(destinationCoordinate)) {
 
         destinationCircles.put(
-            ambulance,
-            new MapCircle(destinationCoordinate, 1000)
-                .setColor(
-                    ambulance.getIncident().urgencyLevel() == UrgencyLevel.ACUTE
-                        ? Color.web("#ff0000", 0.7)
-                        : Color.web("#ffff00", 0.7))
-                .setVisible(checkShowIncidents.isSelected()));
+            ambulance, createIncidentCircle(ambulance.getIncident(), destinationCoordinate));
+
         mapView.addMapCircle(destinationCircles.get(ambulance));
       }
     }
+  }
+
+  private MapCircle createIncidentCircle(Incident incident, Coordinate coordinate) {
+    var color =
+        switch (incident.urgencyLevel()) {
+          case ACUTE -> "#ff0000";
+          case URGENT -> "#ffff00";
+          default -> "0000ff";
+        };
+
+    return new MapCircle(coordinate, 1000)
+        .setColor(Color.web(color, 0.7))
+        .setVisible(checkShowIncidents.isSelected());
   }
 
   private void animateMarker(

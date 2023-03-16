@@ -25,7 +25,6 @@ import no.ntnu.ambulanceallocation.simulation.event.SceneDeparture;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
-import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 import no.ntnu.ambulanceallocation.utils.SimulatedIncidentResult;
 import no.ntnu.ambulanceallocation.utils.TriConsumer;
 import no.ntnu.ambulanceallocation.utils.Utils;
@@ -145,7 +144,9 @@ public final class Simulation {
   }
 
   private NewCall toNewCall(Incident incident) {
-    var providesResponseTime = incident.callReceived().isAfter(config.START_DATE_TIME());
+    var providesResponseTime =
+        incident.callReceived().isAfter(config.START_DATE_TIME())
+            && !incident.urgencyLevel().isRegular();
     return new NewCall(incident, providesResponseTime);
   }
 
@@ -229,10 +230,11 @@ public final class Simulation {
 
     var incident = newCall.incident;
     var firstAmbulance = dispatchedAmbulances.get(0);
+    var delay = firstAmbulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
     var travelTime = firstAmbulance.timeTo(incident);
 
     // set or update travel time
-    plannedTravelTimes.put(newCall, travelTime);
+    plannedTravelTimes.put(newCall, delay + travelTime);
 
     var timeToNextEvent = 0;
 
@@ -280,11 +282,13 @@ public final class Simulation {
   }
 
   private void handleHospitalArrival(HospitalArrival hospitalArrival) {
-    hospitalArrival.ambulance.arriveAtHospital();
+    var ambulance = hospitalArrival.ambulance;
 
-    jobCompleted(hospitalArrival.ambulance, hospitalArrival.newCall);
+    ambulance.arriveAtHospital();
 
-    hospitalArrival.ambulance.dispatchNextCall();
+    jobCompleted(ambulance, hospitalArrival.newCall);
+
+    ambulance.dispatchNextCall();
   }
 
   private void jobCompleted(Ambulance ambulance, NewCall newCall) {
@@ -341,9 +345,7 @@ public final class Simulation {
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted
     var nearestAmbulances =
-        available.stream()
-            .sorted(Comparator.comparing(a -> a.getTimeToIncident() + a.getCoveragePenalty()))
-            .toList();
+        available.stream().sorted(Comparator.comparing(Ambulance::getDispatchScore)).toList();
 
     // dispatch transport ambulances
     var hospital = transportDemand > 0 ? findNearestHospital(incident) : null;
@@ -391,8 +393,7 @@ public final class Simulation {
 
     // add ambulances that are already on their way to an incident
     if (doReDispatch(incident)) {
-      //
-      reassignAmbulances.addAll(Utils.filterList(ambulances, Ambulance::canBeReassigned));
+      reassignAmbulances.addAll(Utils.filterList(ambulances, a -> a.canBeReassigned(incident)));
       availableAmbulances.addAll(reassignAmbulances);
     }
 
@@ -404,7 +405,7 @@ public final class Simulation {
   }
 
   private boolean doReDispatch(Incident incident) {
-    return config.ENABLE_REDISPATCH() && incident.urgencyLevel().equals(UrgencyLevel.ACUTE);
+    return config.ENABLE_REDISPATCH() && !incident.urgencyLevel().isRegular();
   }
 
   private boolean doQueueNext(int totalDemand) {
@@ -462,7 +463,7 @@ public final class Simulation {
     var simulatedDispatchTime =
         (int) ChronoUnit.SECONDS.between(incident.callReceived(), newCall.getTime());
 
-    var responseTime = config.DISPATCH_DELAY().get(incident) + simulatedDispatchTime + travelTime;
+    var responseTime = simulatedDispatchTime + travelTime;
     if (responseTime < 0) {
       throw new IllegalStateException("Response time should never be negative");
     }
