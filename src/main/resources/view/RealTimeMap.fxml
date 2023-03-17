@@ -30,6 +30,8 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.shape.Circle?>
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
   prefHeight="900.0"
   prefWidth="1400.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
@@ -86,6 +88,36 @@
               majorTickUnit="100.0" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
             <Button fx:id="startSimulationButton" text="Start simulation"
               onAction="#startSimulation" maxWidth="Infinity"/>
+
+            <HBox spacing="5" alignment="CENTER_LEFT" style="-fx-padding: 25px 0 0 0 ;">
+              <Circle radius="5" fill="#FF9D5C" stroke="#FF0000" strokeWidth="2"/>
+              <Label style="-fx-alignment: center-left;" text="Acute"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+              <Circle radius="5" fill="#FF9D5C" stroke="#FFFF00" strokeWidth="2"/>
+              <Label style="-fx-alignment: center-left;" text="Urgent"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+              <Circle radius="5" fill="#FF9D5C" stroke="#0000FF" strokeWidth="2"/>
+              <Label style="-fx-alignment: center-left;" text="Regular"/>
+            </HBox>
+
+            <HBox spacing="5" alignment="CENTER_LEFT" style="-fx-padding: 25px 0 0 0 ;">
+              <Rectangle width="15" height="5" fill="#00FF00"/>
+              <Label style="-fx-alignment: center-left;" text="Traveling to incident"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+              <Rectangle width="15" height="5" fill="#FF0000"/>
+              <Label style="-fx-alignment: center-left;" text="Transporting patient"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+              <Rectangle width="15" height="5" fill="#0000FF"/>
+              <Label style="-fx-alignment: center-left;" text="Returning to base station"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+              <Rectangle width="15" height="5" fill="#FF00FF"/>
+              <Label style="-fx-alignment: center-left;" text="Reassigned to new incident"/>
+            </HBox>
           </VBox>
         </TitledPane>
 

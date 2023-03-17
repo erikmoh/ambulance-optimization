@@ -329,6 +329,10 @@ public class SimulationController {
             });
     mapTypeGroup.selectToggle(radioMsOSM);
 
+    // set current time to start time
+    currentTime.setText(
+        "Current time:\n" + Parameters.START_DATE_TIME.minusHours(Parameters.BUFFER_SIZE));
+
     // finally initialize the map view
     logger.trace("start map initialization");
     mapView.initialize(
