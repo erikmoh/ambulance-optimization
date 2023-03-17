@@ -369,7 +369,8 @@ public final class Simulation {
     var dispatchedAmbulances = Utils.concatenateLists(transportAmbulances, nonTransportAmbulances);
 
     // remove old events if ambulances were reassigned
-    removeOldDispatchEvents(dispatchedAmbulances, reassignable, newCall);
+    removeOldDispatchEvents(dispatchedAmbulances, reassignable);
+    dispatchedAmbulances.forEach(ambulance -> ambulance.setCall(newCall));
 
     // create partially responded call
     if (dispatchedTransport < transportDemand || dispatchedNonTransport < nonTransportDemand) {
@@ -415,21 +416,18 @@ public final class Simulation {
   }
 
   private void removeOldDispatchEvents(
-      List<Ambulance> dispatchedAmbulances, List<Ambulance> reassignAmbulances, NewCall newCall) {
+      List<Ambulance> dispatchedAmbulances, List<Ambulance> reassignAmbulances) {
     // remove old events for dispatched reassigned ambulances
-    if (config.ENABLE_REDISPATCH()) {
+    if (config.ENABLE_REDISPATCH() && !reassignAmbulances.isEmpty()) {
       reassignAmbulances.stream()
           .filter(dispatchedAmbulances::contains)
           .forEach(
               ambulance -> {
                 var oldCall = ambulance.getCall();
-                if (eventQueue.removeIf(
-                    e -> e instanceof SceneDeparture && e.newCall.equals(oldCall))) {
-                  handleNewCall(oldCall);
-                }
+                eventQueue.removeIf(e -> e instanceof SceneDeparture && e.newCall.equals(oldCall));
+                handleNewCall(oldCall);
                 ambulance.setWasReassigned(true);
               });
-      dispatchedAmbulances.forEach(ambulance -> ambulance.setCall(newCall));
     }
   }
 
