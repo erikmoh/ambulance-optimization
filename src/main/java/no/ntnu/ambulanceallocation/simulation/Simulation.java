@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.stream.IntStream;
-import javafx.beans.property.DoubleProperty;
+import no.ntnu.ambulanceallocation.experiments.Result;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
 import no.ntnu.ambulanceallocation.simulation.event.HospitalArrival;
@@ -33,7 +33,7 @@ public final class Simulation {
 
   private static final Map<Config, List<NewCall>> memoizedEventList = new HashMap<>();
 
-  private final DoubleProperty simulationUpdateInterval;
+  private final Double simulationUpdateInterval;
   private final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate;
   private final Config config;
   private final boolean visualizationMode;
@@ -58,7 +58,7 @@ public final class Simulation {
   public Simulation(
       final Config config,
       final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate,
-      final DoubleProperty simulationUpdateInterval) {
+      final double simulationUpdateInterval) {
     this.config = config;
     this.visualizationMode = true;
     this.simulationUpdateInterval = simulationUpdateInterval;
@@ -80,7 +80,7 @@ public final class Simulation {
   public static void visualizedSimulation(
       final Allocation allocation,
       final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate,
-      final DoubleProperty simulationUpdateInterval) {
+      final double simulationUpdateInterval) {
     new Simulation(Config.defaultConfig(), onTimeUpdate, simulationUpdateInterval)
         .simulate(allocation);
   }
@@ -122,6 +122,10 @@ public final class Simulation {
       }
     }
 
+    var incidentResults = new Result();
+    incidentResults.saveColumn("timestamp", simulationResults.getCallTimes());
+    incidentResults.saveColumn("response_time", simulationResults.getResponseTimes());
+    incidentResults.saveResults("simple_response_times");
     return simulationResults;
   }
 
@@ -231,7 +235,7 @@ public final class Simulation {
     var incident = newCall.incident;
     var firstAmbulance = dispatchedAmbulances.get(0);
     var delay = firstAmbulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
-    var travelTime = firstAmbulance.timeTo(incident);
+    var travelTime = firstAmbulance.getTimeTo(incident);
 
     // set or update travel time
     plannedTravelTimes.put(newCall, delay + travelTime);
@@ -315,7 +319,7 @@ public final class Simulation {
     var ambulance = locationUpdate.ambulance;
     ambulance.updateLocation(config.UPDATE_LOCATION_PERIOD());
 
-    if (!ambulance.endOfJourney()) {
+    if (!ambulance.isArrived()) {
       eventQueue.add(
           new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
     }
@@ -351,7 +355,7 @@ public final class Simulation {
     var hospital = transportDemand > 0 ? findNearestHospital(incident) : null;
     var transportAmbulances =
         nearestAmbulances.subList(0, Math.min(transportDemand, supply)).stream()
-            .peek(a -> a.dispatch(newCall, hospital, queueable.contains(a)))
+            .peek(a -> a.dispatch(newCall, hospital))
             .toList();
     var dispatchedTransport = transportAmbulances.size();
 
@@ -361,7 +365,7 @@ public final class Simulation {
             .subList(
                 dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply))
             .stream()
-            .peek(a -> a.dispatch(newCall, null, queueable.contains(a)))
+            .peek(a -> a.dispatch(newCall, null))
             .toList();
     var dispatchedNonTransport = nonTransportAmbulances.size();
 
@@ -426,7 +430,7 @@ public final class Simulation {
                 var oldCall = ambulance.getCall();
                 eventQueue.removeIf(e -> e instanceof SceneDeparture && e.newCall.equals(oldCall));
                 handleNewCall(oldCall);
-                ambulance.setWasReassigned(true);
+                ambulance.setReassigned(true);
               });
     }
   }
@@ -476,13 +480,13 @@ public final class Simulation {
       throw new IllegalStateException("Cannot call visualize method in non-visualized simulation");
     }
 
-    Ambulance.setCurrentGlobalTime(time);
-    onTimeUpdate.accept(time, ambulances, callQueue);
-
-    try {
-      Thread.sleep(simulationUpdateInterval.longValue());
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+    var timeSinceUpdate = onTimeUpdate.accept(time, ambulances, callQueue);
+    if (timeSinceUpdate < simulationUpdateInterval.longValue()) {
+      try {
+        Thread.sleep(simulationUpdateInterval.longValue() - timeSinceUpdate);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
   }
 }

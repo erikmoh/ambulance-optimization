@@ -400,13 +400,15 @@ public class SimulationController {
   private void updateAmbulances(Collection<Ambulance> ambulanceList) {
     Platform.runLater(
         () -> {
-          if (ambulanceMarkers.size() > 0) {
+          if (ambulanceMarkers.size() == 0) {
+            updateAmbulancesNoMarkers(ambulanceList);
+          } else {
 
             synchronized (ambulanceMarkers) {
               for (var ambulance : ambulanceList) {
 
-                var pos = ambulance.getCurrentLocationVisualized(currentTimeInternal);
-                var coordinate = utmToLatLongMap.get(pos);
+                ambulance.updateLocation(5);
+                var coordinate = utmToLatLongMap.get(ambulance.getCurrentLocation());
                 var marker = ambulanceMarkers.get(ambulance);
                 var label = ambulanceLabels.get(ambulance);
 
@@ -418,18 +420,16 @@ public class SimulationController {
                   label.setVisible(checkShowAmbulanceLabels.isSelected());
                 }
 
+                animateMarker(marker, marker.getPosition(), coordinate, label);
+
                 if (!marker.getPosition().equals(coordinate)) {
                   marker.setRotation(bearingInDegrees(marker.getPosition(), coordinate) + 90);
-                  updateAmbulanceDestinationLine(ambulance);
+                  updateAmbulanceDestinationLine(ambulance, coordinate);
                 }
 
                 updateAmbulanceDestinationCircle(ambulance);
-
-                animateMarker(marker, marker.getPosition(), coordinate, label);
               }
             }
-          } else {
-            updateAmbulancesNoMarkers(ambulanceList);
           }
 
           currentTime.setText("Current time:\n" + currentTimeInternal.toString());
@@ -456,14 +456,14 @@ public class SimulationController {
                     + Math.PI)));
   }
 
-  private void updateAmbulanceDestinationLine(Ambulance ambulance) {
+  private void updateAmbulanceDestinationLine(Ambulance ambulance, Coordinate currentPosition) {
     Color color;
     if (!ambulance.isAvailable() && ambulance.isTransportingPatient()) {
       color = Color.web("#ff0000", 0.9);
     } else if (ambulance.isAvailable()
-        && ambulance.getDestination() == ambulance.getBaseStationLocation()) {
+        && ambulance.getDestination() == ambulance.getBaseStation().getCoordinate()) {
       color = Color.web("#0000ff", 0.9);
-    } else if (ambulance.wasReassigned()) {
+    } else if (ambulance.isReassigned()) {
       color = Color.web("#ff00ff", 0.9);
     } else {
       color = Color.web("#00ff00", 0.9);
@@ -474,8 +474,6 @@ public class SimulationController {
     }
 
     var ambulanceDestination = utmToLatLongMap.get(ambulance.getDestination());
-    var currentPosition =
-        utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
 
     destinationLines.put(
         ambulance,
@@ -536,7 +534,8 @@ public class SimulationController {
           private final double deltaLongitude = newPosition.getLongitude() - oldPositionLongitude;
 
           {
-            setCycleDuration(Duration.seconds(0.5));
+            var animationDuration = Math.max(25, simulationUpdateIntervalSlider.getValue()) / 600;
+            setCycleDuration(Duration.seconds(animationDuration));
             setOnFinished(evt -> marker.setPosition(newPosition));
             setOnFinished(evt -> label.setPosition(newPosition));
           }
@@ -559,8 +558,8 @@ public class SimulationController {
 
     for (var ambulance : ambulanceList) {
 
-      var coordinates =
-          utmToLatLongMap.get(ambulance.getCurrentLocationVisualized(currentTimeInternal));
+      var coordinates = utmToLatLongMap.get(ambulance.getCurrentLocation());
+
       var marker =
           new Marker(ambulanceIcon, -15, -15)
               .setPosition(coordinates)
@@ -777,15 +776,17 @@ public class SimulationController {
               Simulation.visualizedSimulation(
                   allocation,
                   (currentTime, ambulanceList, callQueue) -> {
-                    if (System.currentTimeMillis() - lastUiUpdate > Parameters.GUI_UPDATE_INTERVAL
-                        && ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
+                    var timeSinceUpdate = System.currentTimeMillis() - lastUiUpdate;
+                    if (timeSinceUpdate > Math.max(25, simulationUpdateIntervalSlider.getValue())
+                        && ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 5 * 60) {
                       currentTimeInternal = currentTime;
                       updateAmbulances(ambulanceList);
                       updateIncidents(callQueue);
                       lastUiUpdate = System.currentTimeMillis();
                     }
+                    return timeSinceUpdate;
                   },
-                  simulationUpdateIntervalSlider.valueProperty());
+                  Math.max(25, simulationUpdateIntervalSlider.getValue()));
 
               return null;
             }
