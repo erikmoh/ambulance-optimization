@@ -15,7 +15,6 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.stream.IntStream;
 import javafx.beans.property.DoubleProperty;
-import no.ntnu.ambulanceallocation.experiments.Result;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
 import no.ntnu.ambulanceallocation.simulation.event.HospitalArrival;
@@ -125,10 +124,6 @@ public final class Simulation {
       }
     }
 
-    var incidentResults = new Result();
-    incidentResults.saveColumn("timestamp", simulationResults.getCallTimes());
-    incidentResults.saveColumn("response_time", simulationResults.getResponseTimes());
-    incidentResults.saveResults("simple_response_times");
     return simulationResults;
   }
 
