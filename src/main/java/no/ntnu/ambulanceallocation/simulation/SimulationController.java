@@ -34,7 +34,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -774,11 +773,9 @@ public class SimulationController {
               Simulation.visualizedSimulation(
                   allocation,
                   (currentTime, ambulanceList, callQueue) -> {
-                    if (ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
-                      currentTimeInternal = currentTime;
-                      updateAmbulances(ambulanceList);
-                      updateIncidents(callQueue);
-                    }
+                    currentTimeInternal = currentTime;
+                    updateAmbulances(ambulanceList);
+                    updateIncidents(callQueue);
                   },
                   simulationUpdateIntervalSlider.valueProperty());
 

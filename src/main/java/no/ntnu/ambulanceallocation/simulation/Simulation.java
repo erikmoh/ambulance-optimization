@@ -1,6 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation;
 
-import java.time.LocalDateTime;
+import java.time.Duration;import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +49,7 @@ public final class Simulation {
   private LocalDateTime time;
   private ShiftType currentShift;
   private long lastVisualUpdate = 0;
+  private LocalDateTime lastInternalUpdate = LocalDateTime.MIN;
 
   public Simulation(final Config config) {
     this.config = config;
@@ -492,15 +493,20 @@ public final class Simulation {
     }
 
     try {
-      var timeSinceUpdate = System.currentTimeMillis() - lastVisualUpdate;
+      var internalTimeSinceUpdate = Duration.between(lastInternalUpdate, time);
+      if (internalTimeSinceUpdate.getSeconds() < 120) {
+        return;
+      }
 
-      var updateInterval = Math.max(1, simulationUpdateInterval.longValue());
+      var timeSinceUpdate = System.currentTimeMillis() - lastVisualUpdate;
+      var updateInterval = Math.max(5, simulationUpdateInterval.longValue());
       if (timeSinceUpdate < updateInterval) {
         Thread.sleep(updateInterval - timeSinceUpdate);
       }
 
       onTimeUpdate.accept(time, ambulances, callQueue);
 
+      lastInternalUpdate = time;
       lastVisualUpdate = System.currentTimeMillis();
 
     } catch (Exception e) {

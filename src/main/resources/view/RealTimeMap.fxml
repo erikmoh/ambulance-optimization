@@ -84,7 +84,7 @@
             <Label fx:id="currentTime" text="Current time: "/>
             <Label fx:id="activeAmbulances" text="Active ambulances: "/>
             <Label text="Simulation update interval:"/>
-            <Slider fx:id="simulationUpdateIntervalSlider" max="500.0" value="250.0"
+            <Slider fx:id="simulationUpdateIntervalSlider" max="1000.0" value="500.0"
               majorTickUnit="100.0" showTickLabels="true" showTickMarks="true" HBox.hgrow="ALWAYS"/>
             <Button fx:id="startSimulationButton" text="Start simulation"
               onAction="#startSimulation" maxWidth="Infinity"/>
