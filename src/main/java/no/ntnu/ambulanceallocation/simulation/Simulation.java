@@ -1,6 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation;
 
-import java.time.LocalDateTime;
+import java.time.Duration;import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +47,8 @@ public final class Simulation {
   private SimulationResults simulationResults;
   private LocalDateTime time;
   private ShiftType currentShift;
+  private long lastVisualUpdate = 0;
+  private LocalDateTime lastInternalUpdate = LocalDateTime.MIN;
 
   public Simulation(final Config config) {
     this.config = config;
@@ -231,7 +233,7 @@ public final class Simulation {
     var incident = newCall.incident;
     var firstAmbulance = dispatchedAmbulances.get(0);
     var delay = firstAmbulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
-    var travelTime = firstAmbulance.timeTo(incident);
+    var travelTime = firstAmbulance.getTimeToIncident();
 
     // set or update travel time
     plannedTravelTimes.put(newCall, delay + travelTime);
@@ -259,9 +261,16 @@ public final class Simulation {
       } else {
         // The incident had no arrival at scene time, so it is assumed that it was aborted
         timeToNextEvent = incident.getTimeBeforeAborting();
+        eventQueue.add(
+            new SceneDeparture(time.plusSeconds(timeToNextEvent), newCall, dispatchedAmbulances));
+        return;
       }
     }
 
+    for (var ambulance : dispatchedAmbulances) {
+      eventQueue.add(
+          new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
+    }
     eventQueue.add(
         new SceneDeparture(time.plusSeconds(timeToNextEvent), newCall, dispatchedAmbulances));
   }
@@ -275,6 +284,8 @@ public final class Simulation {
         var availableTime = time.plusSeconds(transportTime);
         ambulance.transport();
         eventQueue.add(new HospitalArrival(availableTime, ambulance, newCall));
+        eventQueue.add(
+            new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
       } else {
         jobCompleted(ambulance, newCall);
       }
@@ -315,7 +326,7 @@ public final class Simulation {
     var ambulance = locationUpdate.ambulance;
     ambulance.updateLocation(config.UPDATE_LOCATION_PERIOD());
 
-    if (!ambulance.endOfJourney()) {
+    if (!ambulance.isArrived()) {
       eventQueue.add(
           new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
     }
@@ -351,7 +362,7 @@ public final class Simulation {
     var hospital = transportDemand > 0 ? findNearestHospital(incident) : null;
     var transportAmbulances =
         nearestAmbulances.subList(0, Math.min(transportDemand, supply)).stream()
-            .peek(a -> a.dispatch(newCall, hospital, queueable.contains(a)))
+            .peek(a -> a.dispatch(newCall, hospital))
             .toList();
     var dispatchedTransport = transportAmbulances.size();
 
@@ -361,7 +372,7 @@ public final class Simulation {
             .subList(
                 dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply))
             .stream()
-            .peek(a -> a.dispatch(newCall, null, queueable.contains(a)))
+            .peek(a -> a.dispatch(newCall, null))
             .toList();
     var dispatchedNonTransport = nonTransportAmbulances.size();
 
@@ -426,7 +437,7 @@ public final class Simulation {
                 var oldCall = ambulance.getCall();
                 eventQueue.removeIf(e -> e instanceof SceneDeparture && e.newCall.equals(oldCall));
                 handleNewCall(oldCall);
-                ambulance.setWasReassigned(true);
+                ambulance.setReassigned(true);
               });
     }
   }
@@ -476,12 +487,24 @@ public final class Simulation {
       throw new IllegalStateException("Cannot call visualize method in non-visualized simulation");
     }
 
-    Ambulance.setCurrentGlobalTime(time);
-    onTimeUpdate.accept(time, ambulances, callQueue);
-
     try {
-      Thread.sleep(simulationUpdateInterval.longValue());
-    } catch (InterruptedException e) {
+      var internalTimeSinceUpdate = Duration.between(lastInternalUpdate, time);
+      if (internalTimeSinceUpdate.getSeconds() < 120) {
+        return;
+      }
+
+      var timeSinceUpdate = System.currentTimeMillis() - lastVisualUpdate;
+      var updateInterval = Math.max(5, simulationUpdateInterval.longValue());
+      if (timeSinceUpdate < updateInterval) {
+        Thread.sleep(updateInterval - timeSinceUpdate);
+      }
+
+      onTimeUpdate.accept(time, ambulances, callQueue);
+
+      lastInternalUpdate = time;
+      lastVisualUpdate = System.currentTimeMillis();
+
+    } catch (Exception e) {
       e.printStackTrace();
     }
   }

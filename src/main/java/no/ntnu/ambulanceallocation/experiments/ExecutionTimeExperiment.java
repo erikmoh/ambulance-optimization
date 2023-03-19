@@ -7,7 +7,6 @@ import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.optimization.initializer.PopulationProportionate;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
-import no.ntnu.ambulanceallocation.simulation.SimulationResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +37,8 @@ public class ExecutionTimeExperiment implements Experiment {
     var nightShiftAllocation = initializer.initialize(Parameters.NUMBER_OF_AMBULANCES_NIGHT);
 
     var executionTimes = new ArrayList<Duration>();
-    SimulationResults simulationResults = null;
-    for (int i = 0; i < 10000; i++) {
+    var simulationResults = Simulation.simulate(dayShiftAllocation, nightShiftAllocation);
+    for (int i = 0; i < 100; i++) {
       var startTime = LocalDateTime.now();
       simulationResults = Simulation.simulate(dayShiftAllocation, nightShiftAllocation);
       var endTime = LocalDateTime.now();
@@ -47,9 +46,9 @@ public class ExecutionTimeExperiment implements Experiment {
     }
 
     var averageExecutionTime =
-        executionTimes.stream().mapToLong(Duration::getSeconds).average().orElseThrow();
+        executionTimes.stream().mapToLong(Duration::getNano).average().orElseThrow();
 
-    logger.info("Average execution time: {}", averageExecutionTime);
+    logger.info("Average execution time: {}", (averageExecutionTime / 1_000_000_000));
     logger.info("Average response time: {}", simulationResults.averageResponseTimes());
   }
 

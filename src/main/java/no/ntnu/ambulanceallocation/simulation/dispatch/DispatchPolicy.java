@@ -16,7 +16,14 @@ public enum DispatchPolicy {
     public void updateAmbulance(
         Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
       var time = ambulance.getCurrentLocation().euclideanDistanceTo(incident.getLocation());
-      ambulance.updateTimeTo((int) time);
+      ambulance.setTimeToIncident((int) time);
+
+      if (ambulance.isTransportingPatient()) {
+        // time from prev incident to hospital + time to this next incident
+        ambulance.setTimeToIncident(
+            ambulance.getTimeToHospital()
+                + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+      }
     }
   },
 
@@ -25,7 +32,14 @@ public enum DispatchPolicy {
     public void updateAmbulance(
         Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
       var time = ambulance.getCurrentLocation().manhattanDistanceTo(incident.getLocation());
-      ambulance.updateTimeTo((int) time);
+      ambulance.setTimeToIncident((int) time);
+
+      if (ambulance.isTransportingPatient()) {
+        // time from prev incident to hospital + time to this next incident
+        ambulance.setTimeToIncident(
+            ambulance.getTimeToHospital()
+                + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+      }
     }
   },
 
@@ -33,7 +47,14 @@ public enum DispatchPolicy {
     @Override
     public void updateAmbulance(
         Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
-      ambulance.updateTimeTo(incident);
+      ambulance.setTimeToIncident(incident);
+
+      if (ambulance.isTransportingPatient()) {
+        // time from prev incident to hospital + time to this next incident
+        ambulance.setTimeToIncident(
+            ambulance.getTimeToHospital()
+                + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+      }
     }
   },
 
@@ -81,7 +102,7 @@ public enum DispatchPolicy {
                         if (ambulance.isTransportingPatient()) {
                           return a.getCurrentLocation().timeTo(hospitalLocation);
                         }
-                        return ambulance.timeTo(a);
+                        return ambulance.getTimeTo(a);
                       })
                   .filter(distance -> distance < 7.0 * 60)
                   .count();
@@ -144,11 +165,11 @@ public enum DispatchPolicy {
   };
 
   private static Integer updateCoverage(Ambulance ambulance, Incident incident) {
-    ambulance.updateTimeTo(incident);
+    ambulance.setTimeToIncident(incident);
 
     if (ambulance.isTransportingPatient()) {
       // time from prev incident to hospital + time to this next incident
-      ambulance.updateTimeTo(
+      ambulance.setTimeToIncident(
           ambulance.getTimeToHospital()
               + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
     }
