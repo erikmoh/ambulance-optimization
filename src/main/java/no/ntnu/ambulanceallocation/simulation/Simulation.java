@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.stream.IntStream;
+import javafx.beans.property.DoubleProperty;
 import no.ntnu.ambulanceallocation.experiments.Result;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
@@ -33,7 +34,7 @@ public final class Simulation {
 
   private static final Map<Config, List<NewCall>> memoizedEventList = new HashMap<>();
 
-  private final Double simulationUpdateInterval;
+  private final DoubleProperty simulationUpdateInterval;
   private final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate;
   private final Config config;
   private final boolean visualizationMode;
@@ -47,6 +48,7 @@ public final class Simulation {
   private SimulationResults simulationResults;
   private LocalDateTime time;
   private ShiftType currentShift;
+  private long lastVisualUpdate = 0;
 
   public Simulation(final Config config) {
     this.config = config;
@@ -58,7 +60,7 @@ public final class Simulation {
   public Simulation(
       final Config config,
       final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate,
-      final double simulationUpdateInterval) {
+      final DoubleProperty simulationUpdateInterval) {
     this.config = config;
     this.visualizationMode = true;
     this.simulationUpdateInterval = simulationUpdateInterval;
@@ -80,7 +82,7 @@ public final class Simulation {
   public static void visualizedSimulation(
       final Allocation allocation,
       final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate,
-      final double simulationUpdateInterval) {
+      final DoubleProperty simulationUpdateInterval) {
     new Simulation(Config.defaultConfig(), onTimeUpdate, simulationUpdateInterval)
         .simulate(allocation);
   }
@@ -480,13 +482,21 @@ public final class Simulation {
       throw new IllegalStateException("Cannot call visualize method in non-visualized simulation");
     }
 
-    var timeSinceUpdate = onTimeUpdate.accept(time, ambulances, callQueue);
-    if (timeSinceUpdate < simulationUpdateInterval.longValue()) {
-      try {
-        Thread.sleep(simulationUpdateInterval.longValue() - timeSinceUpdate);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+    try {
+      var timeSinceUpdate = System.currentTimeMillis() - lastVisualUpdate;
+
+      var updateInterval = Math.max(1, simulationUpdateInterval.longValue());
+      if (timeSinceUpdate < updateInterval) {
+        Thread.sleep(updateInterval - timeSinceUpdate);
       }
+
+      Ambulance.setCurrentGlobalTime(time);
+      onTimeUpdate.accept(time, ambulances, callQueue);
+
+      lastVisualUpdate = System.currentTimeMillis();
+
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

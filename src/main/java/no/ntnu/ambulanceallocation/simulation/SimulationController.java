@@ -167,7 +167,6 @@ public class SimulationController {
   private List<MapCircle> incidentCircleList = Collections.synchronizedList(new ArrayList<>());
   private LocalDateTime currentTimeInternal = LocalDateTime.MIN;
   private Thread simulationThread;
-  private long lastUiUpdate = 0;
 
   public SimulationController() {
 
@@ -407,8 +406,8 @@ public class SimulationController {
             synchronized (ambulanceMarkers) {
               for (var ambulance : ambulanceList) {
 
-                ambulance.updateLocation(5);
-                var coordinate = utmToLatLongMap.get(ambulance.getCurrentLocation());
+                var coordinate =
+                    utmToLatLongMap.get(ambulance.getVisualizedLocation(currentTimeInternal));
                 var marker = ambulanceMarkers.get(ambulance);
                 var label = ambulanceLabels.get(ambulance);
 
@@ -534,8 +533,8 @@ public class SimulationController {
           private final double deltaLongitude = newPosition.getLongitude() - oldPositionLongitude;
 
           {
-            var animationDuration = Math.max(25, simulationUpdateIntervalSlider.getValue()) / 600;
-            setCycleDuration(Duration.seconds(animationDuration));
+            var animationDuration = Math.max(1, simulationUpdateIntervalSlider.getValue());
+            setCycleDuration(Duration.millis(animationDuration * 1.3));
             setOnFinished(evt -> marker.setPosition(newPosition));
             setOnFinished(evt -> label.setPosition(newPosition));
           }
@@ -776,17 +775,13 @@ public class SimulationController {
               Simulation.visualizedSimulation(
                   allocation,
                   (currentTime, ambulanceList, callQueue) -> {
-                    var timeSinceUpdate = System.currentTimeMillis() - lastUiUpdate;
-                    if (timeSinceUpdate > Math.max(25, simulationUpdateIntervalSlider.getValue())
-                        && ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 5 * 60) {
+                    if (ChronoUnit.SECONDS.between(currentTimeInternal, currentTime) > 120) {
                       currentTimeInternal = currentTime;
                       updateAmbulances(ambulanceList);
                       updateIncidents(callQueue);
-                      lastUiUpdate = System.currentTimeMillis();
                     }
-                    return timeSinceUpdate;
                   },
-                  Math.max(25, simulationUpdateIntervalSlider.getValue()));
+                  simulationUpdateIntervalSlider.valueProperty());
 
               return null;
             }

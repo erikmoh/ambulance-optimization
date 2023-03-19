@@ -1,5 +1,6 @@
 package no.ntnu.ambulanceallocation.utils;
 
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 /**
@@ -27,5 +28,5 @@ public interface TriConsumer<T, U, V> {
    * @param t the first input argument
    * @param u the second input argument
    */
-  long accept(T t, U u, V v);
+  void accept(T t, U u, V v) throws ExecutionException, InterruptedException;
 }

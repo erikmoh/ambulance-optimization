@@ -1,5 +1,7 @@
 package no.ntnu.ambulanceallocation.simulation;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
@@ -8,6 +10,10 @@ import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 
 public class Ambulance {
+
+  // Only used for visualization
+  private static LocalDateTime currentGlobalTime;
+  private LocalDateTime travelStartTime;
 
   private final BaseStation baseStation;
   private boolean isOffDuty = true;
@@ -34,6 +40,10 @@ public class Ambulance {
     this.id = id;
     this.baseStation = baseStation;
     this.currentLocation = baseStation.getCoordinate();
+  }
+
+  public static void setCurrentGlobalTime(LocalDateTime time) {
+    currentGlobalTime = time;
   }
 
   public BaseStation getBaseStation() {
@@ -80,7 +90,6 @@ public class Ambulance {
     return Math.round(currentLocation.timeTo(other.getCurrentLocation()));
   }
 
-
   public void startNewShift() {
     isOffDuty = false;
   }
@@ -109,13 +118,20 @@ public class Ambulance {
     reassigned = status;
   }
 
-
   public boolean isOffDuty() {
     return isOffDuty;
   }
 
+  public boolean isStationary() {
+    return currentLocation.equals(destination) || route == null;
+  }
+
   public boolean isAtBaseStation() {
     return currentLocation.equals(baseStation.getCoordinate());
+  }
+
+  public boolean isArrived() {
+    return currentLocation.equals(destination);
   }
 
   public boolean isAvailable() {
@@ -130,14 +146,9 @@ public class Ambulance {
     return transportingPatient;
   }
 
-  public boolean isArrived() {
-    return currentLocation.equals(destination);
-  }
-
   public boolean isReassigned() {
     return reassigned;
   }
-
 
   public boolean canBeReassigned(Incident newIncident) {
     return !isOffDuty
@@ -163,11 +174,11 @@ public class Ambulance {
         && nextCall == null;
   }
 
-
   public void flagAsAvailable() {
     incident = null;
     call = null;
     hospitalLocation = null;
+    travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = baseStation.getCoordinate();
     route = DistanceIO.getRoute(originatingLocation, destination);
@@ -182,6 +193,7 @@ public class Ambulance {
       return;
     }
     incident = newCall.incident;
+    travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
     hospitalLocation = hospital;
@@ -198,6 +210,7 @@ public class Ambulance {
 
   public void transport() {
     transportingPatient = true;
+    travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(hospitalLocation);
     route = DistanceIO.getRoute(currentLocation, destination);
@@ -217,43 +230,78 @@ public class Ambulance {
     }
 
     if (timePeriod == DistanceIO.getTravelTimeInterval()) {
-      var routeCoordinates = route.routeCoordinates();
-
       currentRouteIndex++;
-
-      if (currentRouteIndex >= routeCoordinates.size()) {
-        currentLocation = destination;
-        return;
-      }
-
-      var nextLocationId = routeCoordinates.get(currentRouteIndex);
-      currentLocation = new Coordinate(Long.parseLong(nextLocationId));
-
+      currentLocation = getNewLocation();
     } else {
-      var originTimeToDestination = route.time();
-      var previousTimeToDestination = currentLocation.timeTo(destination);
-      var elapsedTime = originTimeToDestination - previousTimeToDestination + (timePeriod * 60);
-
-      if (elapsedTime >= originTimeToDestination) {
-        currentLocation = destination;
-        return;
-      }
-
-      if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2.0) * 60) {
-        return;
-      }
-
-      var routeCoordinates = route.routeCoordinates();
-
-      var nextRouteIndex =
-          (int) Math.round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
-      if (nextRouteIndex >= routeCoordinates.size()) {
-        currentLocation = destination;
-        return;
-      }
-      var nextLocationId = routeCoordinates.get(nextRouteIndex);
-      currentLocation = new Coordinate(Long.parseLong(nextLocationId));
+      currentLocation = getNewLocation(timePeriod);
     }
+  }
+
+  private Coordinate getNewLocation() {
+    var routeCoordinates = route.routeCoordinates();
+
+    if (currentRouteIndex >= routeCoordinates.size()) {
+      return destination;
+    }
+
+    var nextLocationId = routeCoordinates.get(currentRouteIndex);
+    return new Coordinate(Long.parseLong(nextLocationId));
+  }
+
+  private Coordinate getNewLocation(int timePeriod) {
+    var originTimeToDestination = route.time();
+    var previousTimeToDestination = currentLocation.timeTo(destination);
+    var elapsedTime = originTimeToDestination - previousTimeToDestination + (timePeriod * 60);
+
+    if (elapsedTime >= originTimeToDestination) {
+      return destination;
+    }
+
+    if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2.0) * 60) {
+      return currentLocation;
+    }
+
+    var routeCoordinates = route.routeCoordinates();
+
+    var nextRouteIndex =
+        (int) Math.round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+    if (nextRouteIndex >= routeCoordinates.size()) {
+      return destination;
+    }
+    var nextLocationId = routeCoordinates.get(nextRouteIndex);
+    return new Coordinate(Long.parseLong(nextLocationId));
+  }
+
+  public Coordinate getVisualizedLocation(LocalDateTime currentTime) {
+    if (isAvailable() || isStationary()) {
+      return currentLocation;
+    }
+
+    if (travelStartTime == null) {
+      travelStartTime = currentTime;
+      return currentLocation;
+    }
+
+    var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
+
+    if (elapsedTime >= route.time()) {
+      return destination;
+    }
+
+    var halfway = (DistanceIO.getTravelTimeInterval() / 2.0) * 60;
+    if (elapsedTime <= halfway) {
+      return currentLocation;
+    }
+
+    var routeCoordinates = route.routeCoordinates();
+
+    var nextRouteIndex =
+        (int) Math.round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
+    if (nextRouteIndex >= routeCoordinates.size()) {
+      return destination;
+    }
+    var nextLocationId = routeCoordinates.get(nextRouteIndex);
+    return new Coordinate(Long.parseLong(nextLocationId));
   }
 
   @Override
