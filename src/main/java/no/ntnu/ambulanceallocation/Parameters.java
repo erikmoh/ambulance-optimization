@@ -30,9 +30,6 @@ public final class Parameters {
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
-  // Simulation visualization
-  public static final int GUI_UPDATE_INTERVAL = 400; // every x milliseconds
-
   // SLS
   public static final int MAX_TRIES = 999;
   public static final double RESTART_PROBABILITY = 0.025;
