@@ -72,10 +72,6 @@ public class Ambulance {
     return timeToIncident + coveragePenalty;
   }
 
-  public int getTimeTo(Incident incident) {
-    return Math.round(currentLocation.timeTo(incident.getLocation()));
-  }
-
   public int getTimeTo(Ambulance other) {
     return Math.round(currentLocation.timeTo(other.getCurrentLocation()));
   }
@@ -93,7 +89,7 @@ public class Ambulance {
   }
 
   public void setTimeToIncident(Incident incident) {
-    timeToIncident = getTimeTo(incident);
+    timeToIncident = Math.round(currentLocation.timeTo(incident.getLocation()));
   }
 
   public void setTimeToIncident(int time) {

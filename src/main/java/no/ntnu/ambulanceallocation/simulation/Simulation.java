@@ -237,7 +237,7 @@ public final class Simulation {
     var incident = newCall.incident;
     var firstAmbulance = dispatchedAmbulances.get(0);
     var delay = firstAmbulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
-    var travelTime = firstAmbulance.getTimeTo(incident);
+    var travelTime = firstAmbulance.getTimeToIncident();
 
     // set or update travel time
     plannedTravelTimes.put(newCall, delay + travelTime);
@@ -265,6 +265,9 @@ public final class Simulation {
       } else {
         // The incident had no arrival at scene time, so it is assumed that it was aborted
         timeToNextEvent = incident.getTimeBeforeAborting();
+        eventQueue.add(
+            new SceneDeparture(time.plusSeconds(timeToNextEvent), newCall, dispatchedAmbulances));
+        return;
       }
     }
 
