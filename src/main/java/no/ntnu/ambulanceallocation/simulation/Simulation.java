@@ -268,6 +268,10 @@ public final class Simulation {
       }
     }
 
+    for (var ambulance : dispatchedAmbulances) {
+      eventQueue.add(
+          new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
+    }
     eventQueue.add(
         new SceneDeparture(time.plusSeconds(timeToNextEvent), newCall, dispatchedAmbulances));
   }
@@ -281,6 +285,8 @@ public final class Simulation {
         var availableTime = time.plusSeconds(transportTime);
         ambulance.transport();
         eventQueue.add(new HospitalArrival(availableTime, ambulance, newCall));
+        eventQueue.add(
+            new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
       } else {
         jobCompleted(ambulance, newCall);
       }
@@ -490,7 +496,6 @@ public final class Simulation {
         Thread.sleep(updateInterval - timeSinceUpdate);
       }
 
-      Ambulance.setCurrentGlobalTime(time);
       onTimeUpdate.accept(time, ambulances, callQueue);
 
       lastVisualUpdate = System.currentTimeMillis();

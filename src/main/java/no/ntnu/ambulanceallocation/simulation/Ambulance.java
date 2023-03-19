@@ -1,7 +1,5 @@
 package no.ntnu.ambulanceallocation.simulation;
 
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
@@ -10,10 +8,6 @@ import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 
 public class Ambulance {
-
-  // Only used for visualization
-  private static LocalDateTime currentGlobalTime;
-  private LocalDateTime travelStartTime;
 
   private final BaseStation baseStation;
   private boolean isOffDuty = true;
@@ -40,10 +34,6 @@ public class Ambulance {
     this.id = id;
     this.baseStation = baseStation;
     this.currentLocation = baseStation.getCoordinate();
-  }
-
-  public static void setCurrentGlobalTime(LocalDateTime time) {
-    currentGlobalTime = time;
   }
 
   public BaseStation getBaseStation() {
@@ -122,10 +112,6 @@ public class Ambulance {
     return isOffDuty;
   }
 
-  public boolean isStationary() {
-    return currentLocation.equals(destination) || route == null;
-  }
-
   public boolean isAtBaseStation() {
     return currentLocation.equals(baseStation.getCoordinate());
   }
@@ -178,7 +164,6 @@ public class Ambulance {
     incident = null;
     call = null;
     hospitalLocation = null;
-    travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = baseStation.getCoordinate();
     route = DistanceIO.getRoute(originatingLocation, destination);
@@ -193,7 +178,6 @@ public class Ambulance {
       return;
     }
     incident = newCall.incident;
-    travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(incident.getLocation());
     hospitalLocation = hospital;
@@ -204,13 +188,13 @@ public class Ambulance {
   public void dispatchNextCall() {
     if (nextCall != null) {
       dispatch(nextCall.newCall, nextCall.hospitalLocation);
+      call = nextCall.newCall;
       nextCall = null;
     }
   }
 
   public void transport() {
     transportingPatient = true;
-    travelStartTime = currentGlobalTime;
     originatingLocation = currentLocation;
     destination = new Coordinate(hospitalLocation);
     route = DistanceIO.getRoute(currentLocation, destination);
@@ -258,38 +242,6 @@ public class Ambulance {
     }
 
     if (elapsedTime <= (DistanceIO.getTravelTimeInterval() / 2.0) * 60) {
-      return currentLocation;
-    }
-
-    var routeCoordinates = route.routeCoordinates();
-
-    var nextRouteIndex =
-        (int) Math.round((elapsedTime / 60.0) / DistanceIO.getTravelTimeInterval()) - 1;
-    if (nextRouteIndex >= routeCoordinates.size()) {
-      return destination;
-    }
-    var nextLocationId = routeCoordinates.get(nextRouteIndex);
-    return new Coordinate(Long.parseLong(nextLocationId));
-  }
-
-  public Coordinate getVisualizedLocation(LocalDateTime currentTime) {
-    if (isAvailable() || isStationary()) {
-      return currentLocation;
-    }
-
-    if (travelStartTime == null) {
-      travelStartTime = currentTime;
-      return currentLocation;
-    }
-
-    var elapsedTime = (int) ChronoUnit.SECONDS.between(travelStartTime, currentTime);
-
-    if (elapsedTime >= route.time()) {
-      return destination;
-    }
-
-    var halfway = (DistanceIO.getTravelTimeInterval() / 2.0) * 60;
-    if (elapsedTime <= halfway) {
       return currentLocation;
     }
 

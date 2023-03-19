@@ -406,8 +406,7 @@ public class SimulationController {
             synchronized (ambulanceMarkers) {
               for (var ambulance : ambulanceList) {
 
-                var coordinate =
-                    utmToLatLongMap.get(ambulance.getVisualizedLocation(currentTimeInternal));
+                var coordinate = utmToLatLongMap.get(ambulance.getCurrentLocation());
                 var marker = ambulanceMarkers.get(ambulance);
                 var label = ambulanceLabels.get(ambulance);
 
