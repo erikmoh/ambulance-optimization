@@ -352,7 +352,11 @@ public final class Simulation {
     }
 
     // update ambulance dispatch score based on dispatch strategy
-    available.forEach(a -> config.DISPATCH_POLICY().updateAmbulance(a, available, incident));
+    available.forEach(
+        a ->
+            config
+                .DISPATCH_POLICY()
+                .updateAmbulance(a, available, baseStationAmbulances, incident));
 
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted

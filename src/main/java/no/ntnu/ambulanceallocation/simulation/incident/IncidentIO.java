@@ -1,5 +1,7 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
+import static no.ntnu.ambulanceallocation.Parameters.DISPATCH_POLICY;
+import static no.ntnu.ambulanceallocation.Parameters.PREDICTED_DEMAND_BASE_STATION;
 import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.getCoordinateFromString;
 
 import java.io.BufferedReader;
@@ -12,11 +14,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.utils.Utils;
 import org.json.JSONException;
@@ -32,15 +36,23 @@ public class IncidentIO {
       new File("src/main/resources/data/incidents.csv").getAbsolutePath();
   public static final String incidentDistributionFilePath =
       new File("src/main/resources/data/incidents_distribution.json").getAbsolutePath();
+  public static final String incidentDistributionBaseStationFilePath =
+      new File("src/main/resources/data/incidents_distribution_station.json").getAbsolutePath();
+  public static final String gridZonesPath =
+      new File("src/main/resources/data/grid_zones.csv").getAbsolutePath();
   public static final DateTimeFormatter dateTimeFormatter =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   public static final List<Incident> incidents;
   public static final Map<Coordinate, IncidentDistribution> distributions;
+  public static final Map<Integer, IncidentDistribution> distributionsBaseStation;
+  public static final Map<Coordinate, Integer> gridZones;
 
   static {
     incidents = loadIncidentsFromFile();
     distributions = loadDistributionsFromFile();
+    distributionsBaseStation = loadDistributionsBaseStationFromFile();
+    gridZones = loadGridZones();
   }
 
   public static List<Incident> loadIncidentsFromFile() {
@@ -149,6 +161,11 @@ public class IncidentIO {
   }
 
   private static Map<Coordinate, IncidentDistribution> loadDistributionsFromFile() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || PREDICTED_DEMAND_BASE_STATION) {
+      return Collections.emptyMap();
+    }
+
     logger.info("Loading distributions from file...");
     var distributions = new HashMap<Coordinate, IncidentDistribution>();
 
@@ -188,5 +205,93 @@ public class IncidentIO {
 
     logger.info("Loaded {} distributions.", distributions.size());
     return distributions;
+  }
+
+  private static Map<Integer, IncidentDistribution> loadDistributionsBaseStationFromFile() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || !PREDICTED_DEMAND_BASE_STATION) {
+      return Collections.emptyMap();
+    }
+
+    logger.info("Loading distributions from file...");
+    var distributions = new HashMap<Integer, IncidentDistribution>();
+
+    try {
+      var distributionJsonObject =
+          new JSONObject(Files.readString(Path.of(incidentDistributionBaseStationFilePath)));
+
+      for (var originKey : distributionJsonObject.names()) {
+        var baseStation = Integer.parseInt(originKey.toString());
+        var monthJsonObject = (JSONObject) distributionJsonObject.get(originKey.toString());
+        var monthMap = new HashMap<Integer, Map<Integer, Map<Integer, Double>>>();
+
+        for (var monthKey : monthJsonObject.names()) {
+          var month = Integer.parseInt(monthKey.toString());
+          var weekdayJsonObject = (JSONObject) monthJsonObject.get(monthKey.toString());
+          var weekdayMap = new HashMap<Integer, Map<Integer, Double>>();
+
+          for (var weekdayKey : weekdayJsonObject.names()) {
+            var weekday = Integer.parseInt(weekdayKey.toString());
+            var hourJsonObject = (JSONObject) weekdayJsonObject.get(weekdayKey.toString());
+            var hourMap = new HashMap<Integer, Double>();
+
+            for (var hourKey : hourJsonObject.names()) {
+              var hour = Integer.parseInt(hourKey.toString());
+              hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+            }
+            weekdayMap.put(weekday, hourMap);
+          }
+          monthMap.put(month, weekdayMap);
+        }
+        distributions.put(baseStation, new IncidentDistribution(monthMap));
+      }
+    } catch (JSONException | IOException e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} distributions.", distributions.size());
+    return distributions;
+  }
+
+  public static Map<Coordinate, Integer> loadGridZones() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || !PREDICTED_DEMAND_BASE_STATION) {
+      return Collections.emptyMap();
+    }
+
+    var gridZones = new HashMap<Coordinate, Integer>();
+
+    logger.info("Loading grid zones from file...");
+
+    var processedLines = 0;
+
+    try (var bufferedReader = new BufferedReader(new FileReader(gridZonesPath))) {
+      var header = bufferedReader.readLine();
+
+      logger.info("Grid zones CSV header: {}", header);
+
+      var line = bufferedReader.readLine();
+
+      while (line != null) {
+        var values = Arrays.asList(line.split(","));
+
+        var gridCoordinate = new Coordinate(Long.parseLong(values.get(0)));
+        var baseStation = Integer.parseInt(values.get(5));
+
+        gridZones.put(gridCoordinate, baseStation);
+
+        processedLines++;
+        line = bufferedReader.readLine();
+      }
+
+    } catch (IOException exception) {
+      logger.error("An IOException occurred while loading grid zones from file: ", exception);
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} grid zones", processedLines);
+
+    return gridZones;
   }
 }

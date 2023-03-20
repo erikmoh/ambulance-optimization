@@ -24,6 +24,7 @@ public final class Parameters {
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
+  public static final boolean PREDICTED_DEMAND_BASE_STATION = true;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
   public static final boolean ENABLE_REDISPATCH = true;
   public static final boolean ENABLE_QUEUE_NEXT = true;

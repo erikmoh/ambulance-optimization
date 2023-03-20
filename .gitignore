@@ -14,6 +14,7 @@ src/main/resources/data/incidents.csv
 src/main/resources/data/od_paths.json
 src/main/resources/data/od_paths_2min.json
 src/main/resources/data/incidents_distribution.json
+src/main/resources/data/incidents_distribution_station.json
 src/main/resources/data/old/
 
 pom.xml.tag

@@ -1,5 +1,7 @@
 package no.ntnu.ambulanceallocation.simulation.grid;
 
+import static no.ntnu.ambulanceallocation.Parameters.DISPATCH_POLICY;
+import static no.ntnu.ambulanceallocation.Parameters.PREDICTED_DEMAND_BASE_STATION;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import java.io.BufferedReader;
@@ -14,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.utils.Tuple;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -156,6 +159,11 @@ public final class DistanceIO {
   }
 
   private static void loadNeighboursFromFile() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || PREDICTED_DEMAND_BASE_STATION) {
+      return;
+    }
+
     logger.info("Loading neighbours from file...");
 
     try {

@@ -10,7 +10,7 @@ from coordinate_converter import utm_to_ssb_grid_id
 
 CREATE_NEW_PROCESSED = False
 PROCESSED_FILE = "data/incidents_all_processed.csv"
-DISTRIBUTION_FILE = "data/incidents_distribution.json"
+DISTRIBUTION_FILE = "data/incidents_distribution_station.json"
 
 FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'avg_hentested',
@@ -50,7 +50,8 @@ def create_processed_file():
 
 
 def create_empty_distribution():
-    grids = pd.read_csv("data/grid_centroids.csv")
+    # grids = pd.read_csv("data/grid_centroids.csv")
+    base_stations = pd.read_csv("data/base_stations.csv")
 
     incident_distribution = {}
 
@@ -62,9 +63,8 @@ def create_empty_distribution():
             for hour in range(0, 24):
                 time[month][dayweek][hour] = 0
 
-    for grid in grids.values:
-        ssb_grid_id = utm_to_ssb_grid_id(int(grid[0]), int(grid[1]))
-        incident_distribution[ssb_grid_id] = copy.deepcopy(time)
+    for station in base_stations.values:
+        incident_distribution[int(station[0])] = copy.deepcopy(time)
 
     return incident_distribution
 
@@ -81,13 +81,18 @@ def create_num_weekdays():
 def count_incidents(df, incident_distribution, num_weekdays):
     prev_weekday = 0
 
+    grid_zones = pd.read_csv("data/grid_zones.csv")
+
     for incident in tqdm(df.values, desc="Count incidents per day"):
         dt = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
         weekday = dt.weekday() + 1
         incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
-        if incident_grid not in incident_distribution.keys():
+        try:
+            incident_station = grid_zones.loc[grid_zones["SSBID1000M"] == incident_grid, "base_station"].iloc[0]
+            incident_distribution[incident_station][dt.month][weekday][dt.hour] += 1
+        except:
+            print(f"grid {incident_grid} was not in grid_zones.csv")
             continue
-        incident_distribution[incident_grid][dt.month][weekday][dt.hour] += 1
 
         if weekday != prev_weekday:
             if weekday - prev_weekday != 1 and weekday - prev_weekday != -6 and prev_weekday != 0:
@@ -97,15 +102,15 @@ def count_incidents(df, incident_distribution, num_weekdays):
 
 
 def average_count(incident_distribution, num_weekdays):
-    for grid_id in tqdm(incident_distribution.keys(), desc="Change to average per day"):
-        for month in incident_distribution[grid_id].keys():
-            for weekday in incident_distribution[grid_id][month].keys():
-                for hour in incident_distribution[grid_id][month][weekday].keys():
-                    count = incident_distribution[grid_id][month][weekday][hour]
+    for station_id in tqdm(incident_distribution.keys(), desc="Change to average per day"):
+        for month in incident_distribution[station_id].keys():
+            for weekday in incident_distribution[station_id][month].keys():
+                for hour in incident_distribution[station_id][month][weekday].keys():
+                    count = incident_distribution[station_id][month][weekday][hour]
                     if count > 0:
                         num_weekday_month = num_weekdays[month][weekday]
                         weekday_in_month_average = count/num_weekday_month
-                        incident_distribution[grid_id][month][weekday][hour] = weekday_in_month_average
+                        incident_distribution[station_id][month][weekday][hour] = round(weekday_in_month_average, 4)
 
 def main():
     df = get_processed_file()
