@@ -210,8 +210,8 @@ public class Ambulance {
     }
 
     if (timePeriod == DistanceIO.getTravelTimeInterval()) {
-      currentRouteIndex++;
       currentLocation = getNewLocation();
+      currentRouteIndex++;
     } else {
       currentLocation = getNewLocation(timePeriod);
     }

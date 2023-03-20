@@ -1,6 +1,7 @@
 package no.ntnu.ambulanceallocation.simulation;
 
-import java.time.Duration;import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -269,7 +270,7 @@ public final class Simulation {
 
     for (var ambulance : dispatchedAmbulances) {
       eventQueue.add(
-          new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
+          new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
     }
     eventQueue.add(
         new SceneDeparture(time.plusSeconds(timeToNextEvent), newCall, dispatchedAmbulances));
@@ -285,7 +286,7 @@ public final class Simulation {
         ambulance.transport();
         eventQueue.add(new HospitalArrival(availableTime, ambulance, newCall));
         eventQueue.add(
-            new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
+            new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
       } else {
         jobCompleted(ambulance, newCall);
       }
@@ -312,7 +313,7 @@ public final class Simulation {
     }
 
     eventQueue.add(
-        new LocationUpdate(time.plusSeconds(config.UPDATE_LOCATION_PERIOD()), ambulance));
+        new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
 
     var travelTime = plannedTravelTimes.remove(newCall);
     if (newCall.providesResponseTime && travelTime != null) {
@@ -494,7 +495,7 @@ public final class Simulation {
       }
 
       var timeSinceUpdate = System.currentTimeMillis() - lastVisualUpdate;
-      var updateInterval = Math.max(5, simulationUpdateInterval.longValue());
+      var updateInterval = Math.max(10, simulationUpdateInterval.longValue());
       if (timeSinceUpdate < updateInterval) {
         Thread.sleep(updateInterval - timeSinceUpdate);
       }
