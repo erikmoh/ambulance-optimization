@@ -50,6 +50,7 @@ public class ExecutionTimeExperiment implements Experiment {
 
     logger.info("Average execution time: {}", (averageExecutionTime / 1_000_000_000));
     logger.info("Average response time: {}", simulationResults.averageResponseTimes());
+    logger.info("Average survival rate: {}", simulationResults.averageSurvivalRate());
   }
 
   public static void main(String[] args) {

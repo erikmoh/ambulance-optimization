@@ -58,4 +58,8 @@ public record Incident(
     }
     return (int) ChronoUnit.SECONDS.between(dispatched, availableNonTransport);
   }
+
+  public int getDemand() {
+    return nonTransportingVehicles + transportingVehicles;
+  }
 }

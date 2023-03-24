@@ -46,7 +46,7 @@ public class IncidentIO {
   public static final List<Incident> incidents;
   public static final Map<Coordinate, IncidentDistribution> distributions;
   public static final Map<Integer, IncidentDistribution> distributionsBaseStation;
-  public static final Map<Coordinate, Integer> gridZones;
+  public static final Map<Long, Integer> gridZones;
 
   static {
     incidents = loadIncidentsFromFile();
@@ -254,13 +254,13 @@ public class IncidentIO {
     return distributions;
   }
 
-  public static Map<Coordinate, Integer> loadGridZones() {
+  public static Map<Long, Integer> loadGridZones() {
     if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
         || !PREDICTED_DEMAND_BASE_STATION) {
       return Collections.emptyMap();
     }
 
-    var gridZones = new HashMap<Coordinate, Integer>();
+    var gridZones = new HashMap<Long, Integer>();
 
     logger.info("Loading grid zones from file...");
 
@@ -276,10 +276,10 @@ public class IncidentIO {
       while (line != null) {
         var values = Arrays.asList(line.split(","));
 
-        var gridCoordinate = new Coordinate(Long.parseLong(values.get(0)));
+        var gridId = Long.parseLong(values.get(0));
         var baseStation = Integer.parseInt(values.get(5));
 
-        gridZones.put(gridCoordinate, baseStation);
+        gridZones.put(gridId, baseStation);
 
         processedLines++;
         line = bufferedReader.readLine();

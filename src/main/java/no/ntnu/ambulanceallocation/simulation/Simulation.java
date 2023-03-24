@@ -43,7 +43,7 @@ public final class Simulation {
   private final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
   private final Map<NewCall, Integer> plannedTravelTimes = new HashMap<>();
   private final Map<ShiftType, Map<BaseStation, Integer>> baseStationShiftCount = new HashMap<>();
-  private final Map<BaseStation, List<Ambulance>> baseStationAmbulances = new HashMap<>();
+  public static final Map<BaseStation, List<Ambulance>> baseStationAmbulances = new HashMap<>();
   private final Map<BaseStation, Integer> remainingOffDutyAmbulances = new HashMap<>();
   private SimulationResults simulationResults;
   private LocalDateTime time;
@@ -335,9 +335,9 @@ public final class Simulation {
 
   private List<Ambulance> dispatch(NewCall newCall) {
     var incident = newCall.incident;
-    var transportDemand = newCall.getTransportingVehicleDemand();
-    var nonTransportDemand = newCall.getNonTransportingVehicleDemand();
-    var demand = transportDemand + nonTransportDemand;
+    var demand = incident.getDemand();
+    var transportDemand = incident.transportingVehicles();
+    var nonTransportDemand = incident.nonTransportingVehicles();
 
     var available = new ArrayList<Ambulance>();
     var reassignable = new ArrayList<Ambulance>();
@@ -352,28 +352,24 @@ public final class Simulation {
     }
 
     // update ambulance dispatch score based on dispatch strategy
-    available.forEach(
-        a ->
-            config
-                .DISPATCH_POLICY()
-                .updateAmbulance(a, available, baseStationAmbulances, incident));
+    available.forEach(a -> config.DISPATCH_POLICY().updateAmbulance(a, available, incident));
 
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted
-    var nearestAmbulances =
+    var bestAmbulances =
         available.stream().sorted(Comparator.comparing(Ambulance::getDispatchScore)).toList();
 
     // dispatch transport ambulances
     var hospital = transportDemand > 0 ? findNearestHospital(incident) : null;
     var transportAmbulances =
-        nearestAmbulances.subList(0, Math.min(transportDemand, supply)).stream()
+        bestAmbulances.subList(0, Math.min(transportDemand, supply)).stream()
             .peek(a -> a.dispatch(newCall, hospital))
             .toList();
     var dispatchedTransport = transportAmbulances.size();
 
     // dispatch non-transport ambulances
     var nonTransportAmbulances =
-        nearestAmbulances
+        bestAmbulances
             .subList(
                 dispatchedTransport, Math.min(dispatchedTransport + nonTransportDemand, supply))
             .stream()

@@ -245,7 +245,7 @@ public class SimulationController {
    * @param projection the projection to use in the map.
    */
   public void initMapAndControls(Projection projection) {
-    setRandomAllocation();
+    setPopulationProportionateAllocation();
 
     checkShowPathLines.setSelected(true);
     checkShowHospitals.setSelected(true);
