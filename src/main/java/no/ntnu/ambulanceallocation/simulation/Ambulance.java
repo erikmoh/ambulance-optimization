@@ -9,6 +9,8 @@ import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 
 public class Ambulance {
 
+  private static Config config;
+
   private final BaseStation baseStation;
   private boolean isOffDuty = true;
   private Coordinate hospitalLocation = null;
@@ -34,6 +36,10 @@ public class Ambulance {
     this.id = id;
     this.baseStation = baseStation;
     this.currentLocation = baseStation.getCoordinate();
+  }
+
+  public static void setConfig(Config currentConfig) {
+    config = currentConfig;
   }
 
   public BaseStation getBaseStation() {
@@ -89,11 +95,13 @@ public class Ambulance {
   }
 
   public void setTimeToIncident(Incident incident) {
-    timeToIncident = Math.round(currentLocation.timeTo(incident.getLocation()));
+    var delay = isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
+    timeToIncident = delay + Math.round(currentLocation.timeTo(incident.getLocation()));
   }
 
   public void setTimeToIncident(int time) {
-    timeToIncident = time;
+    var delay = isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
+    timeToIncident = delay + time;
   }
 
   public void updateCoveragePenalty(int penalty) {

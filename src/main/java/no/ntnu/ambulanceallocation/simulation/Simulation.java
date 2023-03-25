@@ -184,6 +184,7 @@ public final class Simulation {
       baseStationShiftCount.get(ShiftType.NIGHT).put(baseStation, nightShiftCount);
 
       ambulances.addAll(ambulancesStation);
+      Ambulance.setConfig(config);
       remainingOffDutyAmbulances.put(baseStation, 0);
       ambulancesStation.stream()
           .limit(baseStationShiftCount.get(currentShift).get(baseStation))
@@ -233,11 +234,11 @@ public final class Simulation {
 
     var incident = newCall.incident;
     var firstAmbulance = dispatchedAmbulances.get(0);
-    var delay = firstAmbulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
-    var travelTime = firstAmbulance.getTimeToIncident();
+    firstAmbulance.setTimeToIncident(incident);
+    var responseTime = firstAmbulance.getTimeToIncident();
 
     // set or update travel time
-    plannedTravelTimes.put(newCall, delay + travelTime);
+    plannedTravelTimes.put(newCall, responseTime);
 
     var timeToNextEvent = 0;
 
@@ -245,20 +246,20 @@ public final class Simulation {
       // An ambulance transported patients to a hospital
       if (incident.arrivalAtScene().isPresent()) {
         var timeAtScene = incident.getTimeSpentAtScene();
-        timeToNextEvent = travelTime + timeAtScene;
+        timeToNextEvent = responseTime + timeAtScene;
       } else {
         // No arrival time at scene, so we simulate it by using dispatch and travel time
-        var simulatedArrivalTime = incident.dispatched().plusSeconds(travelTime);
+        var simulatedArrivalTime = incident.dispatched().plusSeconds(responseTime);
         var timeAtScene =
             ChronoUnit.SECONDS.between(simulatedArrivalTime, incident.departureFromScene().get());
-        timeToNextEvent = (int) (travelTime + timeAtScene);
+        timeToNextEvent = (int) (responseTime + timeAtScene);
       }
     } else {
       // No ambulances transported patients to a hospital so the job will be completed
       if (incident.arrivalAtScene().isPresent()) {
         // Job is completed when the ambulance leaves the scene
         var timeAtScene = incident.getTimeSpentAtSceneNonTransport();
-        timeToNextEvent = travelTime + timeAtScene;
+        timeToNextEvent = responseTime + timeAtScene;
       } else {
         // The incident had no arrival at scene time, so it is assumed that it was aborted
         timeToNextEvent = incident.getTimeBeforeAborting();
@@ -269,8 +270,10 @@ public final class Simulation {
     }
 
     for (var ambulance : dispatchedAmbulances) {
+      var delay = ambulance.isAtBaseStation() ? config.DISPATCH_DELAY().get(incident) : 0;
+      var updateTime = time.plusSeconds(delay);
       eventQueue.add(
-          new LocationUpdate(time.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
+          new LocationUpdate(updateTime.plusMinutes(config.UPDATE_LOCATION_PERIOD()), ambulance));
     }
     eventQueue.add(
         new SceneDeparture(time.plusSeconds(timeToNextEvent), newCall, dispatchedAmbulances));
