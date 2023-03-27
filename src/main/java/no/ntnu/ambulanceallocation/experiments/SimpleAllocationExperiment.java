@@ -33,6 +33,7 @@ public class SimpleAllocationExperiment implements Experiment {
     var simulationResults = Simulation.simulate(dayShiftAllocation, nightShiftAllocation);
 
     incidentResults.saveColumn("timestamp", simulationResults.getCallTimes());
+    incidentResults.saveColumn("urgency", simulationResults.getUrgencyLevels());
     incidentResults.saveColumn("response_time", simulationResults.getResponseTimes());
 
     logger.info("Average response time: {}", simulationResults.averageResponseTimes());
