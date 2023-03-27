@@ -57,7 +57,7 @@ public final class DistanceIO {
 
   public static double getDistance(Coordinate from, Coordinate to) {
     if (from == to) {
-      return 0.0;
+      return 60.0;
     }
     if (!routes.containsKey(new Tuple<>(from, to))) {
       logger.info("Failed to find distance from {} to {}", from, to);
