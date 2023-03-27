@@ -3,6 +3,7 @@ package no.ntnu.ambulanceallocation.simulation.dispatch;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import no.ntnu.ambulanceallocation.simulation.Ambulance;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
@@ -13,19 +14,23 @@ import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 public enum DispatchDelay {
   SIMULATED {
     @Override
-    public int get(Incident incident) {
+    public int get(Incident incident, Ambulance ambulance) {
       return 0;
     }
   },
   HISTORIC {
     @Override
-    public int get(Incident incident) {
+    public int get(Incident incident, Ambulance ambulance) {
       return incident.getDispatchDelay();
     }
   },
   HISTORIC_MEDIAN {
     @Override
-    public int get(Incident incident) {
+    public int get(Incident incident, Ambulance ambulance) {
+      if (!ambulance.isAtBaseStation() || ambulance.getIncident() != null) {
+        // assume some time from the ambulance is called until it starts to move to incident
+        return 60;
+      }
       if (incident.urgencyLevel().isRegular()) {
         return medianDispatchTimeMap.get(UrgencyLevel.REGULAR);
       }
@@ -66,5 +71,5 @@ public enum DispatchDelay {
     return map;
   }
 
-  public abstract int get(Incident incident);
+  public abstract int get(Incident incident, Ambulance ambulance);
 }
