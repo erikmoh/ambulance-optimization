@@ -27,7 +27,7 @@ public final class Parameters {
   public static final boolean PREDICTED_DEMAND_BASE_STATION = true;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
   public static final boolean ENABLE_REDISPATCH = true;
-  public static final boolean ENABLE_QUEUE_NEXT = true;
+  public static final boolean ENABLE_QUEUE_NEXT = false;
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
