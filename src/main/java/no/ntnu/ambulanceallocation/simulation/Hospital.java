@@ -25,11 +25,8 @@ public enum Hospital {
   }
 
   public static Comparator<Hospital> closestTo(Incident incident) {
-    return Comparator.comparingDouble(hospital -> timeTo(hospital, incident));
-  }
-
-  public static double timeTo(Hospital hospital, Incident incident) {
-    return hospital.coordinate.timeTo(incident.getLocation());
+    return Comparator.comparing(
+        hospital -> incident.getLocation().timeTo(hospital.getCoordinate()));
   }
 
   public Coordinate getCoordinate() {
