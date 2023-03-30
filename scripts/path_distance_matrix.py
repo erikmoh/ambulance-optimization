@@ -14,10 +14,10 @@ UPDATE_PERIOD = 5 # minutes
 
 PLOT_GRAPH = False
 
-PROCESSES = 15
+PROCESSES = 1
 
-FILENAME_OLD = None
-FILENAME_NEW = "od_paths"
+FILENAME_OLD = "od_paths.json"
+FILENAME_NEW = "od_paths_updated.json"
 
 ox.settings.use_cache = True
 UPDATE_GRAPH = False
@@ -161,10 +161,13 @@ def shortest_paths(G, ids, from_ids, ssb_ids, nearest_nodes, closest_grids, conn
     od = {}
     for id1 in tqdm(from_ids):
         ssb_id1 = ssb_ids[id1]
+
         od[ssb_id1] = {}
         
         for id2 in ids:
             ssb_id2 = ssb_ids[id2]
+            if ssb_id1 != "_279180_6657962" and ssb_id2 != "_279180_6657962":
+                continue
             # set travel time to 0 if path is from and to the same node
             if id1 == id2:
                 od[ssb_id1][ssb_id2] = {"travel_time": 0, "route": []}
@@ -269,7 +272,7 @@ def main():
         process.join()
         
     print("Saving od to file...")
-    with open(f'data/{FILENAME_NEW}.json', 'w') as f:
+    with open(f'data/{FILENAME_NEW}', 'w') as f:
         json.dump(od, f, indent=2)
     print("Done.")
 

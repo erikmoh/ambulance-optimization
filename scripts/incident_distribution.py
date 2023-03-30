@@ -1,4 +1,5 @@
 import copy
+import csv
 import json
 import pandas as pd
 from tqdm import tqdm
@@ -10,13 +11,16 @@ from coordinate_converter import utm_to_ssb_grid_id
 
 CREATE_NEW_PROCESSED = False
 PROCESSED_FILE = "data/incidents_all_processed.csv"
-DISTRIBUTION_FILE = "data/incidents_distribution_station.json"
+DISTRIBUTION_FILE = "data/incidents_distribution_station_avg.json"
 
 FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'avg_hentested',
                 'ank_levsted', 'ledig', 'xcoor', 'ycoor', 'hastegrad',
                 'tiltak_type', 'ssbid1000M']
 FEATURES_KEEP = ['tidspunkt', 'xcoor', 'ycoor']
+
+DISTRIBUTION_FILE_CSV = "data/incidents_distribution_station_avg_test.csv"
+CSV_COLUMNS = ['Base Station','Month','Weekday','Hour','Incidents']
 
 
 def get_processed_file():
@@ -83,21 +87,22 @@ def count_incidents(df, incident_distribution, num_weekdays):
 
     grid_zones = pd.read_csv("data/grid_zones.csv")
 
-    for incident in tqdm(df.values, desc="Count incidents per day"):
-        dt = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
-        weekday = dt.weekday() + 1
+    for incident in tqdm(df.values, desc="Count incidents per hour"):
+        date = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
+        weekday = date.weekday() + 1
         incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
-        try:
-            incident_station = grid_zones.loc[grid_zones["SSBID1000M"] == incident_grid, "base_station"].iloc[0]
-            incident_distribution[incident_station][dt.month][weekday][dt.hour] += 1
-        except:
-            print(f"grid {incident_grid} was not in grid_zones.csv")
-            continue
+        if date < datetime(2017, 8, 6) or date > datetime(2017, 8, 14):
+            try:
+                incident_station = grid_zones.loc[grid_zones["SSBID1000M"] == incident_grid, "base_station"].iloc[0]
+                incident_distribution[incident_station][date.month][weekday][date.hour] += 1
+            except:
+                print(f"grid {incident_grid} was not in grid_zones.csv")
+                continue
 
         if weekday != prev_weekday:
             if weekday - prev_weekday != 1 and weekday - prev_weekday != -6 and prev_weekday != 0:
                 print("Skipped one or more days")
-            num_weekdays[dt.month][weekday] += 1
+            num_weekdays[date.month][weekday] += 1
             prev_weekday = weekday
 
 
@@ -111,6 +116,29 @@ def average_count(incident_distribution, num_weekdays):
                         num_weekday_month = num_weekdays[month][weekday]
                         weekday_in_month_average = count/num_weekday_month
                         incident_distribution[station_id][month][weekday][hour] = round(weekday_in_month_average, 4)
+
+
+def save_distribution_to_csv(distribution):
+    with open(DISTRIBUTION_FILE_CSV, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=CSV_COLUMNS)
+        writer.writeheader()
+        for station_id in distribution.keys():
+            for month in distribution[station_id].keys():
+                for weekday in distribution[station_id][month].keys():
+                    for hour in distribution[station_id][month][weekday].keys():
+                        avg = distribution[station_id][month][weekday][hour]
+                        try:
+                            row = {
+                                'Base Station': station_id,
+                                'Month': month, 
+                                'Weekday': weekday, 
+                                'Hour': hour, 
+                                'Incidents': avg
+                            }
+                            writer.writerow(row)
+                        except:
+                            break
+
 
 def main():
     df = get_processed_file()
@@ -126,6 +154,9 @@ def main():
     print("Saving distribution to file...")
     with open(DISTRIBUTION_FILE, 'w') as f:
         json.dump(incident_distribution, f, indent=2)
-    
+        
+    """ print("Saving distribution to csv")
+    save_distribution_to_csv(incident_distribution) """
+
 
 main()
