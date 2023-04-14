@@ -11,7 +11,7 @@ from coordinate_converter import utm_to_ssb_grid_id
 
 CREATE_NEW_PROCESSED = False
 PROCESSED_FILE = "data/incidents_all_processed.csv"
-DISTRIBUTION_FILE = "data/incidents_distribution_station_avg.json"
+DISTRIBUTION_FILE = "data/incidents_distribution_station_count.json"
 
 FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'avg_hentested',
@@ -19,8 +19,8 @@ FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'tiltak_type', 'ssbid1000M']
 FEATURES_KEEP = ['tidspunkt', 'xcoor', 'ycoor']
 
-DISTRIBUTION_FILE_CSV = "data/incidents_distribution_station_avg_test.csv"
-CSV_COLUMNS = ['Base Station','Month','Weekday','Hour','Incidents']
+DISTRIBUTION_FILE_CSV = "data/incidents_distribution_station_count_test.csv"
+CSV_COLUMNS = ['Base Station','Year','Month','Day','Week','Weekday','Hour','Incidents']
 
 
 def get_processed_file():
@@ -60,12 +60,14 @@ def create_empty_distribution():
     incident_distribution = {}
 
     time = {}
-    for month in range(1, 13):
-        time[month] = {}
-        for dayweek in range(1, 8):
-            time[month][dayweek] = {}
-            for hour in range(0, 24):
-                time[month][dayweek][hour] = 0
+    for year in range(2015, 2019):
+        time[year] = {}
+        for month in range(1, 13):
+            time[year][month] = {}
+            for day in range(1, 32):
+                time[year][month][day] = {}
+                for hour in range(0, 24):
+                    time[year][month][day][hour] = 0
 
     for station in base_stations.values:
         incident_distribution[int(station[0])] = copy.deepcopy(time)
@@ -82,28 +84,27 @@ def create_num_weekdays():
     return num_weekdays
 
 
-def count_incidents(df, incident_distribution, num_weekdays):
+def count_incidents(df, incident_distribution):
     prev_weekday = 0
 
     grid_zones = pd.read_csv("data/grid_zones.csv")
 
     for incident in tqdm(df.values, desc="Count incidents per hour"):
         date = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
-        weekday = date.weekday() + 1
         incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
-        if date < datetime(2017, 8, 6) or date > datetime(2017, 8, 14):
+        if date > datetime(2017, 8, 6, 23, 59, 59) and date < datetime(2017, 8, 14):
             try:
                 incident_station = grid_zones.loc[grid_zones["SSBID1000M"] == incident_grid, "base_station"].iloc[0]
-                incident_distribution[incident_station][date.month][weekday][date.hour] += 1
             except:
                 print(f"grid {incident_grid} was not in grid_zones.csv")
                 continue
+            incident_distribution[incident_station][date.year][date.month][date.day][date.hour] += 1
 
-        if weekday != prev_weekday:
+        """ if weekday != prev_weekday:
             if weekday - prev_weekday != 1 and weekday - prev_weekday != -6 and prev_weekday != 0:
                 print("Skipped one or more days")
             num_weekdays[date.month][weekday] += 1
-            prev_weekday = weekday
+            prev_weekday = weekday """
 
 
 def average_count(incident_distribution, num_weekdays):
@@ -123,21 +124,29 @@ def save_distribution_to_csv(distribution):
         writer = csv.DictWriter(csvfile, fieldnames=CSV_COLUMNS)
         writer.writeheader()
         for station_id in distribution.keys():
-            for month in distribution[station_id].keys():
-                for weekday in distribution[station_id][month].keys():
-                    for hour in distribution[station_id][month][weekday].keys():
-                        avg = distribution[station_id][month][weekday][hour]
-                        try:
-                            row = {
-                                'Base Station': station_id,
-                                'Month': month, 
-                                'Weekday': weekday, 
-                                'Hour': hour, 
-                                'Incidents': avg
-                            }
-                            writer.writerow(row)
-                        except:
-                            break
+            for year in distribution[station_id].keys():
+                for month in distribution[station_id][year].keys():
+                    for day in distribution[station_id][year][month].keys():
+                        for hour in distribution[station_id][year][month][day].keys():
+                            count = distribution[station_id][year][month][day][hour]
+                            try:
+                                date = datetime(year, month, day)
+                                if date > datetime(2017, 8, 6, 23, 59, 59) and date < datetime(2017, 8, 14):
+                                    week = date.isocalendar().week
+                                    weekday = date.isocalendar().weekday
+                                    row = {
+                                        'Base Station': station_id,
+                                        'Year': year,
+                                        'Month': month, 
+                                        'Day': day,
+                                        'Week': week,
+                                        'Weekday': weekday,
+                                        'Hour': hour, 
+                                        'Incidents': count
+                                    }
+                                    writer.writerow(row)
+                            except:
+                                break
 
 
 def main():
@@ -146,17 +155,17 @@ def main():
 
     print("Creating empty dictionaries for counts")
     incident_distribution = create_empty_distribution()
-    num_weekdays = create_num_weekdays()
+    #num_weekdays = create_num_weekdays()
 
-    count_incidents(df, incident_distribution, num_weekdays)
-    average_count(incident_distribution, num_weekdays)
+    count_incidents(df, incident_distribution)
+    # average_count(incident_distribution, num_weekdays)
 
-    print("Saving distribution to file...")
+    """     print("Saving distribution to file...")
     with open(DISTRIBUTION_FILE, 'w') as f:
-        json.dump(incident_distribution, f, indent=2)
+        json.dump(incident_distribution, f, indent=2) """
         
-    """ print("Saving distribution to csv")
-    save_distribution_to_csv(incident_distribution) """
+    print("Saving distribution to csv")
+    save_distribution_to_csv(incident_distribution)
 
 
 main()
