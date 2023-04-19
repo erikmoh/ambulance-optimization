@@ -46,7 +46,7 @@ public final class Simulation {
   private final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
   private final Map<NewCall, Integer> plannedTravelTimes = new HashMap<>();
   private final Map<ShiftType, Map<BaseStation, Integer>> baseStationShiftCount = new HashMap<>();
-  public static final Map<BaseStation, List<Ambulance>> baseStationAmbulances = new HashMap<>();
+  private final Map<BaseStation, List<Ambulance>> baseStationAmbulances = new HashMap<>();
   private final Map<BaseStation, Integer> remainingOffDutyAmbulances = new HashMap<>();
   private final Map<Incident, List<Ambulance>> ambulancesAtScene = new HashMap<>();
   private SimulationResults simulationResults;
@@ -320,7 +320,7 @@ public final class Simulation {
     ambulance.arriveAtScene();
 
     ambulancesAtScene.computeIfAbsent(incident, k -> new ArrayList<>()).add(ambulance);
-    // only depart when all ambulances have arrived
+    // only depart if all ambulances have arrived
     if (ambulancesAtScene.get(incident).size() < incident.getDemand()) {
       return;
     }
@@ -425,9 +425,10 @@ public final class Simulation {
 
   private List<Ambulance> dispatch(NewCall newCall) {
     var incident = newCall.incident;
-    var demand = incident.getDemand();
-    var transportDemand = incident.transportingVehicles();
-    var nonTransportDemand = incident.nonTransportingVehicles();
+    // call can be partially responded, so use call.getDemand instead of incident.getDemand
+    var transportDemand = newCall.getTransportingVehicleDemand();
+    var nonTransportDemand = newCall.getNonTransportingVehicleDemand();
+    var demand = transportDemand + nonTransportDemand;
 
     var available = new ArrayList<Ambulance>();
     var reassignable = new ArrayList<Ambulance>();
@@ -442,7 +443,11 @@ public final class Simulation {
     }
 
     // update ambulance dispatch score based on dispatch strategy
-    available.forEach(a -> config.DISPATCH_POLICY().updateAmbulance(a, available, incident));
+    available.forEach(
+        a ->
+            config
+                .DISPATCH_POLICY()
+                .updateAmbulance(a, available, incident, demand, baseStationAmbulances));
 
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted
@@ -479,7 +484,7 @@ public final class Simulation {
     // create partially responded call
     if (dispatchedTransport < transportDemand || dispatchedNonTransport < nonTransportDemand) {
       var partiallyRespondedCall = new PartiallyRespondedCall(newCall);
-      partiallyRespondedCall.respondWithTransportingVehicles(transportAmbulances.size());
+      partiallyRespondedCall.respondWithTransportingVehicles(dispatchedTransport);
       partiallyRespondedCall.respondWithNonTransportingVehicles(dispatchedNonTransport);
       callQueue.add(partiallyRespondedCall);
     }
