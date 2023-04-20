@@ -55,7 +55,8 @@ public class GeneticAlgorithm implements Optimizer {
           var generation = 0;
           var startTime = System.nanoTime();
 
-          while (generation < Parameters.GENERATIONS) {
+          while (generation < Parameters.GENERATIONS
+              && elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME) {
 
             printAndSaveSummary(logger, generation, population);
 
@@ -134,8 +135,13 @@ public class GeneticAlgorithm implements Optimizer {
     var bestFitness = population.getBestFitness();
     var averageFitness = population.getAverageFitness();
     var diversity = population.getDiversity();
-    logger.info("Best fitness: {}", bestFitness);
-    logger.info("Average fitness: {}", averageFitness);
+    if (config.USE_URGENCY_FITNESS()) {
+      logger.info("Best fitness: {}", 1 - bestFitness);
+      logger.info("Average fitness: {}", 1 - averageFitness);
+    } else {
+      logger.info("Best fitness: {}", bestFitness);
+      logger.info("Average fitness: {}", averageFitness);
+    }
     logger.info("Diversity: {}", diversity);
     this.bestFitness.add(bestFitness);
     this.averageFitness.add(averageFitness);
