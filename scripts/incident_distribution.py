@@ -11,7 +11,7 @@ from coordinate_converter import utm_to_ssb_grid_id
 
 CREATE_NEW_PROCESSED = False
 PROCESSED_FILE = "data/incidents_all_processed.csv"
-DISTRIBUTION_FILE = "data/incidents_distribution_station_count.json"
+DISTRIBUTION_FILE = "data/incidents_distribution_station_truths.json"
 
 FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'avg_hentested',
@@ -19,7 +19,7 @@ FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'tiltak_type', 'ssbid1000M']
 FEATURES_KEEP = ['tidspunkt', 'xcoor', 'ycoor']
 
-DISTRIBUTION_FILE_CSV = "data/incidents_distribution_station_count_test.csv"
+DISTRIBUTION_FILE_CSV = "data/incidents_distribution_station_truths.csv"
 CSV_COLUMNS = ['Base Station','Year','Month','Day','Week','Weekday','Hour','Incidents']
 
 
@@ -64,7 +64,7 @@ def create_empty_distribution():
         time[year] = {}
         for month in range(1, 13):
             time[year][month] = {}
-            for day in range(1, 32):
+            for day in range(6, 14):
                 time[year][month][day] = {}
                 for hour in range(0, 24):
                     time[year][month][day][hour] = 0
@@ -84,15 +84,16 @@ def create_num_weekdays():
     return num_weekdays
 
 
-def count_incidents(df, incident_distribution):
+def count_incidents(df, incident_distribution, num_weekdays):
     prev_weekday = 0
 
     grid_zones = pd.read_csv("data/grid_zones.csv")
 
     for incident in tqdm(df.values, desc="Count incidents per hour"):
         date = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
-        incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
-        if date > datetime(2017, 8, 6, 23, 59, 59) and date < datetime(2017, 8, 14):
+        if date > datetime(2017, 8, 5, 23, 59, 59) and date < datetime(2017, 8, 14):
+            #weekday = date.weekday() + 1
+            incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
             try:
                 incident_station = grid_zones.loc[grid_zones["SSBID1000M"] == incident_grid, "base_station"].iloc[0]
             except:
@@ -131,7 +132,7 @@ def save_distribution_to_csv(distribution):
                             count = distribution[station_id][year][month][day][hour]
                             try:
                                 date = datetime(year, month, day)
-                                if date > datetime(2017, 8, 6, 23, 59, 59) and date < datetime(2017, 8, 14):
+                                if date > datetime(2017, 8, 5, 23, 59, 59) and date < datetime(2017, 8, 14):
                                     week = date.isocalendar().week
                                     weekday = date.isocalendar().weekday
                                     row = {
@@ -155,14 +156,14 @@ def main():
 
     print("Creating empty dictionaries for counts")
     incident_distribution = create_empty_distribution()
-    #num_weekdays = create_num_weekdays()
+    num_weekdays = create_num_weekdays()
 
-    count_incidents(df, incident_distribution)
-    # average_count(incident_distribution, num_weekdays)
+    count_incidents(df, incident_distribution, num_weekdays)
+    #average_count(incident_distribution, num_weekdays)
 
-    """     print("Saving distribution to file...")
+    print("Saving distribution to file...")
     with open(DISTRIBUTION_FILE, 'w') as f:
-        json.dump(incident_distribution, f, indent=2) """
+        json.dump(incident_distribution, f, indent=2)
         
     print("Saving distribution to csv")
     save_distribution_to_csv(incident_distribution)
