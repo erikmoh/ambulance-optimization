@@ -447,7 +447,7 @@ public final class Simulation {
         a ->
             config
                 .DISPATCH_POLICY()
-                .updateAmbulance(a, available, incident, demand, baseStationAmbulances));
+                .updateAmbulance(a, available, incident, demand, baseStationAmbulances, config));
 
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted

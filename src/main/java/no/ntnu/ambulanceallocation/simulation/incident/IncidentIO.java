@@ -1,8 +1,8 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
 import static no.ntnu.ambulanceallocation.Parameters.DISPATCH_POLICY;
-import static no.ntnu.ambulanceallocation.Parameters.PREDICTED_DEMAND_BASE_STATION;
 import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.getCoordinateFromString;
+import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.loadNeighboursFromFile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -40,26 +40,37 @@ public class IncidentIO {
   public static final String incidentsFilePath =
       new File("src/main/resources/data/incidents.csv").getAbsolutePath();
   public static final String incidentDistributionFilePath =
-      new File("src/main/resources/data/incidents_distribution.json").getAbsolutePath();
+      new File("src/main/resources/data/distributions/incidents_distribution_grid_average.json")
+          .getAbsolutePath();
   public static final String incidentDistributionBaseStationFilePath =
-      new File("src/main/resources/data/incidents_distribution_station.json").getAbsolutePath();
-  public static final String gridZonesPath =
-      new File("src/main/resources/data/grid_zones.csv").getAbsolutePath();
+      new File("src/main/resources/data/distributions/incidents_distribution_station_average.json")
+          .getAbsolutePath();
+  public static final String incidentDistributionPredictionsFilePath =
+      new File(
+              "src/main/resources/data/distributions/incidents_distribution_station_predictions.json")
+          .getAbsolutePath();
+  public static final String incidentDistributionTruthsFilePath =
+      new File("src/main/resources/data/distributions/incidents_distribution_station_truths.json")
+          .getAbsolutePath();
   public static final DateTimeFormatter dateTimeFormatter =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   public static final List<Incident> incidents;
-  public static final Map<Coordinate, IncidentDistribution> distributions;
-  public static final Map<Integer, IncidentDistribution> distributionsBaseStation;
-  public static final Map<Long, Integer> gridZones;
   public static final Map<UrgencyLevel, Integer> medianTimeAtHospital;
+  public static final Map<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>>
+      gridDistribution;
+  public static final Map<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>
+      baseStationDistribution;
+  public static final Map<Integer, Map<Integer, Map<Integer, Double>>> predictionDistribution;
+  public static final Map<Integer, Map<Integer, Map<Integer, Double>>> truthDistribution;
 
   static {
     incidents = loadIncidentsFromFile();
-    distributions = loadDistributionsFromFile();
-    distributionsBaseStation = loadDistributionsBaseStationFromFile();
-    gridZones = loadGridZones();
     medianTimeAtHospital = findMedianTimeAtHospital();
+    gridDistribution = loadGridDistributions();
+    baseStationDistribution = loadBaseStationDistributions();
+    predictionDistribution = loadPredictionDistributions(false);
+    truthDistribution = loadPredictionDistributions(true);
   }
 
   public static List<Incident> loadIncidentsFromFile() {
@@ -167,14 +178,16 @@ public class IncidentIO {
     return Optional.of(LocalDateTime.parse(dateTime, dateTimeFormatter));
   }
 
-  private static Map<Coordinate, IncidentDistribution> loadDistributionsFromFile() {
-    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
-        || PREDICTED_DEMAND_BASE_STATION) {
+  static Map<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>> loadGridDistributions() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
       return Collections.emptyMap();
     }
 
+    loadNeighboursFromFile();
+
     logger.info("Loading distributions from file...");
-    var distributions = new HashMap<Coordinate, IncidentDistribution>();
+
+    var distributions = new HashMap<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>>();
 
     try {
       var distributionJsonObject =
@@ -203,7 +216,7 @@ public class IncidentIO {
           }
           monthMap.put(month, weekdayMap);
         }
-        distributions.put(origin, new IncidentDistribution(monthMap));
+        distributions.put(origin, monthMap);
       }
     } catch (JSONException | IOException e) {
       e.printStackTrace();
@@ -214,14 +227,13 @@ public class IncidentIO {
     return distributions;
   }
 
-  private static Map<Integer, IncidentDistribution> loadDistributionsBaseStationFromFile() {
-    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
-        || !PREDICTED_DEMAND_BASE_STATION) {
+  static Map<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>
+      loadBaseStationDistributions() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
       return Collections.emptyMap();
     }
 
-    logger.info("Loading distributions from file...");
-    var distributions = new HashMap<Integer, IncidentDistribution>();
+    var distributions = new HashMap<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>();
 
     try {
       var distributionJsonObject =
@@ -250,7 +262,7 @@ public class IncidentIO {
           }
           monthMap.put(month, weekdayMap);
         }
-        distributions.put(baseStation, new IncidentDistribution(monthMap));
+        distributions.put(baseStation, monthMap);
       }
     } catch (JSONException | IOException e) {
       e.printStackTrace();
@@ -261,45 +273,48 @@ public class IncidentIO {
     return distributions;
   }
 
-  public static Map<Long, Integer> loadGridZones() {
-    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
-        || !PREDICTED_DEMAND_BASE_STATION) {
+  static Map<Integer, Map<Integer, Map<Integer, Double>>> loadPredictionDistributions(
+      boolean truth) {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
       return Collections.emptyMap();
     }
 
-    var gridZones = new HashMap<Long, Integer>();
+    var distributions = new HashMap<Integer, Map<Integer, Map<Integer, Double>>>();
 
-    logger.info("Loading grid zones from file...");
+    var filePath = incidentDistributionPredictionsFilePath;
+    if (truth) {
+      filePath = incidentDistributionTruthsFilePath;
+    }
 
-    var processedLines = 0;
+    try {
+      var distributionJsonObject = new JSONObject(Files.readString(Path.of(filePath)));
 
-    try (var bufferedReader = new BufferedReader(new FileReader(gridZonesPath))) {
-      var header = bufferedReader.readLine();
+      for (var originKey : distributionJsonObject.names()) {
+        var baseStation = Integer.parseInt(originKey.toString());
+        var dayJsonObject = (JSONObject) distributionJsonObject.get(originKey.toString());
+        var dayMap = new HashMap<Integer, Map<Integer, Double>>();
 
-      logger.info("Grid zones CSV header: {}", header);
+        for (var dayKey : dayJsonObject.names()) {
+          var day = Integer.parseInt(dayKey.toString());
+          var hourJsonObject = (JSONObject) dayJsonObject.get(dayKey.toString());
+          var hourMap = new HashMap<Integer, Double>();
 
-      var line = bufferedReader.readLine();
+          for (var hourKey : hourJsonObject.names()) {
+            var hour = Integer.parseInt(hourKey.toString());
+            hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+          }
+          dayMap.put(day, hourMap);
+        }
 
-      while (line != null) {
-        var values = Arrays.asList(line.split(","));
-
-        var gridId = Long.parseLong(values.get(0));
-        var baseStation = Integer.parseInt(values.get(5));
-
-        gridZones.put(gridId, baseStation);
-
-        processedLines++;
-        line = bufferedReader.readLine();
+        distributions.put(baseStation, dayMap);
       }
-
-    } catch (IOException exception) {
-      logger.error("An IOException occurred while loading grid zones from file: ", exception);
+    } catch (JSONException | IOException e) {
+      e.printStackTrace();
       System.exit(1);
     }
 
-    logger.info("Loaded {} grid zones", processedLines);
-
-    return gridZones;
+    logger.info("Loaded {} distributions.", distributions.size());
+    return distributions;
   }
 
   private static Map<UrgencyLevel, Integer> findMedianTimeAtHospital() {
