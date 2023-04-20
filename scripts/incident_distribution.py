@@ -1,4 +1,5 @@
 import copy
+import csv
 import json
 import pandas as pd
 from tqdm import tqdm
@@ -10,13 +11,16 @@ from coordinate_converter import utm_to_ssb_grid_id
 
 CREATE_NEW_PROCESSED = False
 PROCESSED_FILE = "data/incidents_all_processed.csv"
-DISTRIBUTION_FILE = "data/incidents_distribution.json"
+DISTRIBUTION_FILE = "data/incidents_distribution_station_truths.json"
 
 FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
                 'avg_hentested',
                 'ank_levsted', 'ledig', 'xcoor', 'ycoor', 'hastegrad',
                 'tiltak_type', 'ssbid1000M']
 FEATURES_KEEP = ['tidspunkt', 'xcoor', 'ycoor']
+
+DISTRIBUTION_FILE_CSV = "data/incidents_distribution_station_truths.csv"
+CSV_COLUMNS = ['Base Station','Year','Month','Day','Week','Weekday','Hour','Incidents']
 
 
 def get_processed_file():
@@ -50,21 +54,23 @@ def create_processed_file():
 
 
 def create_empty_distribution():
-    grids = pd.read_csv("data/grid_centroids.csv")
+    # grids = pd.read_csv("data/grid_centroids.csv")
+    base_stations = pd.read_csv("data/base_stations.csv")
 
     incident_distribution = {}
 
     time = {}
-    for month in range(1, 13):
-        time[month] = {}
-        for dayweek in range(1, 8):
-            time[month][dayweek] = {}
-            for hour in range(0, 24):
-                time[month][dayweek][hour] = 0
+    for year in range(2015, 2019):
+        time[year] = {}
+        for month in range(1, 13):
+            time[year][month] = {}
+            for day in range(6, 14):
+                time[year][month][day] = {}
+                for hour in range(0, 24):
+                    time[year][month][day][hour] = 0
 
-    for grid in grids.values:
-        ssb_grid_id = utm_to_ssb_grid_id(int(grid[0]), int(grid[1]))
-        incident_distribution[ssb_grid_id] = copy.deepcopy(time)
+    for station in base_stations.values:
+        incident_distribution[int(station[0])] = copy.deepcopy(time)
 
     return incident_distribution
 
@@ -81,31 +87,68 @@ def create_num_weekdays():
 def count_incidents(df, incident_distribution, num_weekdays):
     prev_weekday = 0
 
-    for incident in tqdm(df.values, desc="Count incidents per day"):
-        dt = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
-        weekday = dt.weekday() + 1
-        incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
-        if incident_grid not in incident_distribution.keys():
-            continue
-        incident_distribution[incident_grid][dt.month][weekday][dt.hour] += 1
+    grid_zones = pd.read_csv("data/grid_zones.csv")
 
-        if weekday != prev_weekday:
+    for incident in tqdm(df.values, desc="Count incidents per hour"):
+        date = datetime.strptime(incident[0], '%Y-%m-%d %H:%M:%S')
+        if date > datetime(2017, 8, 5, 23, 59, 59) and date < datetime(2017, 8, 14):
+            #weekday = date.weekday() + 1
+            incident_grid = utm_to_ssb_grid_id(int(incident[1]), int(incident[2]))
+            try:
+                incident_station = grid_zones.loc[grid_zones["SSBID1000M"] == incident_grid, "base_station"].iloc[0]
+            except:
+                print(f"grid {incident_grid} was not in grid_zones.csv")
+                continue
+            incident_distribution[incident_station][date.year][date.month][date.day][date.hour] += 1
+
+        """ if weekday != prev_weekday:
             if weekday - prev_weekday != 1 and weekday - prev_weekday != -6 and prev_weekday != 0:
                 print("Skipped one or more days")
-            num_weekdays[dt.month][weekday] += 1
-            prev_weekday = weekday
+            num_weekdays[date.month][weekday] += 1
+            prev_weekday = weekday """
 
 
 def average_count(incident_distribution, num_weekdays):
-    for grid_id in tqdm(incident_distribution.keys(), desc="Change to average per day"):
-        for month in incident_distribution[grid_id].keys():
-            for weekday in incident_distribution[grid_id][month].keys():
-                for hour in incident_distribution[grid_id][month][weekday].keys():
-                    count = incident_distribution[grid_id][month][weekday][hour]
+    for station_id in tqdm(incident_distribution.keys(), desc="Change to average per day"):
+        for month in incident_distribution[station_id].keys():
+            for weekday in incident_distribution[station_id][month].keys():
+                for hour in incident_distribution[station_id][month][weekday].keys():
+                    count = incident_distribution[station_id][month][weekday][hour]
                     if count > 0:
                         num_weekday_month = num_weekdays[month][weekday]
                         weekday_in_month_average = count/num_weekday_month
-                        incident_distribution[grid_id][month][weekday][hour] = weekday_in_month_average
+                        incident_distribution[station_id][month][weekday][hour] = round(weekday_in_month_average, 4)
+
+
+def save_distribution_to_csv(distribution):
+    with open(DISTRIBUTION_FILE_CSV, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=CSV_COLUMNS)
+        writer.writeheader()
+        for station_id in distribution.keys():
+            for year in distribution[station_id].keys():
+                for month in distribution[station_id][year].keys():
+                    for day in distribution[station_id][year][month].keys():
+                        for hour in distribution[station_id][year][month][day].keys():
+                            count = distribution[station_id][year][month][day][hour]
+                            try:
+                                date = datetime(year, month, day)
+                                if date > datetime(2017, 8, 5, 23, 59, 59) and date < datetime(2017, 8, 14):
+                                    week = date.isocalendar().week
+                                    weekday = date.isocalendar().weekday
+                                    row = {
+                                        'Base Station': station_id,
+                                        'Year': year,
+                                        'Month': month, 
+                                        'Day': day,
+                                        'Week': week,
+                                        'Weekday': weekday,
+                                        'Hour': hour, 
+                                        'Incidents': count
+                                    }
+                                    writer.writerow(row)
+                            except:
+                                break
+
 
 def main():
     df = get_processed_file()
@@ -116,11 +159,14 @@ def main():
     num_weekdays = create_num_weekdays()
 
     count_incidents(df, incident_distribution, num_weekdays)
-    average_count(incident_distribution, num_weekdays)
+    #average_count(incident_distribution, num_weekdays)
 
     print("Saving distribution to file...")
     with open(DISTRIBUTION_FILE, 'w') as f:
         json.dump(incident_distribution, f, indent=2)
-    
+        
+    print("Saving distribution to csv")
+    save_distribution_to_csv(incident_distribution)
+
 
 main()

@@ -61,7 +61,7 @@ public abstract class Solution implements Comparable<Solution> {
   private void calculateFitness() {
     var simulationResults = Simulation.withConfig(config).simulate(allocation);
 
-    if (Config.defaultConfig().USE_URGENCY_FITNESS()) {
+    if (config.USE_URGENCY_FITNESS()) {
       fitness = 1 - simulationResults.averageSurvivalRate();
     } else {
       fitness = simulationResults.averageResponseTimes();

@@ -61,9 +61,11 @@ def filter_incomplete_years(df):
 
 def keep_period_of_interest(df, buffer_size=0):
   time = df.index + pd.Timedelta(hours=buffer_size)
+  all_2015 = df[time.year == 2015]
+  all_2016 = df[time.year == 2016]
   all_2017 = df[time.year == 2017]
   all_2018 = df[time.year == 2018]
-  return pd.concat([all_2017, all_2018])
+  return pd.concat([all_2015, all_2016, all_2017, all_2018])
 
 
 def filter_urgency_levels(df):

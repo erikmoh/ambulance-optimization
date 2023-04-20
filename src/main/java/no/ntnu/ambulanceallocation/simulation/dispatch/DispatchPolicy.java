@@ -1,28 +1,34 @@
 package no.ntnu.ambulanceallocation.simulation.dispatch;
 
-import static java.lang.Math.max;
-
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import no.ntnu.ambulanceallocation.simulation.Ambulance;
+import no.ntnu.ambulanceallocation.simulation.BaseStation;
+import no.ntnu.ambulanceallocation.simulation.Config;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
 import no.ntnu.ambulanceallocation.simulation.incident.Incident;
-import no.ntnu.ambulanceallocation.simulation.incident.IncidentIO;
+import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 
 public enum DispatchPolicy {
   Euclidean {
     @Override
     public void updateAmbulance(
-        Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
+        Ambulance ambulance,
+        List<Ambulance> otherAmbulances,
+        Incident incident,
+        Integer demand,
+        Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        Config config) {
+      ambulance.updateDispatchDelay(incident);
+
       var time = ambulance.getCurrentLocation().euclideanDistanceTo(incident.getLocation());
       ambulance.setTimeToIncident((int) time);
 
       if (ambulance.isTransportingPatient()) {
-        // time from prev incident to hospital + time to this next incident
-        ambulance.setTimeToIncident(
-            ambulance.getTimeToHospital()
-                + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+        updateTransportingAmbulance(ambulance, incident);
       }
     }
   },
@@ -30,15 +36,19 @@ public enum DispatchPolicy {
   Manhattan {
     @Override
     public void updateAmbulance(
-        Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
+        Ambulance ambulance,
+        List<Ambulance> otherAmbulances,
+        Incident incident,
+        Integer demand,
+        Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        Config config) {
+      ambulance.updateDispatchDelay(incident);
+
       var time = ambulance.getCurrentLocation().manhattanDistanceTo(incident.getLocation());
       ambulance.setTimeToIncident((int) time);
 
       if (ambulance.isTransportingPatient()) {
-        // time from prev incident to hospital + time to this next incident
-        ambulance.setTimeToIncident(
-            ambulance.getTimeToHospital()
-                + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+        updateTransportingAmbulance(ambulance, incident);
       }
     }
   },
@@ -46,14 +56,18 @@ public enum DispatchPolicy {
   Fastest {
     @Override
     public void updateAmbulance(
-        Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
+        Ambulance ambulance,
+        List<Ambulance> otherAmbulances,
+        Incident incident,
+        Integer demand,
+        Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        Config config) {
+      ambulance.updateDispatchDelay(incident);
+
       ambulance.setTimeToIncident(incident);
 
       if (ambulance.isTransportingPatient()) {
-        // time from prev incident to hospital + time to this next incident
-        ambulance.setTimeToIncident(
-            ambulance.getTimeToHospital()
-                + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+        updateTransportingAmbulance(ambulance, incident);
       }
     }
   },
@@ -61,20 +75,30 @@ public enum DispatchPolicy {
   CoverageBaseStation {
     @Override
     public void updateAmbulance(
-        Ambulance ambulance, List<Ambulance> baseStationAmbulances, Incident incident) {
+        Ambulance ambulance,
+        List<Ambulance> otherAmbulances,
+        Incident incident,
+        Integer demand,
+        Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        Config config) {
 
-      int coveragePenaltyImportance = updateCoverage(ambulance, incident);
+      int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
       if (coveragePenaltyImportance == 0) {
         return;
       }
 
       var numAvailable =
-          (int) baseStationAmbulances.stream().filter(Ambulance::isAvailable).count();
+          (int)
+              baseStationAmbulances.get(ambulance.getBaseStation()).stream()
+                  .filter(Ambulance::isAvailable)
+                  .count();
 
       var penalty =
-          switch (numAvailable - 1) {
-            case 0 -> 600;
-            case 1 -> 180;
+          switch (Math.max(0, numAvailable - demand)) {
+            case 0 -> 660;
+            case 1 -> 215;
+            case 2 -> 30;
+            case 3 -> 15;
             default -> 0;
           };
 
@@ -85,9 +109,14 @@ public enum DispatchPolicy {
   CoverageNearby {
     @Override
     public void updateAmbulance(
-        Ambulance ambulance, List<Ambulance> availableAmbulances, Incident incident) {
+        Ambulance ambulance,
+        List<Ambulance> otherAmbulances,
+        Incident incident,
+        Integer demand,
+        Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        Config config) {
 
-      int coveragePenaltyImportance = updateCoverage(ambulance, incident);
+      int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
       if (coveragePenaltyImportance == 0) {
         return;
       }
@@ -96,7 +125,7 @@ public enum DispatchPolicy {
 
       var closeAmbulances =
           (int)
-              availableAmbulances.stream()
+              otherAmbulances.stream()
                   .mapToLong(
                       a -> {
                         if (ambulance.isTransportingPatient()) {
@@ -108,9 +137,11 @@ public enum DispatchPolicy {
                   .count();
 
       var penalty =
-          switch (closeAmbulances - 1) {
-            case 0 -> 600;
-            case 1 -> 180;
+          switch (Math.max(0, closeAmbulances - demand)) {
+            case 0 -> 660;
+            case 1 -> 215;
+            case 2 -> 30;
+            case 3 -> 15;
             default -> 0;
           };
 
@@ -121,9 +152,14 @@ public enum DispatchPolicy {
   CoveragePredictedDemand {
     @Override
     public void updateAmbulance(
-        Ambulance ambulance, List<Ambulance> availableAmbulances, Incident incident) {
+        Ambulance ambulance,
+        List<Ambulance> otherAmbulances,
+        Incident incident,
+        Integer demand,
+        Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        Config config) {
 
-      int coveragePenaltyImportance = updateCoverage(ambulance, incident);
+      int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
       if (coveragePenaltyImportance == 0) {
         return;
       }
@@ -132,46 +168,70 @@ public enum DispatchPolicy {
       // ready, since arrival time can be approximated using the known travel time
       var arrivalTime = incident.callReceived().plusSeconds(ambulance.getTimeToIncident());
 
-      var location = ambulance.getCurrentLocation();
-      if (ambulance.isTransportingPatient()) {
-        // if the ambulance is transporting to hospital, use the location of hospital
-        location = ambulance.getHospitalLocation();
+      var areaAmbulanceCount = 0L;
+      var predictedDemand = 0.0;
+
+      if (!config.INCIDENT_DISTRIBUTION().equals(IncidentDistribution.GRID)) {
+        var baseStation = ambulance.getBaseStation().getId();
+        predictedDemand =
+            config.INCIDENT_DISTRIBUTION().getPredictedDemand(baseStation, arrivalTime);
+
+        areaAmbulanceCount =
+            baseStationAmbulances.get(ambulance.getBaseStation()).stream()
+                .filter(Ambulance::isAvailable)
+                .count();
+      } else {
+        var location = ambulance.getCurrentLocation();
+        if (ambulance.isTransportingPatient()) {
+          // if the ambulance is transporting to hospital, use the location of hospital
+          location = ambulance.getHospitalLocation();
+        }
+
+        // total demand in neighbourhood
+        var neighbours = DistanceIO.getNeighbours(location);
+        for (var neighbour : neighbours) {
+          var neighbourDemand =
+              config.INCIDENT_DISTRIBUTION().getPredictedDemand(neighbour, arrivalTime);
+          predictedDemand += neighbourDemand;
+        }
+
+        areaAmbulanceCount =
+            otherAmbulances.stream()
+                .filter(Ambulance::isAvailable)
+                .map(a -> new Coordinate(a.getCurrentLocation().id()))
+                .filter(neighbours::contains)
+                .count();
       }
 
-      // average demand in neighbourhood
-      var neighbours = DistanceIO.getNeighbours(location);
-      var totalAreaDemand = 0.0;
-      for (var neighbour : neighbours) {
-        var distribution = IncidentIO.distributions.get(neighbour);
-        var historicAverageDemand = distribution.getHourAverage(arrivalTime);
-        totalAreaDemand += historicAverageDemand;
-      }
+      var availableAmbulanceCount = Math.max(0L, areaAmbulanceCount - demand);
+      var penalty =
+          switch ((int) availableAmbulanceCount) {
+            case 0 -> 660;
+            case 1 -> 215;
+            case 2 -> 30;
+            case 3 -> 15;
+            default -> 0;
+          };
 
-      if (totalAreaDemand == 0.0) {
-        ambulance.updateCoveragePenalty(0);
-        return;
-      }
+      var penaltyFactor = switch (config.INCIDENT_DISTRIBUTION()) {
+        // found by testing factors in a range of [0, 200] and picking the one that gave best result
+        case PREDICTION -> 26;
+        case TRUTH -> 77;
+        case default -> 39;
+      };
+      penalty += predictedDemand * penaltyFactor;
 
-      var neighbourAmbulanceCount =
-          availableAmbulances.stream()
-              .map(a -> new Coordinate(a.getCurrentLocation().id()))
-              .filter(neighbours::contains)
-              .count();
-
-      var uncoveredDemand = max(0.0, totalAreaDemand - (neighbourAmbulanceCount - 1));
-
-      ambulance.updateCoveragePenalty((int) uncoveredDemand * 180 * coveragePenaltyImportance);
+      ambulance.updateCoveragePenalty(penalty * coveragePenaltyImportance);
     }
   };
 
-  private static Integer updateCoverage(Ambulance ambulance, Incident incident) {
+  static Integer updateAmbulance(Ambulance ambulance, Incident incident) {
+    ambulance.updateDispatchDelay(incident);
+
     ambulance.setTimeToIncident(incident);
 
     if (ambulance.isTransportingPatient()) {
-      // time from prev incident to hospital + time to this next incident
-      ambulance.setTimeToIncident(
-          ambulance.getTimeToHospital()
-              + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+      updateTransportingAmbulance(ambulance, incident);
     }
 
     if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
@@ -187,6 +247,23 @@ public enum DispatchPolicy {
     return 1;
   }
 
+  private static void updateTransportingAmbulance(Ambulance ambulance, Incident incident) {
+    var originTimeToHospital = ambulance.getOriginTimeToHospital();
+    var timeToAvailable = ambulance.getIncident().getTimeToAvailableTransport(originTimeToHospital);
+    var availableTime = ambulance.getTransportStart().plusSeconds(timeToAvailable);
+    var remainingTimeToAvailable =
+        (int) ChronoUnit.SECONDS.between(incident.callReceived(), availableTime);
+
+    // time from prev incident to hospital + time to this next incident
+    ambulance.setTimeToIncident(
+        remainingTimeToAvailable + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
+  }
+
   public abstract void updateAmbulance(
-      Ambulance ambulance, List<Ambulance> otherAmbulances, Incident incident);
+      Ambulance ambulance,
+      List<Ambulance> otherAmbulances,
+      Incident incident,
+      Integer demand,
+      Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+      Config config);
 }

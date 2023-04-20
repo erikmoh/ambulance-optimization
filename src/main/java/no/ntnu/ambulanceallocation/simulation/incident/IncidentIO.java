@@ -1,6 +1,8 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
+import static no.ntnu.ambulanceallocation.Parameters.DISPATCH_POLICY;
 import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.getCoordinateFromString;
+import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.loadNeighboursFromFile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,12 +14,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.simulation.Hospital;
+import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
+import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
+import no.ntnu.ambulanceallocation.simulation.grid.Route;
+import no.ntnu.ambulanceallocation.utils.Tuple;
 import no.ntnu.ambulanceallocation.utils.Utils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,16 +40,37 @@ public class IncidentIO {
   public static final String incidentsFilePath =
       new File("src/main/resources/data/incidents.csv").getAbsolutePath();
   public static final String incidentDistributionFilePath =
-      new File("src/main/resources/data/incidents_distribution.json").getAbsolutePath();
+      new File("src/main/resources/data/distributions/incidents_distribution_grid_average.json")
+          .getAbsolutePath();
+  public static final String incidentDistributionBaseStationFilePath =
+      new File("src/main/resources/data/distributions/incidents_distribution_station_average.json")
+          .getAbsolutePath();
+  public static final String incidentDistributionPredictionsFilePath =
+      new File(
+              "src/main/resources/data/distributions/incidents_distribution_station_predictions.json")
+          .getAbsolutePath();
+  public static final String incidentDistributionTruthsFilePath =
+      new File("src/main/resources/data/distributions/incidents_distribution_station_truths.json")
+          .getAbsolutePath();
   public static final DateTimeFormatter dateTimeFormatter =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   public static final List<Incident> incidents;
-  public static final Map<Coordinate, IncidentDistribution> distributions;
+  public static final Map<UrgencyLevel, Integer> medianTimeAtHospital;
+  public static final Map<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>>
+      gridDistribution;
+  public static final Map<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>
+      baseStationDistribution;
+  public static final Map<Integer, Map<Integer, Map<Integer, Double>>> predictionDistribution;
+  public static final Map<Integer, Map<Integer, Map<Integer, Double>>> truthDistribution;
 
   static {
     incidents = loadIncidentsFromFile();
-    distributions = loadDistributionsFromFile();
+    medianTimeAtHospital = findMedianTimeAtHospital();
+    gridDistribution = loadGridDistributions();
+    baseStationDistribution = loadBaseStationDistributions();
+    predictionDistribution = loadPredictionDistributions(false);
+    truthDistribution = loadPredictionDistributions(true);
   }
 
   public static List<Incident> loadIncidentsFromFile() {
@@ -148,9 +178,16 @@ public class IncidentIO {
     return Optional.of(LocalDateTime.parse(dateTime, dateTimeFormatter));
   }
 
-  private static Map<Coordinate, IncidentDistribution> loadDistributionsFromFile() {
+  static Map<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>> loadGridDistributions() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
+      return Collections.emptyMap();
+    }
+
+    loadNeighboursFromFile();
+
     logger.info("Loading distributions from file...");
-    var distributions = new HashMap<Coordinate, IncidentDistribution>();
+
+    var distributions = new HashMap<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>>();
 
     try {
       var distributionJsonObject =
@@ -179,7 +216,7 @@ public class IncidentIO {
           }
           monthMap.put(month, weekdayMap);
         }
-        distributions.put(origin, new IncidentDistribution(monthMap));
+        distributions.put(origin, monthMap);
       }
     } catch (JSONException | IOException e) {
       e.printStackTrace();
@@ -188,5 +225,160 @@ public class IncidentIO {
 
     logger.info("Loaded {} distributions.", distributions.size());
     return distributions;
+  }
+
+  static Map<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>
+      loadBaseStationDistributions() {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
+      return Collections.emptyMap();
+    }
+
+    var distributions = new HashMap<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>();
+
+    try {
+      var distributionJsonObject =
+          new JSONObject(Files.readString(Path.of(incidentDistributionBaseStationFilePath)));
+
+      for (var originKey : distributionJsonObject.names()) {
+        var baseStation = Integer.parseInt(originKey.toString());
+        var monthJsonObject = (JSONObject) distributionJsonObject.get(originKey.toString());
+        var monthMap = new HashMap<Integer, Map<Integer, Map<Integer, Double>>>();
+
+        for (var monthKey : monthJsonObject.names()) {
+          var month = Integer.parseInt(monthKey.toString());
+          var weekdayJsonObject = (JSONObject) monthJsonObject.get(monthKey.toString());
+          var weekdayMap = new HashMap<Integer, Map<Integer, Double>>();
+
+          for (var weekdayKey : weekdayJsonObject.names()) {
+            var weekday = Integer.parseInt(weekdayKey.toString());
+            var hourJsonObject = (JSONObject) weekdayJsonObject.get(weekdayKey.toString());
+            var hourMap = new HashMap<Integer, Double>();
+
+            for (var hourKey : hourJsonObject.names()) {
+              var hour = Integer.parseInt(hourKey.toString());
+              hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+            }
+            weekdayMap.put(weekday, hourMap);
+          }
+          monthMap.put(month, weekdayMap);
+        }
+        distributions.put(baseStation, monthMap);
+      }
+    } catch (JSONException | IOException e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} distributions.", distributions.size());
+    return distributions;
+  }
+
+  static Map<Integer, Map<Integer, Map<Integer, Double>>> loadPredictionDistributions(
+      boolean truth) {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
+      return Collections.emptyMap();
+    }
+
+    var distributions = new HashMap<Integer, Map<Integer, Map<Integer, Double>>>();
+
+    var filePath = incidentDistributionPredictionsFilePath;
+    if (truth) {
+      filePath = incidentDistributionTruthsFilePath;
+    }
+
+    try {
+      var distributionJsonObject = new JSONObject(Files.readString(Path.of(filePath)));
+
+      for (var originKey : distributionJsonObject.names()) {
+        var baseStation = Integer.parseInt(originKey.toString());
+        var dayJsonObject = (JSONObject) distributionJsonObject.get(originKey.toString());
+        var dayMap = new HashMap<Integer, Map<Integer, Double>>();
+
+        for (var dayKey : dayJsonObject.names()) {
+          var day = Integer.parseInt(dayKey.toString());
+          var hourJsonObject = (JSONObject) dayJsonObject.get(dayKey.toString());
+          var hourMap = new HashMap<Integer, Double>();
+
+          for (var hourKey : hourJsonObject.names()) {
+            var hour = Integer.parseInt(hourKey.toString());
+            hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+          }
+          dayMap.put(day, hourMap);
+        }
+
+        distributions.put(baseStation, dayMap);
+      }
+    } catch (JSONException | IOException e) {
+      e.printStackTrace();
+      System.exit(1);
+    }
+
+    logger.info("Loaded {} distributions.", distributions.size());
+    return distributions;
+  }
+
+  private static Map<UrgencyLevel, Integer> findMedianTimeAtHospital() {
+    var routes = DistanceIO.routes;
+
+    var map = new HashMap<UrgencyLevel, Integer>();
+
+    for (var i = 0; i < UrgencyLevel.values().length - 2; i++) {
+      var level = UrgencyLevel.values()[i];
+      var levels = new java.util.ArrayList<>(List.of(level));
+      if (level.equals(UrgencyLevel.REGULAR)) {
+        levels.add(UrgencyLevel.REGULAR_PLANNED);
+        levels.add(UrgencyLevel.REGULAR_UNPLANNED);
+      }
+
+      var times = new ArrayList<Integer>();
+      for (var incident : incidents) {
+        if (levels.contains(incident.urgencyLevel())
+            || incident.transportingVehicles() == 0
+            || incident.departureFromScene().isEmpty()
+            || incident.departureFromScene().get().isAfter(incident.availableTransport())) {
+          continue;
+        }
+
+        var closestHospital = findNearestHospital(routes, incident);
+        var travelTime = getDistance(routes, incident.getLocation(), closestHospital);
+        var timeToHospital = incident.getTimeToAvailableTransport(0);
+
+        if (timeToHospital <= 0 || travelTime <= 0 || travelTime > timeToHospital) {
+          continue;
+        }
+
+        var time = (int) (timeToHospital - travelTime);
+        times.add(time);
+      }
+
+      times.sort(Integer::compareTo);
+
+      var size = times.size();
+      var midpoint = size % 2 == 0 ? size / 2 - 1 : size / 2;
+      map.put(level, times.get(midpoint));
+    }
+
+    return map;
+  }
+
+  public static Coordinate findNearestHospital(
+      Map<Tuple<Coordinate>, Route> routes, Incident incident) {
+    return Arrays.stream(Hospital.values())
+        .min(
+            Comparator.comparing(
+                hospital -> getDistance(routes, incident.getLocation(), hospital.getCoordinate())))
+        .map(Hospital::getCoordinate)
+        .orElseThrow();
+  }
+
+  private static double getDistance(
+      Map<Tuple<Coordinate>, Route> routes, Coordinate from, Coordinate to) {
+    if (from == to) {
+      return 60.0;
+    }
+    if (!routes.containsKey(new Tuple<>(from, to))) {
+      return -1.0;
+    }
+    return routes.get(new Tuple<>(from, to)).time();
   }
 }

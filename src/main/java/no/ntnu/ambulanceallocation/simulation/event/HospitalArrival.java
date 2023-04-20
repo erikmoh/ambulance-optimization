@@ -10,5 +10,6 @@ public final class HospitalArrival extends Event {
   public HospitalArrival(LocalDateTime time, Ambulance ambulance, NewCall newCall) {
     super(time, newCall);
     this.ambulance = ambulance;
+    newCall.setNextEvent(this);
   }
 }

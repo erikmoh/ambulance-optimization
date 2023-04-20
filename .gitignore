@@ -13,7 +13,7 @@ scripts/proprietary_data/
 src/main/resources/data/incidents.csv
 src/main/resources/data/od_paths.json
 src/main/resources/data/od_paths_2min.json
-src/main/resources/data/incidents_distribution.json
+src/main/resources/data/distributions/
 src/main/resources/data/old/
 
 pom.xml.tag

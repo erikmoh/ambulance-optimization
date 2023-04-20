@@ -6,6 +6,7 @@ import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.optimization.initializer.Random;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
+import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
 
 public final class Parameters {
   // General
@@ -25,8 +26,9 @@ public final class Parameters {
 
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
+  public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;
   public static final boolean ENABLE_REDISPATCH = true;
-  public static final boolean ENABLE_QUEUE_NEXT = true;
+  public static final boolean ENABLE_QUEUE_NEXT = false;
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
@@ -47,7 +49,7 @@ public final class Parameters {
   public static final double IMPROVE_PROBABILITY = 0.25;
 
   public static final boolean INCLUDE_REGULAR_INCIDENTS = true;
-  public static final boolean USE_URGENCY_FITNESS = false;
+  public static final boolean USE_URGENCY_FITNESS = true;
   public static final boolean PRESET_URGENCY = false;
-  public static final double PRESET_URGENCY_PROBABILITY = 0.67; // change every 3rd acute incident
+  public static final double PRESET_URGENCY_PROBABILITY = 0.75; // change acute to urgent
 }

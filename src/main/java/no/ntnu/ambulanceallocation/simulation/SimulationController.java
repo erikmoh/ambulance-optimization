@@ -245,7 +245,7 @@ public class SimulationController {
    * @param projection the projection to use in the map.
    */
   public void initMapAndControls(Projection projection) {
-    setRandomAllocation();
+    setPopulationProportionateAllocation();
 
     checkShowPathLines.setSelected(true);
     checkShowHospitals.setSelected(true);
@@ -417,10 +417,12 @@ public class SimulationController {
                   label.setVisible(checkShowAmbulanceLabels.isSelected());
                 }
 
-                animateMarker(marker, marker.getPosition(), coordinate, label);
-
                 if (!marker.getPosition().equals(coordinate)) {
+                  animateMarker(marker, marker.getPosition(), coordinate, label);
                   marker.setRotation(bearingInDegrees(marker.getPosition(), coordinate) + 90);
+                }
+
+                if (ambulance.getDestination() != null) {
                   updateAmbulanceDestinationLine(ambulance, coordinate);
                 }
 
@@ -454,6 +456,12 @@ public class SimulationController {
   }
 
   private void updateAmbulanceDestinationLine(Ambulance ambulance, Coordinate currentPosition) {
+    if (destinationLines.containsKey(ambulance)) {
+      mapView.removeCoordinateLine(destinationLines.get(ambulance));
+    }
+
+    var ambulanceDestination = utmToLatLongMap.get(ambulance.getDestination());
+
     Color color;
     if (!ambulance.isAvailable() && ambulance.isTransportingPatient()) {
       color = Color.web("#ff0000", 0.9);
@@ -465,12 +473,6 @@ public class SimulationController {
     } else {
       color = Color.web("#00ff00", 0.9);
     }
-
-    if (destinationLines.containsKey(ambulance)) {
-      mapView.removeCoordinateLine(destinationLines.get(ambulance));
-    }
-
-    var ambulanceDestination = utmToLatLongMap.get(ambulance.getDestination());
 
     destinationLines.put(
         ambulance,

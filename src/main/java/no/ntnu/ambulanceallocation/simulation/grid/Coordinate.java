@@ -30,10 +30,6 @@ public record Coordinate(int x, int y, long id) {
     return Math.abs(this.x() - other.x()) + Math.abs(this.y() - other.y());
   }
 
-  public long getIdNum() {
-    return getId(this.x, this.y);
-  }
-
   private static int getGridCornerEasting(int easting) {
     return (int) (Math.floor((easting + FALSE_EASTING) / GRID_SIZE) * GRID_SIZE - FALSE_EASTING);
   }

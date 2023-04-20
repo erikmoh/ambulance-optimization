@@ -36,7 +36,6 @@ public final class DistanceIO {
 
   static {
     loadRoutesFromFile();
-    loadNeighboursFromFile();
     coordinateCache.clear();
   }
 
@@ -54,7 +53,7 @@ public final class DistanceIO {
 
   public static double getDistance(Coordinate from, Coordinate to) {
     if (from == to) {
-      return 0.0;
+      return 60.0;
     }
     if (!routes.containsKey(new Tuple<>(from, to))) {
       logger.info("Failed to find distance from {} to {}", from, to);
@@ -155,7 +154,7 @@ public final class DistanceIO {
     reader.endObject();
   }
 
-  private static void loadNeighboursFromFile() {
+  public static void loadNeighboursFromFile() {
     logger.info("Loading neighbours from file...");
 
     try {

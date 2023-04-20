@@ -36,9 +36,9 @@ public class UrgencyExperiment implements Experiment {
 
   @Override
   public void saveResults() {
-    incidentResults.saveResults(PREFIX + "urgency_incidents");
-    allocationResult.saveResults(PREFIX + "urgency_allocations");
-    bestFitness.saveResults(PREFIX + "urgency_result");
+    incidentResults.saveResults("urgency_incidents" + PREFIX);
+    allocationResult.saveResults("urgency_allocations" + PREFIX);
+    bestFitness.saveResults("urgency_result" + PREFIX);
   }
 
   private void runDeterministicExperiment(Initializer initializer) {
@@ -105,7 +105,7 @@ public class UrgencyExperiment implements Experiment {
     allocationResult.saveColumn(
         optimizerName + "_n", overallBestAllocation.getNightShiftAllocationSorted());
 
-    overallBestRunStatistics.saveResults(PREFIX + "urgency_ga");
+    overallBestRunStatistics.saveResults("urgency_ga" + PREFIX);
 
     bestFitness.saveColumn(
         "ga",

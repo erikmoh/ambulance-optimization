@@ -7,6 +7,7 @@ public sealed class NewCall extends Event permits PartiallyRespondedCall {
 
   public final Incident incident;
   public final boolean providesResponseTime;
+  public Event nextEvent;
 
   public NewCall(Incident incident, boolean providesResponseTime) {
     super(incident.callReceived(), null);
@@ -26,6 +27,14 @@ public sealed class NewCall extends Event permits PartiallyRespondedCall {
 
   public int getNonTransportingVehicleDemand() {
     return incident.nonTransportingVehicles();
+  }
+
+  public void setNextEvent(Event event) {
+    nextEvent = event;
+  }
+
+  public Event getNextEvent() {
+    return nextEvent;
   }
 
   @Override

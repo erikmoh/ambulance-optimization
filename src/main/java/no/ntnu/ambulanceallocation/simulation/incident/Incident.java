@@ -1,5 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
+import static no.ntnu.ambulanceallocation.simulation.incident.IncidentIO.medianTimeAtHospital;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -57,5 +58,20 @@ public record Incident(
       throw new IllegalStateException("Dispatch time cannot be after available non-transport time");
     }
     return (int) ChronoUnit.SECONDS.between(dispatched, availableNonTransport);
+  }
+
+  public int getDemand() {
+    return nonTransportingVehicles + transportingVehicles;
+  }
+
+  public int getTimeToAvailableTransport(int travelTime) {
+    if (departureFromScene.isEmpty() || departureFromScene.get().isAfter(availableTransport)) {
+      if (urgencyLevel.isRegular()) {
+        return travelTime + medianTimeAtHospital.get(UrgencyLevel.REGULAR);
+      }
+      return travelTime + medianTimeAtHospital.get(urgencyLevel);
+    }
+
+    return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableTransport);
   }
 }
