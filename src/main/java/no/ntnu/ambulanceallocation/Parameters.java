@@ -2,8 +2,9 @@ package no.ntnu.ambulanceallocation;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
-import no.ntnu.ambulanceallocation.optimization.initializer.Random;
+import no.ntnu.ambulanceallocation.optimization.initializer.SatisfyConstraintRandom;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
@@ -38,7 +39,7 @@ public final class Parameters {
   public static final double NOISE_PROBABILITY = 0.8;
 
   // Genetic & Memetic Algorithm
-  public static final Initializer INITIALIZER = new Random();
+  public static final Initializer INITIALIZER = new SatisfyConstraintRandom();
   public static final int GENERATIONS = 999;
   public static final int POPULATION_SIZE = 30;
   public static final int ELITE_SIZE = 4;
@@ -52,4 +53,6 @@ public final class Parameters {
   public static final boolean USE_URGENCY_FITNESS = true;
   public static final boolean PRESET_URGENCY = false;
   public static final double PRESET_URGENCY_PROBABILITY = 0.75; // change acute to urgent
+
+  public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.IGNORE;
 }

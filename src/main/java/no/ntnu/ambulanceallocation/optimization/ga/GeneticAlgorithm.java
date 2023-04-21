@@ -83,11 +83,11 @@ public class GeneticAlgorithm implements Optimizer {
 
                     synchronized (nextPopulation) {
                       if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
-                        nextPopulation.add(offspringA);
-                        countDownLatch.countDown();
+                        var added = nextPopulation.add(offspringA, config.CONSTRAINT_STRATEGY());
+                        if (added) countDownLatch.countDown();
                         if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
-                          nextPopulation.add(offspringB);
-                          countDownLatch.countDown();
+                          added = nextPopulation.add(offspringB, config.CONSTRAINT_STRATEGY());
+                          if (added) countDownLatch.countDown();
                         }
                       }
                     }

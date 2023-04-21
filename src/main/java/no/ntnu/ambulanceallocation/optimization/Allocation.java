@@ -1,10 +1,12 @@
 package no.ntnu.ambulanceallocation.optimization;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import no.ntnu.ambulanceallocation.simulation.BaseStation;
 
 public record Allocation(List<List<Integer>> allocation) implements Iterable<List<Integer>> {
 
@@ -50,6 +52,22 @@ public record Allocation(List<List<Integer>> allocation) implements Iterable<Lis
       throw new IndexOutOfBoundsException(String.format("no allocation at index %d", index));
     }
     return allocation.get(index);
+  }
+
+  public int getCapacityViolationsCount() {
+    var violations = 0;
+
+    var dayShift = getDayShiftAllocation();
+    var nightShift = getNightShiftAllocation();
+
+    for (var baseStation : BaseStation.values()) {
+      var dayShiftCount = Collections.frequency(dayShift, baseStation.getId());
+      var nightShiftCount = Collections.frequency(nightShift, baseStation.getId());
+      var maxCount = Math.max(dayShiftCount, nightShiftCount);
+      var numOverCapacity = Math.max(0, maxCount - baseStation.getCapacity());
+      violations += numOverCapacity;
+    }
+    return violations;
   }
 
   @Override

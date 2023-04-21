@@ -30,7 +30,7 @@ public class UrgencyExperiment implements Experiment {
   public void run() {
     var populationProportionate = new PopulationProportionate();
     var geneticAlgorithm = new GeneticAlgorithm();
-    runDeterministicExperiment(populationProportionate);
+    // runDeterministicExperiment(populationProportionate);
     runStochasticExperiment(geneticAlgorithm);
   }
 

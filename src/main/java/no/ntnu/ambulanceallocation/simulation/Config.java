@@ -2,6 +2,7 @@ package no.ntnu.ambulanceallocation.simulation;
 
 import java.time.LocalDateTime;
 import no.ntnu.ambulanceallocation.Parameters;
+import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
@@ -18,7 +19,8 @@ public record Config(
     boolean ENABLE_REDISPATCH,
     boolean ENABLE_QUEUE_NEXT,
     DispatchDelay DISPATCH_DELAY,
-    IncidentDistribution INCIDENT_DISTRIBUTION) {
+    IncidentDistribution INCIDENT_DISTRIBUTION,
+    ConstraintStrategy CONSTRAINT_STRATEGY) {
 
   public static Config defaultConfig() {
     return new Config(
@@ -33,7 +35,8 @@ public record Config(
         Parameters.ENABLE_REDISPATCH,
         Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY,
-        Parameters.INCIDENT_DISTRIBUTION);
+        Parameters.INCIDENT_DISTRIBUTION,
+        Parameters.CONSTRAINT_STRATEGY);
   }
 
   public static Config withinPeriod(LocalDateTime start, LocalDateTime end) {
@@ -49,7 +52,8 @@ public record Config(
         Parameters.ENABLE_REDISPATCH,
         Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY,
-        Parameters.INCIDENT_DISTRIBUTION);
+        Parameters.INCIDENT_DISTRIBUTION,
+        Parameters.CONSTRAINT_STRATEGY);
   }
 
   public static Config withNumAmbulances(int day, int night) {
@@ -65,6 +69,7 @@ public record Config(
         Parameters.ENABLE_REDISPATCH,
         Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY,
-        Parameters.INCIDENT_DISTRIBUTION);
+        Parameters.INCIDENT_DISTRIBUTION,
+        Parameters.CONSTRAINT_STRATEGY);
   }
 }

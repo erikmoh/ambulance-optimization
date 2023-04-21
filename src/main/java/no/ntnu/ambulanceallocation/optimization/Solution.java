@@ -1,12 +1,15 @@
 package no.ntnu.ambulanceallocation.optimization;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
+import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
+import no.ntnu.ambulanceallocation.simulation.BaseStation;
 import no.ntnu.ambulanceallocation.simulation.Config;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
 
@@ -61,11 +64,19 @@ public abstract class Solution implements Comparable<Solution> {
   private void calculateFitness() {
     var simulationResults = Simulation.withConfig(config).simulate(allocation);
 
-    if (config.USE_URGENCY_FITNESS()) {
-      fitness = 1 - simulationResults.averageSurvivalRate();
-    } else {
-      fitness = simulationResults.averageResponseTimes();
-    }
+    var violations =
+        config.CONSTRAINT_STRATEGY().equals(ConstraintStrategy.PENALTY)
+            ? allocation.getCapacityViolationsCount()
+            : 0;
+
+    var simulatedFitness =
+        config.USE_URGENCY_FITNESS()
+            ? 1 - simulationResults.averageSurvivalRate()
+            : simulationResults.averageResponseTimes();
+
+    var penaltyFactor = config.USE_URGENCY_FITNESS() ? 0.01 : 10;
+
+    fitness = simulatedFitness + (violations * penaltyFactor);
   }
 
   public Allocation getAllocation() {
@@ -100,8 +111,42 @@ public abstract class Solution implements Comparable<Solution> {
     hasAllocationChanged = true;
   }
 
-  public boolean satisfiesConstraints(List<Predicate<Solution>> constraints) {
-    return constraints.stream().reduce(predicate -> true, Predicate::and).test(this);
+  public Solution conformToConstraints() {
+    var dayShift = getDayShiftAllocation();
+    var nightShift = getNightShiftAllocation();
+
+    for (var baseStation : BaseStation.values()) {
+      var id = baseStation.getId();
+
+      var dayOverCapacity =
+          Math.max(0, Collections.frequency(dayShift, id) - baseStation.getCapacity());
+      var nightOverCapacity =
+          Math.max(0, Collections.frequency(nightShift, id) - baseStation.getCapacity());
+
+      if (dayOverCapacity > 0 || nightOverCapacity > 0) {
+        Collections.nCopies(dayOverCapacity, id)
+            .forEach(
+                i -> {
+                  dayShift.remove(i);
+                  dayShift.add(closestAvailableBaseStation(baseStation, dayShift).getId());
+                });
+        Collections.nCopies(nightOverCapacity, id)
+            .forEach(
+                i -> {
+                  nightShift.remove(i);
+                  nightShift.add(closestAvailableBaseStation(baseStation, nightShift).getId());
+                });
+      }
+    }
+    return this;
+  }
+
+  private BaseStation closestAvailableBaseStation(BaseStation baseStation, List<Integer> shift) {
+    return Arrays.stream(BaseStation.values())
+        .filter(b -> !b.equals(baseStation))
+        .filter(b -> b.getCapacity() - Collections.frequency(shift, b.getId()) > 0)
+        .min(Comparator.comparingDouble(b -> baseStation.getCoordinate().timeTo(b.getCoordinate())))
+        .orElseThrow();
   }
 
   @Override
