@@ -15,16 +15,6 @@ public enum ConstraintStrategy {
       population.add(individual);
     }
   },
-  IGNORE {
-    @Override
-    void add(List<Individual> population, Individual individual) {
-      // TODO: improve
-      var violations = individual.getAllocation().getCapacityViolationsCount();
-      if (violations == 0) {
-        population.add(individual);
-      }
-    }
-  },
   CHANGE {
     @Override
     void add(List<Individual> population, Individual individual) {

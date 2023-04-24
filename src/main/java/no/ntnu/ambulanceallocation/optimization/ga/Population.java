@@ -29,10 +29,8 @@ public class Population implements Iterable<Individual> {
     this.population = population.stream().map(Individual::new).collect(Collectors.toList());
   }
 
-  public boolean add(Individual individual, ConstraintStrategy constraintStrategy) {
-    var popSize = population.size();
+  public void add(Individual individual, ConstraintStrategy constraintStrategy) {
     constraintStrategy.add(population, new Individual(individual));
-    return popSize != population.size();
   }
 
   public Individual get(int index) {

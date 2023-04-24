@@ -64,15 +64,15 @@ public abstract class Solution implements Comparable<Solution> {
   private void calculateFitness() {
     var simulationResults = Simulation.withConfig(config).simulate(allocation);
 
+    var simulatedFitness =
+        config.USE_URGENCY_FITNESS()
+            ? 1.0 - simulationResults.averageSurvivalRate()
+            : simulationResults.averageResponseTimes();
+
     var violations =
         config.CONSTRAINT_STRATEGY().equals(ConstraintStrategy.PENALTY)
             ? allocation.getCapacityViolationsCount()
             : 0;
-
-    var simulatedFitness =
-        config.USE_URGENCY_FITNESS()
-            ? 1 - simulationResults.averageSurvivalRate()
-            : simulationResults.averageResponseTimes();
 
     var penaltyFactor = config.USE_URGENCY_FITNESS() ? 0.01 : 10;
 
@@ -136,6 +136,7 @@ public abstract class Solution implements Comparable<Solution> {
                   nightShift.remove(i);
                   nightShift.add(closestAvailableBaseStation(baseStation, nightShift).getId());
                 });
+        hasAllocationChanged = true;
       }
     }
     return this;
