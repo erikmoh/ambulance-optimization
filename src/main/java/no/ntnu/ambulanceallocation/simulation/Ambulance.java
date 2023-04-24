@@ -94,7 +94,7 @@ public class Ambulance {
   }
 
   public int getTimeTo(Ambulance other) {
-    return Math.round(currentLocation.timeTo(other.getCurrentLocation()));
+    return currentLocation.timeTo(other.getCurrentLocation());
   }
 
   public int getUpdatedTimeToIncident(Incident incident) {
@@ -124,7 +124,7 @@ public class Ambulance {
   }
 
   public void setTimeToIncident(Incident incident) {
-    timeToIncident = dispatchDelay + Math.round(currentLocation.timeTo(incident.getLocation()));
+    timeToIncident = dispatchDelay + currentLocation.timeTo(incident.getLocation());
   }
 
   public void setTimeToIncident(int time) {

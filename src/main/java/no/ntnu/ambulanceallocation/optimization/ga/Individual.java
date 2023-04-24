@@ -50,11 +50,9 @@ public class Individual extends Solution {
       var childA = new ArrayList<List<Integer>>();
       var childB = new ArrayList<List<Integer>>();
 
-      for (var chromosomeNumber = 0;
-          chromosomeNumber < getAllocation().size();
-          chromosomeNumber++) {
-        var chromosomeFromA = new ArrayList<>(getAllocation().get(chromosomeNumber));
-        var chromosomeFromB = new ArrayList<>(individual.getAllocation().get(chromosomeNumber));
+      for (var shift = 0; shift < getAllocation().size(); shift++) {
+        var chromosomeFromA = new ArrayList<>(getAllocation().get(shift));
+        var chromosomeFromB = new ArrayList<>(individual.getAllocation().get(shift));
 
         var crossoverPoint = 1 + Utils.randomInt(chromosomeFromA.size() - 2);
 

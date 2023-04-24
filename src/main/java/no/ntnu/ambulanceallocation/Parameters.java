@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
+import no.ntnu.ambulanceallocation.optimization.initializer.Random;
 import no.ntnu.ambulanceallocation.optimization.initializer.SatisfyConstraintRandom;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
@@ -25,6 +26,7 @@ public final class Parameters {
   public static final LocalTime DAY_SHIFT_START = LocalTime.of(8, 0);
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
+  public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.NONE;
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
   public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;
@@ -39,7 +41,7 @@ public final class Parameters {
   public static final double NOISE_PROBABILITY = 0.8;
 
   // Genetic & Memetic Algorithm
-  public static final Initializer INITIALIZER = new SatisfyConstraintRandom();
+  public static final Initializer INITIALIZER = new Random();
   public static final int GENERATIONS = 999;
   public static final int POPULATION_SIZE = 30;
   public static final int ELITE_SIZE = 4;
@@ -53,6 +55,4 @@ public final class Parameters {
   public static final boolean USE_URGENCY_FITNESS = true;
   public static final boolean PRESET_URGENCY = false;
   public static final double PRESET_URGENCY_PROBABILITY = 0.75; // change acute to urgent
-
-  public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.IGNORE;
 }

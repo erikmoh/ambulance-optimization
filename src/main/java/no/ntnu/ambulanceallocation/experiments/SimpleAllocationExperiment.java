@@ -37,6 +37,7 @@ public class SimpleAllocationExperiment implements Experiment {
     incidentResults.saveColumn("response_time", simulationResults.getResponseTimes());
 
     logger.info("Average response time: {}", simulationResults.averageResponseTimes());
+    logger.info("Average survival rate: {}", simulationResults.averageSurvivalRate());
   }
 
   public static void main(String[] args) {
