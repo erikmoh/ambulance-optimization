@@ -35,7 +35,7 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 
 public final class Simulation {
 
-  private static final Map<Config, List<NewCall>> memoizedEventList = new HashMap<>();
+  private static final Map<Config, List<Incident>> memoizedIncidentList = new HashMap<>();
 
   private final DoubleProperty simulationUpdateInterval;
   private final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate;
@@ -135,13 +135,13 @@ public final class Simulation {
   }
 
   private void createEventQueue() {
-    if (memoizedEventList.containsKey(config)) {
-      eventQueue.addAll(memoizedEventList.get(config));
+    if (memoizedIncidentList.containsKey(config)) {
+      var events = memoizedIncidentList.get(config);
+      eventQueue.addAll(events.stream().map(this::toNewCall).toList());
     } else {
-      var events =
-          IncidentIO.incidents.stream().filter(this::isInTimeRange).map(this::toNewCall).toList();
-      eventQueue.addAll(events);
-      memoizedEventList.put(config, events);
+      var incidents = IncidentIO.incidents.stream().filter(this::isInTimeRange).toList();
+      eventQueue.addAll(incidents.stream().map(this::toNewCall).toList());
+      memoizedIncidentList.put(config, incidents);
     }
   }
 
@@ -160,16 +160,21 @@ public final class Simulation {
   }
 
   private void initialize(final Allocation allocation) {
-    simulationResults = new SimulationResults();
+    // in case simulate() is called multiple times on the same simulation object
     callQueue.clear();
     eventQueue.clear();
-    createEventQueue();
-    currentShift = ShiftType.get(config.START_DATE_TIME());
     baseStationShiftCount.clear();
+    plannedTravelTimes.clear();
     baseStationAmbulances.clear();
     remainingOffDutyAmbulances.clear();
+    ambulancesAtScene.clear();
+
+    createEventQueue();
+    simulationResults = new SimulationResults();
     baseStationShiftCount.put(ShiftType.DAY, new HashMap<>());
     baseStationShiftCount.put(ShiftType.NIGHT, new HashMap<>());
+    currentShift = ShiftType.get(config.START_DATE_TIME());
+    Ambulance.setConfig(config);
 
     var j = 1;
     for (var baseStation : BaseStation.values()) {
@@ -190,7 +195,6 @@ public final class Simulation {
       baseStationShiftCount.get(ShiftType.NIGHT).put(baseStation, nightShiftCount);
 
       ambulances.addAll(ambulancesStation);
-      Ambulance.setConfig(config);
       remainingOffDutyAmbulances.put(baseStation, 0);
       ambulancesStation.stream()
           .limit(baseStationShiftCount.get(currentShift).get(baseStation))

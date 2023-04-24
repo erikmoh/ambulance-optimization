@@ -2,8 +2,10 @@ package no.ntnu.ambulanceallocation;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.optimization.initializer.Random;
+import no.ntnu.ambulanceallocation.optimization.initializer.SatisfyConstraintRandom;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
@@ -24,6 +26,7 @@ public final class Parameters {
   public static final LocalTime DAY_SHIFT_START = LocalTime.of(8, 0);
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
+  public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.NONE;
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
   public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;

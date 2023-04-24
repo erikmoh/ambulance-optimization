@@ -1,6 +1,5 @@
 package no.ntnu.ambulanceallocation.optimization.ma;
 
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -11,11 +10,9 @@ import org.slf4j.LoggerFactory;
 
 import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.optimization.ga.GeneticAlgorithm;
-import no.ntnu.ambulanceallocation.optimization.ga.Individual;
 import no.ntnu.ambulanceallocation.optimization.ga.Population;
 import no.ntnu.ambulanceallocation.optimization.sls.NeighborhoodFunction;
 import no.ntnu.ambulanceallocation.simulation.Config;
-import no.ntnu.ambulanceallocation.utils.Tuple;
 import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class MemeticAlgorithm extends GeneticAlgorithm {
@@ -94,10 +91,10 @@ public class MemeticAlgorithm extends GeneticAlgorithm {
 
                     synchronized (nextPopulation) {
                       if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
-                        nextPopulation.add(offspringA);
+                        nextPopulation.add(offspringA, config.CONSTRAINT_STRATEGY());
                         countDownLatch.countDown();
                         if (nextPopulation.size() < Parameters.POPULATION_SIZE) {
-                          nextPopulation.add(offspringB);
+                          nextPopulation.add(offspringB, config.CONSTRAINT_STRATEGY());
                           countDownLatch.countDown();
                         }
                       }

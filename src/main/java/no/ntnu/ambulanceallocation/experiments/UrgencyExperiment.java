@@ -24,21 +24,21 @@ public class UrgencyExperiment implements Experiment {
   private final Result incidentResults = new Result();
   private final Result bestFitness = new Result();
 
-  private final String PREFIX = "";
+  private final String POSTFIX = "";
 
   @Override
   public void run() {
     var populationProportionate = new PopulationProportionate();
     var geneticAlgorithm = new GeneticAlgorithm();
-    runDeterministicExperiment(populationProportionate);
+    // runDeterministicExperiment(populationProportionate);
     runStochasticExperiment(geneticAlgorithm);
   }
 
   @Override
   public void saveResults() {
-    incidentResults.saveResults("urgency_incidents" + PREFIX);
-    allocationResult.saveResults("urgency_allocations" + PREFIX);
-    bestFitness.saveResults("urgency_result" + PREFIX);
+    incidentResults.saveResults("urgency_incidents" + POSTFIX);
+    allocationResult.saveResults("urgency_allocations" + POSTFIX);
+    bestFitness.saveResults("urgency_result" + POSTFIX);
   }
 
   private void runDeterministicExperiment(Initializer initializer) {
@@ -105,7 +105,7 @@ public class UrgencyExperiment implements Experiment {
     allocationResult.saveColumn(
         optimizerName + "_n", overallBestAllocation.getNightShiftAllocationSorted());
 
-    overallBestRunStatistics.saveResults("urgency_ga" + PREFIX);
+    overallBestRunStatistics.saveResults("urgency_ga" + POSTFIX);
 
     bestFitness.saveColumn(
         "ga",
