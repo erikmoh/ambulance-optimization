@@ -436,7 +436,7 @@ public class SimulationController {
           var activeCount =
               ambulanceList.stream().filter(ambulance -> !ambulance.isOffDuty()).count();
 
-          activeAmbulances.setText("Active ambulances: " + activeCount + "");
+          activeAmbulances.setText("Active ambulances: " + activeCount);
         });
   }
 

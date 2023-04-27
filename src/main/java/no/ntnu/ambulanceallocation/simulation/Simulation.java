@@ -344,7 +344,7 @@ public final class Simulation {
 
     for (var ambulance : sceneDeparture.getAmbulances()) {
       if (ambulance.isTransport()) {
-        ambulance.transport(sceneDeparture.getTime());
+        ambulance.transport();
 
         var transportTime = ambulance.getTimeToHospital();
         var timeToAvailable = newCall.incident.getTimeToAvailableTransport(transportTime);

@@ -1,6 +1,7 @@
 package no.ntnu.ambulanceallocation.simulation;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
@@ -29,8 +30,6 @@ public class Ambulance {
   private NextCall nextCall;
   private int currentRouteIndex;
   private boolean transportingPatient = false;
-  private LocalDateTime transportStart;
-
   private int dispatchDelay;
   private int timeToIncident;
   private int coveragePenalty = 0;
@@ -81,10 +80,6 @@ public class Ambulance {
     return currentLocation.timeTo(hospitalLocation);
   }
 
-  public int getOriginTimeToHospital() {
-    return originatingLocation.timeTo(hospitalLocation);
-  }
-
   public int getTimeToBaseStation() {
     return currentLocation.timeTo(baseStation.getCoordinate());
   }
@@ -99,7 +94,11 @@ public class Ambulance {
 
   public int getUpdatedTimeToIncident(Incident incident) {
     updateDispatchDelay(incident);
-    setTimeToIncident(incident);
+    if (transportingPatient) {
+      updateTransportingAmbulance(incident);
+    } else {
+      setTimeToIncident(incident);
+    }
     return timeToIncident;
   }
 
@@ -129,6 +128,16 @@ public class Ambulance {
 
   public void setTimeToIncident(int time) {
     timeToIncident = dispatchDelay + time;
+  }
+
+  public void updateTransportingAmbulance(Incident nextIncident) {
+    var availableTime = call.getNextEvent().getTime();
+    var remainingTimeToAvailable =
+        (int) ChronoUnit.SECONDS.between(nextIncident.callReceived(), availableTime);
+
+    // time from prev incident to hospital + time to this next incident
+    setTimeToIncident(
+        remainingTimeToAvailable + hospitalLocation.timeTo(nextIncident.getLocation()));
   }
 
   public void updateCoveragePenalty(int penalty) {
@@ -169,10 +178,6 @@ public class Ambulance {
     return transportingPatient;
   }
 
-  public LocalDateTime getTransportStart() {
-    return transportStart;
-  }
-
   public boolean isReassigned() {
     return reassigned;
   }
@@ -210,7 +215,6 @@ public class Ambulance {
     currentRouteIndex = 0;
     reassigned = false;
     transportingPatient = false;
-    transportStart = null;
   }
 
   public void dispatch(NewCall newCall, Coordinate hospital) {
@@ -240,8 +244,7 @@ public class Ambulance {
     currentLocation = incident.getLocation();
   }
 
-  public void transport(LocalDateTime time) {
-    transportStart = time;
+  public void transport() {
     transportingPatient = true;
     originatingLocation = currentLocation;
     destination = new Coordinate(hospitalLocation);

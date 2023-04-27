@@ -1,6 +1,5 @@
 package no.ntnu.ambulanceallocation.simulation.dispatch;
 
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import no.ntnu.ambulanceallocation.simulation.Ambulance;
@@ -28,7 +27,7 @@ public enum DispatchPolicy {
       ambulance.setTimeToIncident((int) time);
 
       if (ambulance.isTransportingPatient()) {
-        updateTransportingAmbulance(ambulance, incident);
+        ambulance.updateTransportingAmbulance(incident);
       }
     }
   },
@@ -48,7 +47,7 @@ public enum DispatchPolicy {
       ambulance.setTimeToIncident((int) time);
 
       if (ambulance.isTransportingPatient()) {
-        updateTransportingAmbulance(ambulance, incident);
+        ambulance.updateTransportingAmbulance(incident);
       }
     }
   },
@@ -67,7 +66,7 @@ public enum DispatchPolicy {
       ambulance.setTimeToIncident(incident);
 
       if (ambulance.isTransportingPatient()) {
-        updateTransportingAmbulance(ambulance, incident);
+        ambulance.updateTransportingAmbulance(incident);
       }
     }
   },
@@ -231,7 +230,7 @@ public enum DispatchPolicy {
     ambulance.setTimeToIncident(incident);
 
     if (ambulance.isTransportingPatient()) {
-      updateTransportingAmbulance(ambulance, incident);
+      ambulance.updateTransportingAmbulance(incident);
     }
 
     if (incident.urgencyLevel().equals(UrgencyLevel.ACUTE)) {
@@ -245,18 +244,6 @@ public enum DispatchPolicy {
     }
 
     return 1;
-  }
-
-  private static void updateTransportingAmbulance(Ambulance ambulance, Incident incident) {
-    var originTimeToHospital = ambulance.getOriginTimeToHospital();
-    var timeToAvailable = ambulance.getIncident().getTimeToAvailableTransport(originTimeToHospital);
-    var availableTime = ambulance.getTransportStart().plusSeconds(timeToAvailable);
-    var remainingTimeToAvailable =
-        (int) ChronoUnit.SECONDS.between(incident.callReceived(), availableTime);
-
-    // time from prev incident to hospital + time to this next incident
-    ambulance.setTimeToIncident(
-        remainingTimeToAvailable + ambulance.getHospitalLocation().timeTo(incident.getLocation()));
   }
 
   public abstract void updateAmbulance(
