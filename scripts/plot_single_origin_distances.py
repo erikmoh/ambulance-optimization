@@ -9,7 +9,7 @@ from coordinate_converter import ssb_grid_id_to_utm_centroid
 
 def main():
     od = {}
-    with open('data/od.json', 'r') as f:
+    with open('data/od_paths_final.json', 'r') as f:
         print("Loading OD matrix...")
         od = json.load(f)
     single_od = od["22610006652000"]
@@ -18,7 +18,7 @@ def main():
     for i in range(len(destination_list_unparsed)):
         try:
             destination_list.append(int(destination_list_unparsed[i]))
-            cost_list.append(single_od[destination_list_unparsed[i]])
+            cost_list.append(single_od[destination_list_unparsed[i]]["travel_time"])
         except ValueError:
             pass
     features = [geojson_tools.centroid_to_geojson_square(
@@ -35,7 +35,7 @@ def main():
     circle_marker = map_tools.create_circle_markers(points)[0]
     circle_marker.add_to(heatmap)
 
-    map_tools.export_map_with_chrome(heatmap, "ullevaal_distances", height=1500)
+    map_tools.export_map_with_chrome(heatmap, "ullevaal_distances_path")
 
 
 if __name__ == '__main__':
