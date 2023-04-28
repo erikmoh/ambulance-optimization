@@ -5,7 +5,6 @@ import java.time.LocalTime;
 import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.optimization.initializer.Random;
-import no.ntnu.ambulanceallocation.optimization.initializer.SatisfyConstraintRandom;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
@@ -31,7 +30,7 @@ public final class Parameters {
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
   public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;
   public static final boolean ENABLE_REDISPATCH = true;
-  public static final boolean ENABLE_QUEUE_NEXT = false;
+  public static final boolean ENABLE_QUEUE_NEXT = true;
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
