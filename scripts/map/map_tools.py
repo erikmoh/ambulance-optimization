@@ -14,7 +14,7 @@ from common import VISUALIZATION_FOLDER
 from map.styles import allocation_coloring
 
 MAP_WIDTH = 400
-MAP_HEIGHT = 800
+MAP_HEIGHT = 600
 
 
 def get_map(width=MAP_WIDTH, height=MAP_HEIGHT, location=[60.045, 11.133], zoom_start=8,):
@@ -76,7 +76,7 @@ def create_capacity_circle_markers(points, allocation: Counter[int]) -> list[fol
 
 
 def create_circle_markers(points):
-    return list(map(lambda point: _point_to_circle_marker(point, 3), points))
+    return list(map(lambda point: _point_to_circle_marker(point, 1), points))
 
 
 def get_geojson_items(geojson_file_name, style_function):

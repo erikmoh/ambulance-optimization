@@ -1,10 +1,22 @@
 HEATMAP_COLORS = {
-    '0': '#fbf1eb',
-    '1-9': '#F6B48F',
-    '10-99': '#F37651',
-    '100-999': '#E13342',
-    '1000-9999': '#AD1759',
-    '≥10000': '#35193E'
+    '0':            '#fbf1eb',
+    '1-9':          '#F6B48F',
+    '10-99':        '#F37651',
+    '100-999':      '#E13342',
+    '1000-9999':    '#AD1759',
+    '≥10000':       '#35193E'
+}
+
+HEATMAP_COLORS_HOUR_PREDICTION = {
+    '-1':           '#f7fbff',
+    '0':            '#fcf6ed',
+    'low':          '#fdebd0',
+    'moderate':     '#f7dc6f',
+    'average':      '#f1c40f',
+    'considerable': '#e67e22',
+    'high':         '#d35400',
+    'intense':      '#c0392b',
+    'peak':         '#8b0000'
 }
 
 ALLOCATION_COLORS = [

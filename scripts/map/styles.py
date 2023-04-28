@@ -2,7 +2,7 @@ import matplotlib
 
 from functools import partial
 
-from colors import ALLOCATION_COLORS, HEATMAP_COLORS, ZONE_COLORS
+from colors import ALLOCATION_COLORS, HEATMAP_COLORS, ZONE_COLORS, HEATMAP_COLORS_HOUR_PREDICTION
 
 MAGMA = matplotlib.cm.get_cmap('magma')
 
@@ -25,6 +25,26 @@ def _heatmap_color_mapper(count):
     return HEATMAP_COLORS['≥10000']
 
 
+def _heatmap_color_prediction_mapper(prediction):
+    if prediction == -1:
+        return HEATMAP_COLORS_HOUR_PREDICTION['-1']
+    if prediction == 0:
+        return HEATMAP_COLORS_HOUR_PREDICTION['0']
+    if prediction < 0.1:
+        return HEATMAP_COLORS_HOUR_PREDICTION['low']
+    if prediction < 0.25:
+        return HEATMAP_COLORS_HOUR_PREDICTION['moderate']
+    elif prediction < 0.625:
+        return HEATMAP_COLORS_HOUR_PREDICTION['average']
+    elif prediction < 1.5625:
+        return HEATMAP_COLORS_HOUR_PREDICTION['considerable']
+    elif prediction < 2.03125:
+        return HEATMAP_COLORS_HOUR_PREDICTION['high']
+    elif prediction < 2.5:
+        return HEATMAP_COLORS_HOUR_PREDICTION['intense']
+    return HEATMAP_COLORS_HOUR_PREDICTION['peak']
+
+
 def _sequential_color_mapper(value, max_value):
     return matplotlib.colors.to_hex(MAGMA(256 - int(256 * value / max_value)))
 
@@ -40,6 +60,16 @@ def heatmap_style(feature):
         'fillOpacity': 0.8,
         'weight': 0 if count > 0 else 0.1,
         'fillColor': _heatmap_color_mapper(count)
+    }
+
+
+def heatmap_prediction_style(feature):
+    prediction = feature['geometry']['properties']['data']
+    return {
+        'color': '#000000',
+        'fillOpacity': 0.8,
+        'weight': 0 if prediction >= 0 else 0.1,
+        'fillColor': _heatmap_color_prediction_mapper(prediction)
     }
 
 
