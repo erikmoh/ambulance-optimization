@@ -45,7 +45,6 @@ public final class Parameters {
   public static final int POPULATION_SIZE = 40;
   public static final int ELITE_SIZE = 6;
   public static final int TOURNAMENT_SIZE = 6;
-  public static final int RESET_PATIENCE = 999; // generations
 
   public static final double CROSSOVER_PROBABILITY = 0.2;
   public static final double MUTATION_PROBABILITY = 0.01;

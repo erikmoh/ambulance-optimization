@@ -41,6 +41,10 @@ public class Population implements Iterable<Individual> {
     population.addAll(newPopulation.population);
   }
 
+  public void addAll(List<Individual> individuals) {
+    population.addAll(individuals);
+  }
+
   public Individual get(int index) {
     return population.get(index);
   }

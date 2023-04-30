@@ -54,27 +54,18 @@ public class GeneticAlgorithm implements Optimizer {
 
           var generation = 1;
           var startTime = System.nanoTime();
-          var lastImprovementGeneration = 1;
           var nonEliteSize = Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE;
 
-          var bestFitness = printAndSaveSummary(logger, generation, population);
-          var prevFitness = bestFitness;
+          printAndSaveSummary(logger, generation, population);
 
           while (generation < Parameters.GENERATIONS
               && elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME) {
 
-            var elite = population.elite(Parameters.ELITE_SIZE);
-            var nextPopulation = new Population(elite);
-
-            if (prevFitness != bestFitness) {
-              lastImprovementGeneration = generation;
-            } else if (generation - lastImprovementGeneration > Parameters.RESET_PATIENCE) {
-              logger.info("Resetting population (keeping elite)");
-              population = new Population(nonEliteSize, Parameters.INITIALIZER, config);
-              population.addAll(nextPopulation);
-              lastImprovementGeneration = generation;
+            var nextPopulation = new Population();
+            if (Parameters.ELITE_SIZE > 0) {
+              var elite = population.elite(Parameters.ELITE_SIZE);
+              nextPopulation.addAll(elite);
             }
-            prevFitness = bestFitness;
 
             var countDownLatch = new CountDownLatch(nonEliteSize);
 
@@ -109,14 +100,17 @@ public class GeneticAlgorithm implements Optimizer {
               e.printStackTrace();
             }
 
-            population = nextPopulation;
-            population.evaluate();
-            /*children.evaluate();
-            population.addAll(children);
-            population.reducePopulation(Parameters.POPULATION_SIZE);*/
+            if (Parameters.ELITE_SIZE > 0) {
+              population = nextPopulation;
+              population.evaluate();
+            } else {
+              nextPopulation.evaluate();
+              population.addAll(nextPopulation);
+              population.reducePopulation(Parameters.POPULATION_SIZE);
+            }
             generation++;
 
-            bestFitness = printAndSaveSummary(logger, generation, population);
+            printAndSaveSummary(logger, generation, population);
           }
 
           logger.info("GA finished successfully.");
@@ -144,7 +138,7 @@ public class GeneticAlgorithm implements Optimizer {
     return TimeUnit.SECONDS.convert((System.nanoTime() - startTime), TimeUnit.NANOSECONDS);
   }
 
-  protected double printAndSaveSummary(Logger logger, int generation, Population population) {
+  protected void printAndSaveSummary(Logger logger, int generation, Population population) {
     logger.info("{} generation: {}", getAbbreviation(), generation);
     var bestFitness = population.getBestFitness();
     var averageFitness = population.getAverageFitness();
@@ -160,8 +154,6 @@ public class GeneticAlgorithm implements Optimizer {
     this.bestFitness.add(bestFitness);
     this.averageFitness.add(averageFitness);
     this.diversity.add(diversity);
-
-    return bestFitness;
   }
 
   protected void clearRunStatistics() {
