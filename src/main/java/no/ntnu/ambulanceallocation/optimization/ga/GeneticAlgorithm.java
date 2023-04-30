@@ -54,8 +54,11 @@ public class GeneticAlgorithm implements Optimizer {
 
           var generation = 1;
           var startTime = System.nanoTime();
+          var lastImprovementGeneration = 1;
+          var nonEliteSize = Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE;
 
-          printAndSaveSummary(logger, generation, population);
+          var bestFitness = printAndSaveSummary(logger, generation, population);
+          var prevFitness = bestFitness;
 
           while (generation < Parameters.GENERATIONS
               && elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME) {
@@ -63,20 +66,26 @@ public class GeneticAlgorithm implements Optimizer {
             var elite = population.elite(Parameters.ELITE_SIZE);
             var nextPopulation = new Population(elite);
 
-            var countDownLatch =
-                new CountDownLatch(Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE);
+            if (prevFitness != bestFitness) {
+              lastImprovementGeneration = generation;
+            } else if (generation - lastImprovementGeneration > Parameters.RESET_PATIENCE) {
+              logger.info("Resetting population (keeping elite)");
+              population = new Population(nonEliteSize, Parameters.INITIALIZER, config);
+              population.addAll(nextPopulation);
+              lastImprovementGeneration = generation;
+            }
+            prevFitness = bestFitness;
 
-            for (var i = 0; i < ((Parameters.POPULATION_SIZE - Parameters.ELITE_SIZE) / 2); i++) {
+            var countDownLatch = new CountDownLatch(nonEliteSize);
+
+            for (var i = 0; i < ((nonEliteSize) / 2); i++) {
               executor.execute(
                   () -> {
                     var parents = population.selection(Parameters.TOURNAMENT_SIZE);
-                    var offspringA = parents.first();
-                    var offspringB = parents.second();
+                    var offspringA = new Individual(parents.first());
+                    var offspringB = new Individual(parents.second());
 
-                    var offspring =
-                        offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
-                    offspringA = offspring.first();
-                    offspringB = offspring.second();
+                    offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
 
                     offspringA.mutate(Parameters.MUTATION_PROBABILITY);
                     offspringB.mutate(Parameters.MUTATION_PROBABILITY);
@@ -102,9 +111,12 @@ public class GeneticAlgorithm implements Optimizer {
 
             population = nextPopulation;
             population.evaluate();
+            /*children.evaluate();
+            population.addAll(children);
+            population.reducePopulation(Parameters.POPULATION_SIZE);*/
             generation++;
 
-            printAndSaveSummary(logger, generation, population);
+            bestFitness = printAndSaveSummary(logger, generation, population);
           }
 
           logger.info("GA finished successfully.");
@@ -132,7 +144,7 @@ public class GeneticAlgorithm implements Optimizer {
     return TimeUnit.SECONDS.convert((System.nanoTime() - startTime), TimeUnit.NANOSECONDS);
   }
 
-  protected void printAndSaveSummary(Logger logger, int generation, Population population) {
+  protected double printAndSaveSummary(Logger logger, int generation, Population population) {
     logger.info("{} generation: {}", getAbbreviation(), generation);
     var bestFitness = population.getBestFitness();
     var averageFitness = population.getAverageFitness();
@@ -148,6 +160,8 @@ public class GeneticAlgorithm implements Optimizer {
     this.bestFitness.add(bestFitness);
     this.averageFitness.add(averageFitness);
     this.diversity.add(diversity);
+
+    return bestFitness;
   }
 
   protected void clearRunStatistics() {
