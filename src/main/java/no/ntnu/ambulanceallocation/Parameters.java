@@ -42,12 +42,13 @@ public final class Parameters {
   // Genetic & Memetic Algorithm
   public static final Initializer INITIALIZER = new Random();
   public static final int GENERATIONS = 999;
-  public static final int POPULATION_SIZE = 30;
-  public static final int ELITE_SIZE = 4;
-  public static final int TOURNAMENT_SIZE = 5;
+  public static final int POPULATION_SIZE = 40;
+  public static final int ELITE_SIZE = 6;
+  public static final int TOURNAMENT_SIZE = 6;
+  public static final int RESET_PATIENCE = 999; // generations
 
   public static final double CROSSOVER_PROBABILITY = 0.2;
-  public static final double MUTATION_PROBABILITY = 0.05;
+  public static final double MUTATION_PROBABILITY = 0.01;
   public static final double IMPROVE_PROBABILITY = 0.25;
 
   public static final boolean INCLUDE_REGULAR_INCIDENTS = true;

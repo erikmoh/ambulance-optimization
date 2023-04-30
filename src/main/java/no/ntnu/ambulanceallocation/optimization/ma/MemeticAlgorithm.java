@@ -76,10 +76,7 @@ public class MemeticAlgorithm extends GeneticAlgorithm {
                     var offspringA = parents.first();
                     var offspringB = parents.second();
 
-                    var offspring =
-                        offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
-                    offspringA = offspring.first();
-                    offspringB = offspring.second();
+                    offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
 
                     offspringA.mutate(Parameters.MUTATION_PROBABILITY);
                     offspringB.mutate(Parameters.MUTATION_PROBABILITY);

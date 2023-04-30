@@ -111,6 +111,10 @@ public abstract class Solution implements Comparable<Solution> {
     hasAllocationChanged = true;
   }
 
+  public void allocationChanged() {
+    hasAllocationChanged = true;
+  }
+
   public Solution conformToConstraints() {
     var dayShift = getDayShiftAllocation();
     var nightShift = getNightShiftAllocation();

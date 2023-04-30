@@ -1,7 +1,5 @@
 package no.ntnu.ambulanceallocation.optimization.ga;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -12,14 +10,9 @@ import no.ntnu.ambulanceallocation.optimization.sls.NeighborhoodFunction;
 import no.ntnu.ambulanceallocation.optimization.sls.SlsSolution;
 import no.ntnu.ambulanceallocation.simulation.BaseStation;
 import no.ntnu.ambulanceallocation.simulation.Config;
-import no.ntnu.ambulanceallocation.utils.Tuple;
 import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class Individual extends Solution {
-
-  public Individual(List<List<Integer>> chromosomes) {
-    super(chromosomes);
-  }
 
   public Individual(Initializer initializer, Config config) {
     super(initializer, config);
@@ -30,29 +23,24 @@ public class Individual extends Solution {
   }
 
   public void mutate(double mutationProbability) {
-    var dna = new ArrayList<List<Integer>>();
-
     for (var chromosome : getAllocation()) {
-      var newChromosome = new ArrayList<>(chromosome);
-
-      for (var locus = 0; locus < newChromosome.size(); locus++) {
+      for (var i = 0; i < chromosome.size(); i++) {
         if (Utils.randomDouble() < mutationProbability) {
-          newChromosome.set(locus, Utils.randomInt(BaseStation.size()));
+          var newInt = Utils.randomInt(BaseStation.size());
+          if (chromosome.get(i) != newInt) {
+            chromosome.set(i, newInt);
+            allocationChanged();
+          }
         }
       }
-      dna.add(newChromosome);
     }
-    setAllocation(dna);
   }
 
-  public Tuple<Individual> recombineWith(Individual individual, double crossoverProbability) {
+  public void recombineWith(Individual individual, double crossoverProbability) {
     if (Utils.randomDouble() < crossoverProbability) {
-      var childA = new ArrayList<List<Integer>>();
-      var childB = new ArrayList<List<Integer>>();
-
       for (var shift = 0; shift < getAllocation().size(); shift++) {
-        var chromosomeFromA = new ArrayList<>(getAllocation().get(shift));
-        var chromosomeFromB = new ArrayList<>(individual.getAllocation().get(shift));
+        var chromosomeFromA = getAllocation().get(shift);
+        var chromosomeFromB = individual.getAllocation().get(shift);
 
         var crossoverPoint = 1 + Utils.randomInt(chromosomeFromA.size() - 2);
 
@@ -61,14 +49,17 @@ public class Individual extends Solution {
         var lastPartA = chromosomeFromA.subList(crossoverPoint, chromosomeFromA.size());
         var lastPartB = chromosomeFromB.subList(crossoverPoint, chromosomeFromB.size());
 
-        childA.add(
-            Stream.concat(firstPartA.stream(), lastPartB.stream()).collect(Collectors.toList()));
-        childB.add(
-            Stream.concat(firstPartB.stream(), lastPartA.stream()).collect(Collectors.toList()));
+        var allocationA =
+            Stream.concat(firstPartA.stream(), lastPartB.stream()).collect(Collectors.toList());
+        var allocationB =
+            Stream.concat(firstPartB.stream(), lastPartA.stream()).collect(Collectors.toList());
+
+        getAllocation().setShiftAllocation(shift, allocationA);
+        individual.getAllocation().setShiftAllocation(shift, allocationB);
       }
-      return new Tuple<>(new Individual(childA), new Individual(childB));
+      this.allocationChanged();
+      individual.allocationChanged();
     }
-    return new Tuple<>(this, individual);
   }
 
   // Memetic method

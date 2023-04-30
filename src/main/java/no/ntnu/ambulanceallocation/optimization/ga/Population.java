@@ -18,6 +18,10 @@ public class Population implements Iterable<Individual> {
 
   private final List<Individual> population;
 
+  public Population() {
+    population = new ArrayList<>();
+  }
+
   public Population(int populationSize, Initializer initializer, Config config) {
     population = new ArrayList<>();
     for (int i = 0; i < populationSize; i++) {
@@ -30,7 +34,11 @@ public class Population implements Iterable<Individual> {
   }
 
   public void add(Individual individual, ConstraintStrategy constraintStrategy) {
-    constraintStrategy.add(population, new Individual(individual));
+    constraintStrategy.add(population, individual);
+  }
+
+  public void addAll(Population newPopulation) {
+    population.addAll(newPopulation.population);
   }
 
   public Individual get(int index) {
@@ -88,6 +96,11 @@ public class Population implements Iterable<Individual> {
     var tournament = Utils.randomChooseN(population, tournamentSize);
     Collections.sort(tournament);
     return new Tuple<>(tournament.subList(0, 2));
+  }
+
+  public void reducePopulation(int popSize) {
+    Collections.sort(population);
+    population.subList(popSize, population.size()).clear();
   }
 
   @Override
