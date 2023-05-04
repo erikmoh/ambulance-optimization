@@ -11,6 +11,7 @@ import static no.ntnu.ambulanceallocation.Parameters.ISLANDS;
 import static no.ntnu.ambulanceallocation.Parameters.MAX_RUNNING_TIME;
 import static no.ntnu.ambulanceallocation.Parameters.MUTATION_PROBABILITY;
 import static no.ntnu.ambulanceallocation.Parameters.POPULATION_SIZE;
+import static no.ntnu.ambulanceallocation.Parameters.RESET_GENERATIONS;
 import static no.ntnu.ambulanceallocation.Parameters.TOURNAMENT_SIZE;
 
 import com.github.sh0nk.matplotlib4j.Plot;
@@ -75,7 +76,7 @@ public class GeneticAlgorithm implements Optimizer {
           var startTime = System.nanoTime();
           var generation = 1;
           var combinedGeneration = 1;
-          var runningCombined = false;
+          var runningCombined = ISLANDS == 0;
           var noImprovementCount = 0;
           var bestFitness = 0.0;
 
@@ -101,7 +102,6 @@ public class GeneticAlgorithm implements Optimizer {
             var nextPopulation = new Population();
             var countDownLatch = new CountDownLatch(POPULATION_SIZE);
             var crossoverP = getCrossoverProbability(generation);
-            logger.info("{}", crossoverP);
 
             for (var i = 0; i < POPULATION_SIZE / 2; i++) {
               executor.execute(
@@ -161,9 +161,16 @@ public class GeneticAlgorithm implements Optimizer {
               diversify();
               noImprovementCount = 0;
             }
+            if (noImprovementCount > RESET_GENERATIONS
+                || (generation == 50 && bestFitness < 0.882)
+                || (generation == 100 && bestFitness < 0.883)) {
+              generation = 1;
+              bestFitness = 0.0;
+              reset(generation);
+            }
           }
 
-          if (!runningCombined) {
+          if (!runningCombined || ISLANDS == 0) {
             populationIslands.add(population);
             population =
                 populationIslands.stream()
@@ -195,7 +202,7 @@ public class GeneticAlgorithm implements Optimizer {
       logger.info("day: {}", allocation);
       combinedPopulation.addAll(pop);
       combinedPopulation.reducePopulation(POPULATION_SIZE / ISLANDS);
-      combinedPopulation.sortAllocations();
+      // combinedPopulation.sortAllocations();
     }
     population = combinedPopulation;
     logger.info("Combined islands.");
@@ -205,6 +212,12 @@ public class GeneticAlgorithm implements Optimizer {
     logger.info("Diversifying");
     population.nonElite(10).forEach(i -> i.mutate(MUTATION_PROBABILITY + 0.02));
     population.evaluate();
+  }
+
+  private void reset(int generation) {
+    populationIslands.add(population);
+    newIsland();
+    printAndSaveSummary(logger, generation, population);
   }
 
   private double getCrossoverProbability(int generation) {

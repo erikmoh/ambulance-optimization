@@ -1,7 +1,5 @@
 package no.ntnu.ambulanceallocation.experiments;
 
-import static no.ntnu.ambulanceallocation.utils.Utils.round;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,10 +18,7 @@ public class OptimizationExperiment implements Experiment {
   private static final Logger logger = LoggerFactory.getLogger(OptimizationExperiment.class);
 
   private final Result allocationResult = new Result();
-  private final Result incidentResults = new Result();
   private final Result bestFitness = new Result();
-
-  private final String POSTFIX = "_preset_islands_6m_5";
 
   @Override
   public void run() {
@@ -33,6 +28,7 @@ public class OptimizationExperiment implements Experiment {
 
   @Override
   public void saveResults() {
+    var POSTFIX = "_islands_nosort_6m_5";
     allocationResult.saveResults("allocations" + POSTFIX);
     bestFitness.saveResults("result" + POSTFIX);
   }
@@ -41,7 +37,6 @@ public class OptimizationExperiment implements Experiment {
     var optimizerName = optimizer.getAbbreviation();
     var overallBestFitness = Double.MAX_VALUE;
     var overallBestAllocation = new Allocation();
-    var overallBestRunStatistics = new Result();
 
     var bestFitnesses = new ArrayList<Double>();
     var bestResponseTimeAverages = new ArrayList<Double>();
@@ -59,7 +54,6 @@ public class OptimizationExperiment implements Experiment {
       if (solution.getFitness() < overallBestFitness) {
         overallBestFitness = solution.getFitness();
         overallBestAllocation = solution.getAllocation();
-        overallBestRunStatistics = optimizer.getRunStatistics();
       }
 
       logger.info("{} run {}/{} completed.", optimizerName, i + 1, Parameters.RUNS);
@@ -68,17 +62,10 @@ public class OptimizationExperiment implements Experiment {
     var overallBestSimulationResults =
         Simulation.withDefaultConfig().simulate(overallBestAllocation);
 
-    incidentResults.saveColumn("ga_response", overallBestSimulationResults.getResponseTimes());
-    incidentResults.saveColumn(
-        "ga_survival",
-        overallBestSimulationResults.getSurvivalRates().stream().map(d -> round(d, 2)).toList());
-
     allocationResult.saveColumn(
         optimizerName + "_d", overallBestAllocation.getDayShiftAllocationSorted());
     allocationResult.saveColumn(
         optimizerName + "_n", overallBestAllocation.getNightShiftAllocationSorted());
-
-    overallBestRunStatistics.saveResults("urgency_ga" + POSTFIX);
 
     bestFitness.saveColumn(
         "ga",
