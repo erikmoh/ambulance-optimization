@@ -20,8 +20,7 @@ public class PopulationProportionate implements Initializer {
             .map(proportion -> (int) Math.round(proportion))
             .collect(Collectors.toList());
 
-    return fairRepair(
-        generateAllocation(ambulancesPerStation), ambulancesPerStation, numberOfAmbulances);
+    return stochasticRepair(generateAllocation(ambulancesPerStation), numberOfAmbulances);
   }
 
   private List<Integer> generateAllocation(List<Integer> ambulancesPerStation) {

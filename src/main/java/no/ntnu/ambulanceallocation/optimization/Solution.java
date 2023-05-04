@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
+import no.ntnu.ambulanceallocation.optimization.ga.Individual;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.simulation.BaseStation;
 import no.ntnu.ambulanceallocation.simulation.Config;
@@ -17,7 +18,9 @@ public abstract class Solution implements Comparable<Solution> {
 
   private Allocation allocation;
   private double fitness = 0.0;
+  private double novelty = 0.0;
   private boolean hasAllocationChanged = true;
+  private boolean calculateNovelty = true;
   private Config config = Config.defaultConfig();
 
   public Solution(Initializer initializer, Config config) {
@@ -42,8 +45,10 @@ public abstract class Solution implements Comparable<Solution> {
   public Solution(Solution solution) {
     config = solution.config;
     fitness = solution.fitness;
+    novelty = solution.novelty;
     allocation = new Allocation(solution.allocation);
     hasAllocationChanged = solution.hasAllocationChanged;
+    calculateNovelty = true;
   }
 
   public void copy(Solution solution) {
@@ -59,6 +64,25 @@ public abstract class Solution implements Comparable<Solution> {
       hasAllocationChanged = false;
     }
     return fitness;
+  }
+
+  public double getNovelty(List<Individual> population) {
+    if (calculateNovelty) {
+      calculateNovelty(population);
+      calculateNovelty = false;
+    }
+    return novelty;
+  }
+
+  public boolean parentSelectOver(Individual other, List<Individual> population) {
+    var fitnessDiff = other.getFitness() - getFitness();
+    if (fitnessDiff > 0.0005) {
+      return true;
+    }
+    if (fitnessDiff < -0.0005) {
+      return false;
+    }
+    return other.getNovelty(population) < getNovelty(population);
   }
 
   private void calculateFitness() {
@@ -77,6 +101,13 @@ public abstract class Solution implements Comparable<Solution> {
     var penaltyFactor = config.USE_URGENCY_FITNESS() ? 0.01 : 10;
 
     fitness = simulatedFitness + (violations * penaltyFactor);
+  }
+
+  private void calculateNovelty(List<Individual> population) {
+    for (var other : population) {
+      novelty += distance(other);
+    }
+    novelty /= population.size();
   }
 
   public Allocation getAllocation() {
@@ -111,8 +142,21 @@ public abstract class Solution implements Comparable<Solution> {
     hasAllocationChanged = true;
   }
 
+  public void sortAllocation() {
+    getDayShiftAllocation().sort(Integer::compareTo);
+    getNightShiftAllocation().sort(Integer::compareTo);
+  }
+
   public void allocationChanged() {
     hasAllocationChanged = true;
+  }
+
+  public boolean hasChanged() {
+    return hasAllocationChanged;
+  }
+
+  public void setCalculateNovelty() {
+    calculateNovelty = true;
   }
 
   public Solution conformToConstraints() {
@@ -152,6 +196,18 @@ public abstract class Solution implements Comparable<Solution> {
         .filter(b -> b.getCapacity() - Collections.frequency(shift, b.getId()) > 0)
         .min(Comparator.comparingDouble(b -> baseStation.getCoordinate().timeTo(b.getCoordinate())))
         .orElseThrow();
+  }
+
+  public int distance(Solution other) {
+    var distance = 0;
+    for (var i = 0; i < allocation.size(); i++) {
+      for (var b : BaseStation.values()) {
+        var f = Collections.frequency(allocation.get(i), b.getId());
+        var fOther = Collections.frequency(other.allocation.get(i), b.getId());
+        distance += Math.abs(f - fOther);
+      }
+    }
+    return distance;
   }
 
   @Override

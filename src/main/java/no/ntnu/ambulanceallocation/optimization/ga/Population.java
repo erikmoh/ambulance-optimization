@@ -33,16 +33,16 @@ public class Population implements Iterable<Individual> {
     this.population = population.stream().map(Individual::new).collect(Collectors.toList());
   }
 
+  public List<Individual> getList() {
+    return population;
+  }
+
   public void add(Individual individual, ConstraintStrategy constraintStrategy) {
     constraintStrategy.add(population, individual);
   }
 
   public void addAll(Population newPopulation) {
     population.addAll(newPopulation.population);
-  }
-
-  public void addAll(List<Individual> individuals) {
-    population.addAll(individuals);
   }
 
   public Individual get(int index) {
@@ -62,6 +62,10 @@ public class Population implements Iterable<Individual> {
   }
 
   public double getDiversity() {
+    return population.stream().mapToDouble(i -> i.getNovelty(population)).average().orElseThrow();
+  }
+
+  public double getDiversityOld() {
     var bins = BaseStation.size();
     var entropy = 0.0;
     var numChromosomes = population.get(0).getAllocation().size();
@@ -92,17 +96,59 @@ public class Population implements Iterable<Individual> {
     return population.subList(0, eliteSize);
   }
 
+  public Individual best() {
+    Collections.sort(population);
+    return population.get(0);
+  }
+
+  public List<Individual> nonElite(int eliteSize) {
+    Collections.sort(population);
+    return population.subList(eliteSize, population.size());
+  }
+
   public void evaluate() {
     population.parallelStream().forEach(Solution::getFitness);
   }
 
+  public void sortAllocations() {
+    population.parallelStream().forEach(Solution::sortAllocation);
+  }
+
   public Tuple<Individual> selection(int tournamentSize) {
     var tournament = Utils.randomChooseN(population, tournamentSize);
-    Collections.sort(tournament);
-    return new Tuple<>(tournament.subList(0, 2));
+    Individual best1 = null;
+    Individual best2 = null;
+    for (var individual : tournament) {
+      if (best1 == null || individual.getFitness() < best1.getFitness()) {
+        best2 = best1;
+        best1 = individual;
+      } else if (best2 == null || individual.getFitness() < best2.getFitness()) {
+        best2 = individual;
+      }
+    }
+    return new Tuple<>(best1, best2);
+  }
+
+  public Tuple<Individual> diversitySelection(int tournamentSize) {
+    var tournament = Utils.randomChooseN(population, tournamentSize);
+    tournament.forEach(Individual::setCalculateNovelty);
+    Individual best1 = null;
+    Individual best2 = null;
+    for (var individual : tournament) {
+      if (best1 == null || individual.parentSelectOver(best1, population)) {
+        best2 = best1;
+        best1 = individual;
+      } else if (best2 == null || individual.parentSelectOver(best2, population)) {
+        best2 = individual;
+      }
+    }
+    return new Tuple<>(best1, best2);
   }
 
   public void reducePopulation(int popSize) {
+    if (popSize >= population.size()) {
+      return;
+    }
     Collections.sort(population);
     population.subList(popSize, population.size()).clear();
   }

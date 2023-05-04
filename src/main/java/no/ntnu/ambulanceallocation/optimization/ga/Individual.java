@@ -57,8 +57,11 @@ public class Individual extends Solution {
         getAllocation().setShiftAllocation(shift, allocationA);
         individual.getAllocation().setShiftAllocation(shift, allocationB);
       }
-      this.allocationChanged();
-      individual.allocationChanged();
+
+      if (!this.getAllocation().equals(individual.getAllocation())) {
+        this.allocationChanged();
+        individual.allocationChanged();
+      }
     }
   }
 

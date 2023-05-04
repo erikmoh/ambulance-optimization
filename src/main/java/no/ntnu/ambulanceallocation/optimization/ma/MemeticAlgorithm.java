@@ -60,7 +60,7 @@ public class MemeticAlgorithm extends GeneticAlgorithm {
           var startTime = System.nanoTime();
 
           while (elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME
-              && generation < Parameters.GENERATIONS) {
+              && generation < Parameters.GENERATIONS_COMBINED) {
 
             printAndSaveSummary(logger, generation, population);
 
