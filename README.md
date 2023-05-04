@@ -57,8 +57,8 @@ IntelliJ VM options
 
 - Change breakpoint settings to only suspend thread and not all. That way you can use the javafx
 application when stopped at a breakpoint during debugging.
-- Recommend using PopulationProportionate or a non-random initializer when debugging to get the 
-same events every time.
+- Recommend using a non-random initializer when debugging to get the same events in the simulation 
+every time.
 
 
 ### Errors
