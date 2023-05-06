@@ -2,14 +2,11 @@ package no.ntnu.ambulanceallocation.experiments;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.optimization.Optimizer;
 import no.ntnu.ambulanceallocation.optimization.ga.GeneticAlgorithm;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
-import no.ntnu.ambulanceallocation.simulation.SimulationResults;
-import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +25,7 @@ public class OptimizationExperiment implements Experiment {
 
   @Override
   public void saveResults() {
-    var POSTFIX = "_islands_nosort_6m_5";
+    var POSTFIX = "";
     allocationResult.saveResults("allocations" + POSTFIX);
     bestFitness.saveResults("result" + POSTFIX);
   }
@@ -79,45 +76,12 @@ public class OptimizationExperiment implements Experiment {
         bestResponseTimeAverages.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
     bestFitness.saveColumn("ga avg", List.of(averageResponseTimeAverage, 1.0 - averageFitness));
 
-    var resultMap = createAverageResults(overallBestSimulationResults);
+    var resultMap = overallBestSimulationResults.createAverageResults();
 
     bestFitness.saveColumn(
         "ga A", List.of(resultMap.get("acuteResponse"), resultMap.get("acuteSurvival")));
     bestFitness.saveColumn(
         "ga H", List.of(resultMap.get("urgentResponse"), resultMap.get("urgentSurvival")));
-  }
-
-  public Map<String, Double> createAverageResults(SimulationResults results) {
-    var acuteLen = 0;
-    var acuteResponse = 0;
-    var acuteSurvival = 0.0;
-    var urgentLen = 0;
-    var urgentResponse = 0;
-    var urgentSurvival = 0.0;
-    for (int i = 0; i < results.getUrgencyLevels().size(); i++) {
-      var urgency = results.getUrgencyLevels().get(i);
-      var responseTime = results.getResponseTimes().get(i);
-      var survivalRate = results.getSurvivalRates().get(i);
-      if (urgency.equals(UrgencyLevel.ACUTE)) {
-        acuteResponse += responseTime;
-        acuteSurvival += survivalRate;
-        acuteLen++;
-      } else {
-        urgentResponse += responseTime;
-        urgentSurvival += survivalRate;
-        urgentLen++;
-      }
-    }
-
-    return Map.of(
-        "acuteResponse",
-        (double) acuteResponse / acuteLen,
-        "acuteSurvival",
-        acuteSurvival / acuteLen,
-        "urgentResponse",
-        (double) urgentResponse / urgentLen,
-        "urgentSurvival",
-        urgentSurvival / urgentLen);
   }
 
   public static void main(String[] args) {

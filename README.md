@@ -10,7 +10,7 @@ main:
   - Simulation: Main simulation class
   - SimulationApp: Runnable app with UI
   - SimulationController: JavaFx controller for app
-- Parameters: All parameters that is used in simulation and optimization
+- Parameters: All parameters that is used in simulation and optimization (all combinations are not possible)
 
 scripts: 
 - contains python scripts

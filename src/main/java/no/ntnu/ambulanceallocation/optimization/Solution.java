@@ -17,8 +17,13 @@ import no.ntnu.ambulanceallocation.simulation.Simulation;
 public abstract class Solution implements Comparable<Solution> {
 
   private Allocation allocation;
+  private double responseTimeA;
+  private double responseTimeH;
   private double fitness = 0.0;
+  private double survivalRate = 0.0;
   private double novelty = 0.0;
+  private int rank;
+  private double crowdingDistance;
   private boolean hasAllocationChanged = true;
   private boolean calculateNovelty = true;
   private Config config = Config.defaultConfig();
@@ -44,8 +49,13 @@ public abstract class Solution implements Comparable<Solution> {
 
   public Solution(Solution solution) {
     config = solution.config;
+    responseTimeA = solution.responseTimeA;
+    responseTimeH = solution.responseTimeH;
+    rank = solution.rank;
+    crowdingDistance = solution.crowdingDistance;
     fitness = solution.fitness;
     novelty = solution.novelty;
+    survivalRate = solution.survivalRate;
     allocation = new Allocation(solution.allocation);
     hasAllocationChanged = solution.hasAllocationChanged;
     calculateNovelty = true;
@@ -66,12 +76,24 @@ public abstract class Solution implements Comparable<Solution> {
     return fitness;
   }
 
+  public double getSurvivalRate() {
+    return survivalRate;
+  }
+
   public double getNovelty(List<Individual> population) {
     if (calculateNovelty) {
       calculateNovelty(population);
       calculateNovelty = false;
     }
     return novelty;
+  }
+
+  public double getResponseTimeA() {
+    return responseTimeA;
+  }
+
+  public double getResponseTimeH() {
+    return responseTimeH;
   }
 
   public boolean parentSelectOver(Individual other, List<Individual> population) {
@@ -83,6 +105,39 @@ public abstract class Solution implements Comparable<Solution> {
       return false;
     }
     return other.getNovelty(population) < getNovelty(population);
+  }
+
+  public boolean betterThan(Individual other) {
+    if (getRank() < other.getRank()) {
+      return true;
+    }
+    if (getRank() > other.getRank()) {
+      return false;
+    }
+    return getCrowdingDistance() > other.getCrowdingDistance();
+  }
+
+  public Boolean dominates(Solution other) {
+    if (responseTimeA <= other.getResponseTimeA() && responseTimeH <= other.getResponseTimeH()) {
+      return responseTimeA < other.getResponseTimeA() || responseTimeH < other.getResponseTimeH();
+    }
+    return false;
+  }
+
+  public void setRank(int i) {
+    rank = i;
+  }
+
+  public int getRank() {
+    return rank;
+  }
+
+  public void setCrowdingDistance(double crowdingDistance) {
+    this.crowdingDistance = crowdingDistance;
+  }
+
+  public double getCrowdingDistance() {
+    return crowdingDistance;
   }
 
   private void calculateFitness() {
@@ -101,6 +156,13 @@ public abstract class Solution implements Comparable<Solution> {
     var penaltyFactor = config.USE_URGENCY_FITNESS() ? 0.01 : 10;
 
     fitness = simulatedFitness + (violations * penaltyFactor);
+
+    /*
+    survivalRate = simulationResults.averageSurvivalRate();
+    var resultMap = simulationResults.getAverageResponse();
+    responseTimeA = resultMap.get("acuteResponse");
+    responseTimeH = resultMap.get("urgentResponse");
+    */
   }
 
   private void calculateNovelty(List<Individual> population) {

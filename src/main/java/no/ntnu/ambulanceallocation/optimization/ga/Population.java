@@ -2,6 +2,7 @@ package no.ntnu.ambulanceallocation.optimization.ga;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -16,7 +17,7 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 
 public class Population implements Iterable<Individual> {
 
-  private final List<Individual> population;
+  private List<Individual> population;
 
   public Population() {
     population = new ArrayList<>();
@@ -101,6 +102,14 @@ public class Population implements Iterable<Individual> {
     return population.get(0);
   }
 
+  public Individual bestMO() {
+    evaluate();
+    var layers = rankPopulation();
+    var paretoFront = layers.get(0);
+    paretoFront.sort(Comparator.comparing(Individual::getFitness));
+    return paretoFront.get(0);
+  }
+
   public List<Individual> nonElite(int eliteSize) {
     Collections.sort(population);
     return population.subList(eliteSize, population.size());
@@ -108,6 +117,11 @@ public class Population implements Iterable<Individual> {
 
   public void evaluate() {
     population.parallelStream().forEach(Solution::getFitness);
+  }
+
+  public void evaluateMO() {
+    evaluate();
+    rankPopulation();
   }
 
   public void sortAllocations() {
@@ -145,11 +159,118 @@ public class Population implements Iterable<Individual> {
     return new Tuple<>(best1, best2);
   }
 
+  public Tuple<Individual> selectionMO(int tournamentSize) {
+    var tournament = Utils.randomChooseN(population, tournamentSize);
+    Individual best1 = null;
+    Individual best2 = null;
+    for (var individual : tournament) {
+      if (best1 == null || individual.betterThan(best1)) {
+        best2 = best1;
+        best1 = individual;
+      } else if (best2 == null || individual.betterThan(best2)) {
+        best2 = individual;
+      }
+    }
+    return new Tuple<>(best1, best2);
+  }
+
+  private List<List<Individual>> rankPopulation() {
+    population.sort(Comparator.comparing(Individual::getResponseTimeA));
+    var fronts = new ArrayList<List<Individual>>();
+    fronts.add(new ArrayList<>());
+    for (var individual : population) {
+      for (int i = 0; i < fronts.size(); i++) {
+        var front = fronts.get(i);
+        var dominated = false;
+        for (int j = front.size() - 1; j >= 0; j--) {
+          var ranked = front.get(j);
+          if (ranked.dominates(individual)) {
+            dominated = true;
+            break;
+          }
+        }
+        if (!dominated) {
+          individual.setRank(i + 1);
+          front.add(individual);
+          break;
+        } else if (i + 1 == fronts.size()) {
+          individual.setRank(i + 2);
+          fronts.add(new ArrayList<>(List.of(individual)));
+          break;
+        }
+      }
+    }
+    updateCrowdingDistance(fronts);
+    return fronts;
+  }
+
+  private void updateCrowdingDistance(List<List<Individual>> layers) {
+    for (var layer : layers) {
+      for (var individual : layer) {
+        individual.setCrowdingDistance(0.0);
+      }
+      layer.sort(Comparator.comparing(Individual::getResponseTimeA).reversed());
+      layer.get(0).setCrowdingDistance(Double.MAX_VALUE);
+      layer.get(layer.size() - 1).setCrowdingDistance(Double.MAX_VALUE);
+      for (int i = 1; i < layer.size() - 1; i++) {
+        var individual = layer.get(i);
+        var before = layer.get(i - 1);
+        var after = layer.get(i + 1);
+        var crowdingDistance =
+            individual.getCrowdingDistance()
+                + ((before.getResponseTimeA() - after.getResponseTimeA()) / 1_000);
+        individual.setCrowdingDistance(crowdingDistance);
+      }
+      layer.sort(Comparator.comparing(Individual::getResponseTimeH).reversed());
+      layer.get(0).setCrowdingDistance(Double.MAX_VALUE);
+      layer.get(layer.size() - 1).setCrowdingDistance(Double.MAX_VALUE);
+      for (int i = 1; i < layer.size() - 1; i++) {
+        var genotype = layer.get(i);
+        var before = layer.get(i - 1);
+        var after = layer.get(i + 1);
+        var crowdingDistance =
+            genotype.getCrowdingDistance()
+                + ((before.getResponseTimeH() - after.getResponseTimeH()) / 1_000);
+        genotype.setCrowdingDistance(crowdingDistance);
+      }
+    }
+  }
+
+  private void sortRankedPopulation(List<List<Individual>> layers) {
+    var sortedPopulation = new ArrayList<Individual>();
+    for (var layer : layers) {
+      layer.sort(Comparator.comparing(Individual::getCrowdingDistance).reversed());
+      var numExtra = sortedPopulation.size() + layer.size() - population.size();
+      if (numExtra <= 0) {
+        sortedPopulation.addAll(layer);
+      } else {
+        for (var p : layer) {
+          sortedPopulation.add(p);
+          if (sortedPopulation.size() == population.size()) {
+            break;
+          }
+        }
+        break;
+      }
+    }
+    population = sortedPopulation;
+  }
+
   public void reducePopulation(int popSize) {
     if (popSize >= population.size()) {
       return;
     }
     Collections.sort(population);
+    population.subList(popSize, population.size()).clear();
+  }
+
+  public void reduceRankedPopulation(int popSize) {
+    evaluateMO();
+    var layers = rankPopulation();
+    if (popSize >= population.size()) {
+      return;
+    }
+    sortRankedPopulation(layers);
     population.subList(popSize, population.size()).clear();
   }
 
