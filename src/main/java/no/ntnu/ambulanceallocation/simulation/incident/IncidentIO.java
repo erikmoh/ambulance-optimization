@@ -40,18 +40,13 @@ public class IncidentIO {
   public static final String incidentsFilePath =
       new File("src/main/resources/data/incidents.csv").getAbsolutePath();
   public static final String incidentDistributionFilePath =
-      new File("src/main/resources/data/distributions/incidents_distribution_grid_average.json")
-          .getAbsolutePath();
+      new File("src/main/resources/data/distributions/grid_average.json").getAbsolutePath();
   public static final String incidentDistributionBaseStationFilePath =
-      new File("src/main/resources/data/distributions/incidents_distribution_station_average.json")
-          .getAbsolutePath();
+      new File("src/main/resources/data/distributions/station_average.json").getAbsolutePath();
   public static final String incidentDistributionPredictionsFilePath =
-      new File(
-              "src/main/resources/data/distributions/incidents_distribution_station_predictions.json")
-          .getAbsolutePath();
+      new File("src/main/resources/data/distributions/station_predictions.json").getAbsolutePath();
   public static final String incidentDistributionTruthsFilePath =
-      new File("src/main/resources/data/distributions/incidents_distribution_station_truths.json")
-          .getAbsolutePath();
+      new File("src/main/resources/data/distributions/station_truths.json").getAbsolutePath();
   public static final DateTimeFormatter dateTimeFormatter =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
