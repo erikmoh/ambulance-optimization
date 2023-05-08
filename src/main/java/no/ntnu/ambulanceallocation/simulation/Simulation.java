@@ -44,7 +44,7 @@ public final class Simulation {
   private final List<Ambulance> ambulances = new ArrayList<>();
   private final Queue<NewCall> callQueue = new LinkedList<>();
   private final PriorityQueue<Event> eventQueue = new PriorityQueue<>();
-  private final Map<NewCall, Integer> plannedTravelTimes = new HashMap<>();
+  private final Map<Incident, Integer> plannedTravelTimes = new HashMap<>();
   private final Map<ShiftType, Map<BaseStation, Integer>> baseStationShiftCount = new HashMap<>();
   private final Map<BaseStation, List<Ambulance>> baseStationAmbulances = new HashMap<>();
   private final Map<BaseStation, Integer> remainingOffDutyAmbulances = new HashMap<>();
@@ -266,8 +266,11 @@ public final class Simulation {
     var firstAmbulance = dispatchedAmbulances.get(0);
     var responseTime = firstAmbulance.getUpdatedTimeToIncident(incident);
 
+    if (plannedTravelTimes.containsKey(incident)) {
+      responseTime = Math.min(plannedTravelTimes.get(incident), responseTime);
+    }
     // set or update travel time
-    plannedTravelTimes.put(newCall, responseTime);
+    plannedTravelTimes.put(incident, responseTime);
 
     int timeAtScene;
     if (incident.departureFromScene().isPresent()) {
@@ -352,7 +355,7 @@ public final class Simulation {
           timeToAvailable = transportTime;
         }
         var availableTime = time.plusSeconds(timeToAvailable);
-        eventQueue.add(new HospitalArrival(availableTime, ambulance, newCall));
+        eventQueue.add(new HospitalArrival(availableTime, ambulance, ambulance.getCall()));
 
         var updateTime = time.plusMinutes(config.UPDATE_LOCATION_PERIOD());
         if (updateTime.isBefore(availableTime)) {
@@ -387,7 +390,7 @@ public final class Simulation {
       eventQueue.add(new LocationUpdate(updateTime, ambulance));
     }
 
-    var travelTime = plannedTravelTimes.remove(newCall);
+    var travelTime = plannedTravelTimes.remove(newCall.incident);
     if (newCall.providesResponseTime && travelTime != null) {
       saveResponseTime(newCall, travelTime);
     }
@@ -409,7 +412,7 @@ public final class Simulation {
     }
     eventQueue.add(new LocationUpdate(updateTime, ambulance));
 
-    var travelTime = plannedTravelTimes.remove(newCall);
+    var travelTime = plannedTravelTimes.remove(newCall.incident);
     if (newCall.providesResponseTime && travelTime != null) {
       saveResponseTime(newCall, travelTime);
     }

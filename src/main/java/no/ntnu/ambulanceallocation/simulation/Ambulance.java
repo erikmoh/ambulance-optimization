@@ -135,6 +135,11 @@ public class Ambulance {
     var remainingTimeToAvailable =
         (int) ChronoUnit.SECONDS.between(nextIncident.callReceived(), availableTime);
 
+    if (remainingTimeToAvailable < 0) {
+      throw new IllegalStateException(
+          "Time from when ambulance is done transporting to the next incident cannot be negative.");
+    }
+
     // time from prev incident to hospital + time to this next incident
     setTimeToIncident(
         remainingTimeToAvailable + hospitalLocation.timeTo(nextIncident.getLocation()));
