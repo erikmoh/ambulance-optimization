@@ -51,15 +51,13 @@ IntelliJ VM options
 ### Notes
 - Used IntelliJ for java, VSCode for scripts.
 - "Old" folders contains work by previous master projects that is no longer used.
+- simulation is only ensured to work from 7.8.17 to 21.8.17. od_paths will probably be missing paths in other time periods. 
+Incident distribution predictions have not been created for other time periods.
+(some of the scripts can be used to fix it, but they are a bit messy)
 
 
 ### Tips:
-
 - Change breakpoint settings to only suspend thread and not all. That way you can use the javafx
 application when stopped at a breakpoint during debugging.
 - Recommend using a non-random initializer when debugging to get the same events in the simulation 
 every time.
-
-
-### Errors
-- AllCityCenter currently causes an error in the Simulation. 
