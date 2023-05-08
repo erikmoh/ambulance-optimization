@@ -15,7 +15,7 @@ def process_base_stations():
 
 
 def process_predictions(day, hour):
-  predictions_file = json.load(open('data/incidents_distribution_station_predictions.json', 'r'))
+  predictions_file = json.load(open('data/incidents_distribution/station_predictions.json', 'r'))
   predictions = {}
   for station in range(0, 19):
     prediction = predictions_file[str(station)][str(day)][str(hour)]
@@ -24,7 +24,7 @@ def process_predictions(day, hour):
 
 
 def process_truths(day, hour):
-  truths_file = json.load(open('data/incidents_distribution_station_truths.json', 'r'))
+  truths_file = json.load(open('data/incidents_distribution/station_truths.json', 'r'))
   truths = {}
   for station in range(0, 19):
     truth = truths_file[str(station)][str(2017)][str(8)][str(day)][str(hour)]
