@@ -25,6 +25,7 @@ output:
 
 
 ### Setup / Configurations
+- install javafx-sdk-19
 - mvn clean install
 - pip install -r "Requirements.txt" (might require updated versions and conda might be useful)
 
@@ -35,7 +36,7 @@ Run configurations for SimulationApp:
 
 IntelliJ VM options 
 - Xmx8192m is for increased memory (depends on your system)
-- the rest is to fix problems with google-java-format
+- The rest is to fix problems with google-java-format
 ```txt
 -Xmx8192m
 --add-opens=java.base/java.lang=ALL-UNNAMED
@@ -49,15 +50,16 @@ IntelliJ VM options
 ```
 
 ### Notes
-- Used IntelliJ for java, VSCode for scripts.
+- used IntelliJ for java, VSCode for scripts.
 - "Old" folders contains work by previous master projects that is no longer used.
 - simulation is only ensured to work from 7.8.17 to 21.8.17. od_paths will probably be missing paths in other time periods. 
 Incident distribution predictions have not been created for other time periods.
 (some of the scripts can be used to fix it, but they are a bit messy)
+- tests have not been maintained.
 
 
 ### Tips:
-- Change breakpoint settings to only suspend thread and not all. That way you can use the javafx
+- change breakpoint settings to only suspend thread and not all. That way you can use the javafx
 application when stopped at a breakpoint during debugging.
-- Recommend using a non-random initializer when debugging to get the same events in the simulation 
+- recommend using a non-random initializer when debugging to get the same events in the simulation 
 every time.
