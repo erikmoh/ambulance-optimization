@@ -25,6 +25,20 @@ def _heatmap_color_mapper(count):
     return HEATMAP_COLORS['≥10000']
 
 
+def _heatmap_color_mapper_week(count):
+    if count < 1:
+        return HEATMAP_COLORS['0']
+    if count < 5:
+        return HEATMAP_COLORS['1-9']
+    elif count < 10:
+        return HEATMAP_COLORS['10-99']
+    elif count < 20:
+        return HEATMAP_COLORS['100-999']
+    elif count < 40:
+        return HEATMAP_COLORS['1000-9999']
+    return HEATMAP_COLORS['≥10000']
+
+
 def _heatmap_color_prediction_mapper(prediction):
     if prediction == -1:
         return HEATMAP_COLORS_HOUR_PREDICTION['-1']
@@ -59,7 +73,7 @@ def heatmap_style(feature):
         'color': '#000000',
         'fillOpacity': 0.8,
         'weight': 0 if count > 0 else 0.1,
-        'fillColor': _heatmap_color_mapper(count)
+        'fillColor': _heatmap_color_mapper_week(count)
     }
 
 

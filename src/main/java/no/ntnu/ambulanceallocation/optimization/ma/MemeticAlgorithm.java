@@ -60,7 +60,7 @@ public class MemeticAlgorithm extends GeneticAlgorithm {
           var startTime = System.nanoTime();
 
           while (elapsedTime(startTime) < Parameters.MAX_RUNNING_TIME
-              && generation < Parameters.GENERATIONS) {
+              && generation < Parameters.GENERATIONS_COMBINED) {
 
             printAndSaveSummary(logger, generation, population);
 
@@ -76,10 +76,7 @@ public class MemeticAlgorithm extends GeneticAlgorithm {
                     var offspringA = parents.first();
                     var offspringB = parents.second();
 
-                    var offspring =
-                        offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
-                    offspringA = offspring.first();
-                    offspringB = offspring.second();
+                    offspringA.recombineWith(offspringB, Parameters.CROSSOVER_PROBABILITY);
 
                     offspringA.mutate(Parameters.MUTATION_PROBABILITY);
                     offspringB.mutate(Parameters.MUTATION_PROBABILITY);

@@ -166,8 +166,7 @@ def shortest_paths(G, ids, from_ids, ssb_ids, nearest_nodes, closest_grids, conn
         
         for id2 in ids:
             ssb_id2 = ssb_ids[id2]
-            if ssb_id1 != "_279180_6657962" and ssb_id2 != "_279180_6657962":
-                continue
+
             # set travel time to 0 if path is from and to the same node
             if id1 == id2:
                 od[ssb_id1][ssb_id2] = {"travel_time": 0, "route": []}

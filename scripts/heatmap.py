@@ -4,9 +4,26 @@ import map.geojson_tools as geojson_tools
 import map.map_tools as map_tools
 import map.styles as styles
 
+import chromedriver_autoinstaller as chromedriver
+chromedriver.install()
+
+
+def calltime_to_datetime(df):
+  df['tidspunkt'] = pd.to_datetime(df['tidspunkt'], dayfirst=True)
+  df = df.set_index('tidspunkt')
+  return df
+
+
+def keep_period_of_interest(df, buffer_size=0):
+  time = df.index + pd.Timedelta(hours=buffer_size)
+  df_period = df[(time.year == 2017) & (time.week == 32)]
+  return df_period
+
 
 def process_dataframe():
   incidents = pd.read_csv('proprietary_data/cleaned_data.csv', index_col=False)
+  incidents = calltime_to_datetime(incidents)
+  incidents = keep_period_of_interest(incidents)
 
   counts = incidents.groupby(['xcoor', 'ycoor'], as_index=False).size()
   counts['counts'] = counts['size']

@@ -1,9 +1,6 @@
 package no.ntnu.ambulanceallocation.optimization.ga;
 
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_PROBABILITY;
-import static no.ntnu.ambulanceallocation.Parameters.DIVERSIFY_GENERATIONS;
-import static no.ntnu.ambulanceallocation.Parameters.DIVERSITY_LIMIT;
-import static no.ntnu.ambulanceallocation.Parameters.ELITE_SIZE;
 import static no.ntnu.ambulanceallocation.Parameters.GENERATIONS_COMBINED;
 import static no.ntnu.ambulanceallocation.Parameters.GENERATIONS_ISLAND;
 import static no.ntnu.ambulanceallocation.Parameters.INITIALIZER;
@@ -16,7 +13,6 @@ import static no.ntnu.ambulanceallocation.Parameters.TOURNAMENT_SIZE;
 import com.github.sh0nk.matplotlib4j.Plot;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,11 +30,11 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GeneticAlgorithm implements Optimizer {
+public class MultiObjectiveGeneticAlgorithm implements Optimizer {
 
   private static final ExecutorService executor = Executors.newCachedThreadPool();
 
-  private final Logger logger = LoggerFactory.getLogger(GeneticAlgorithm.class);
+  private final Logger logger = LoggerFactory.getLogger(MultiObjectiveGeneticAlgorithm.class);
 
   private final List<Double> bestFitness = new ArrayList<>();
   private final List<Double> averageFitness = new ArrayList<>();
@@ -48,17 +44,13 @@ public class GeneticAlgorithm implements Optimizer {
   protected Population population;
   protected Set<Population> populationIslands;
 
-  public GeneticAlgorithm() {
+  public MultiObjectiveGeneticAlgorithm() {
     this.config = Config.defaultConfig();
-  }
-
-  public GeneticAlgorithm(Config config) {
-    this.config = config;
   }
 
   @Override
   public Solution getOptimalSolution() {
-    return population.best();
+    return population.bestMO();
   }
 
   @Override
@@ -73,11 +65,9 @@ public class GeneticAlgorithm implements Optimizer {
           var generation = 1;
           var combinedGeneration = 1;
           var runningCombined = ISLANDS == 0;
-          var noImprovementCount = 0;
-          var bestFitness = 0.0;
 
           logger.info("Starting GA optimizer...");
-          population.evaluate();
+          population.evaluateMO();
           printAndSaveSummary(logger, generation, population);
 
           while (combinedGeneration < GENERATIONS_COMBINED
@@ -92,7 +82,6 @@ public class GeneticAlgorithm implements Optimizer {
               } else {
                 newIsland();
               }
-              bestFitness = 0.0;
               generation = 1;
               printAndSaveSummary(logger, generation, population);
             }
@@ -104,7 +93,7 @@ public class GeneticAlgorithm implements Optimizer {
             for (var i = 0; i < POPULATION_SIZE / 2; i++) {
               executor.execute(
                   () -> {
-                    var parents = population.selection(TOURNAMENT_SIZE);
+                    var parents = population.selectionMO(TOURNAMENT_SIZE);
                     var offspringA = new Individual(parents.first());
                     var offspringB = new Individual(parents.second());
 
@@ -136,46 +125,16 @@ public class GeneticAlgorithm implements Optimizer {
               e.printStackTrace();
             }
 
-            nextPopulation.evaluate();
-            population.reducePopulation(
-                Math.max(ELITE_SIZE, POPULATION_SIZE - nextPopulation.size()));
             population.addAll(nextPopulation);
-            population.reducePopulation(POPULATION_SIZE);
+            population.reduceRankedPopulation(POPULATION_SIZE);
 
             generation++;
             if (runningCombined) combinedGeneration++;
-            var newBest = 1.0 - population.getBestFitness();
-            if (newBest > bestFitness) {
-              bestFitness = newBest;
-              noImprovementCount = 0;
-            } else {
-              noImprovementCount++;
-            }
-
             printAndSaveSummary(logger, generation, population);
 
-            if (population.getDiversity() < DIVERSITY_LIMIT
-                || noImprovementCount > DIVERSIFY_GENERATIONS) {
-              diversify();
-              noImprovementCount = 0;
-            }
-            /*if (noImprovementCount > RESET_GENERATIONS
-                || (generation == 50 && bestFitness < 0.882)
-                || (generation == 100 && bestFitness < 0.883)) {
-              generation = 1;
-              bestFitness = 0.0;
-              reset(generation);
-            }*/
+            // if (generation % 10 == 0) plotRankedPopulation();
           }
 
-          if (!runningCombined || ISLANDS == 0) {
-            populationIslands.add(population);
-            population =
-                populationIslands.stream()
-                    .min(Comparator.comparingDouble(Population::getBestFitness))
-                    .orElse(population);
-            printAndSaveSummary(logger, generation, population);
-          }
           logger.info("GA finished successfully.");
         };
 
@@ -186,7 +145,7 @@ public class GeneticAlgorithm implements Optimizer {
   private void newIsland() {
     population = new Population(POPULATION_SIZE, INITIALIZER, config);
     logger.info("Started new island.");
-    population.evaluate();
+    population.evaluateMO();
   }
 
   private void combineIslands() {
@@ -198,23 +157,11 @@ public class GeneticAlgorithm implements Optimizer {
         allocation.put(b.getId(), f);
       }
       logger.info("day: {}", allocation);
-      pop.reducePopulation(POPULATION_SIZE / ISLANDS);
       combinedPopulation.addAll(pop);
     }
+    combinedPopulation.reduceRankedPopulation(POPULATION_SIZE);
     population = combinedPopulation;
     logger.info("Combined islands.");
-  }
-
-  private void diversify() {
-    logger.info("Diversifying");
-    population.nonElite(10).forEach(i -> i.mutate(MUTATION_PROBABILITY + 0.02));
-    population.evaluate();
-  }
-
-  private void reset(int generation) {
-    populationIslands.add(population);
-    newIsland();
-    printAndSaveSummary(logger, generation, population);
   }
 
   private double getCrossoverProbability(int generation) {
@@ -242,18 +189,15 @@ public class GeneticAlgorithm implements Optimizer {
 
   protected void printAndSaveSummary(Logger logger, int generation, Population population) {
     logger.info("{} generation: {}", getAbbreviation(), generation);
-    var best = population.best();
-    var bestFitness = best.getFitness();
+    var bestFitness = population.getBestFitness();
     var averageFitness = population.getAverageFitness();
     var diversity = population.getDiversity();
     if (config.USE_URGENCY_FITNESS()) {
       logger.info("Best fitness: {}", 1.0 - bestFitness);
       logger.info("Average fitness: {}", 1.0 - averageFitness);
     } else {
-      var bestSurvivalRate = best.getSurvivalRate();
       logger.info("Best fitness: {}", bestFitness);
       logger.info("Average fitness: {}", averageFitness);
-      logger.info("Best survival rate: {}", bestSurvivalRate);
     }
     logger.info("Diversity: {}", diversity);
     this.bestFitness.add(bestFitness);
@@ -261,26 +205,43 @@ public class GeneticAlgorithm implements Optimizer {
     this.diversity.add(diversity);
   }
 
-  protected void plotPopulation() {
+  protected void plotRankedPopulation() {
+    var colors =
+        new ArrayList<>(
+            List.of(
+                "crimson",
+                "red",
+                "orange",
+                "yellow",
+                "gold",
+                "pink",
+                "purple",
+                "navy",
+                "blue",
+                "cyan",
+                "aquamarine",
+                "lawngreen",
+                "green"));
+
     try {
       var plt = Plot.create();
-      var x = new ArrayList<Integer>();
-      var y = new ArrayList<Double>();
-      for (var i = 0; i < population.size(); i++) {
-        x.add(i);
-        // x.add(population.get(i).getNovelty(population.getList()));
-        /*x.add(
-        population.get(i).getDayShiftAllocation().subList(10, 15).stream()
-            .mapToInt(Integer::intValue)
-            .sum());*/
-        y.add(1.0 - population.get(i).getFitness());
+      for (var individual : population) {
+        var x = individual.getResponseTimeH();
+        var y = individual.getResponseTimeA();
+        var color = "gray";
+        if (individual.getRank() - 1 < colors.size()) {
+          color = colors.get(individual.getRank() - 1);
+        }
+        plt.plot().add(List.of(x), List.of(y), "o").color(color);
       }
-      plt.plot().add(x, y, "o");
-      plt.title("Fitness distribution");
-      plt.ylim(0.860, 0.884);
+      plt.title("Response time");
+      plt.xlabel("Urgent");
+      plt.ylabel("Acute");
+      plt.xlim(460, 620);
+      plt.ylim(430, 540);
       plt.show();
     } catch (Exception e) {
-      return;
+      logger.error("Failed to plot population", e);
     }
   }
 

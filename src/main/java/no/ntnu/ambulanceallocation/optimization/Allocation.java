@@ -35,6 +35,10 @@ public record Allocation(List<List<Integer>> allocation) implements Iterable<Lis
     return allocation.get(1);
   }
 
+  public void setShiftAllocation(Integer shift, List<Integer> shiftAllocation) {
+    allocation.set(shift, shiftAllocation);
+  }
+
   public List<Integer> getDayShiftAllocationSorted() {
     return getDayShiftAllocation().stream().sorted().collect(Collectors.toList());
   }
