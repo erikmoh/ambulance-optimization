@@ -26,13 +26,13 @@ public final class Parameters {
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
   public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.NONE;
-  public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoverageBaseStation;
+  public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.Fastest;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
   public static final HandlingDelay HANDLING_DELAY = HandlingDelay.HISTORIC_MEDIAN;
   public static final boolean HISTORIC_HOSPITAL_TIME = false;
   public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;
-  public static final boolean ENABLE_REDISPATCH = false;
-  public static final boolean ENABLE_QUEUE_NEXT = false;
+  public static final boolean ENABLE_REDISPATCH = true;
+  public static final boolean ENABLE_QUEUE_NEXT = true;
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
