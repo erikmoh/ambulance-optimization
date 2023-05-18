@@ -1,5 +1,6 @@
 package no.ntnu.ambulanceallocation.simulation.dispatch;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import no.ntnu.ambulanceallocation.simulation.Ambulance;
@@ -20,6 +21,7 @@ public enum DispatchPolicy {
         Incident incident,
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        LocalDateTime currentTime,
         Config config) {
       ambulance.updateDispatchDelay(incident);
 
@@ -40,6 +42,7 @@ public enum DispatchPolicy {
         Incident incident,
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        LocalDateTime currentTime,
         Config config) {
       ambulance.updateDispatchDelay(incident);
 
@@ -60,6 +63,7 @@ public enum DispatchPolicy {
         Incident incident,
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        LocalDateTime currentTime,
         Config config) {
       ambulance.updateDispatchDelay(incident);
 
@@ -79,6 +83,7 @@ public enum DispatchPolicy {
         Incident incident,
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        LocalDateTime currentTime,
         Config config) {
 
       int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
@@ -113,6 +118,7 @@ public enum DispatchPolicy {
         Incident incident,
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        LocalDateTime currentTime,
         Config config) {
 
       int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
@@ -156,6 +162,7 @@ public enum DispatchPolicy {
         Incident incident,
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+        LocalDateTime currentTime,
         Config config) {
 
       int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
@@ -165,7 +172,7 @@ public enum DispatchPolicy {
 
       // using the hour when the ambulance will arrive at incident instead of when the ambulance is
       // ready, since arrival time can be approximated using the known travel time
-      var arrivalTime = incident.callReceived().plusSeconds(ambulance.getTimeToIncident());
+      var arrivalTime = currentTime.plusSeconds(ambulance.getTimeToIncident());
 
       var areaAmbulanceCount = 0L;
       var predictedDemand = 0.0;
@@ -252,5 +259,6 @@ public enum DispatchPolicy {
       Incident incident,
       Integer demand,
       Map<BaseStation, List<Ambulance>> baseStationAmbulances,
+      LocalDateTime currentTime,
       Config config);
 }

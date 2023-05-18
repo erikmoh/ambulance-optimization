@@ -1,10 +1,10 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
-import static no.ntnu.ambulanceallocation.simulation.incident.IncidentIO.medianTimeAtHospital;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 
+import no.ntnu.ambulanceallocation.simulation.Config;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
 
 public record Incident(
@@ -54,24 +54,34 @@ public record Incident(
   }
 
   public int getTimeBeforeAborting() {
-    if (dispatched.isAfter(availableNonTransport)) {
+    if (callReceived.isAfter(availableNonTransport)) {
       throw new IllegalStateException("Dispatch time cannot be after available non-transport time");
     }
-    return (int) ChronoUnit.SECONDS.between(dispatched, availableNonTransport);
+    return (int) ChronoUnit.SECONDS.between(callReceived, availableNonTransport);
   }
 
   public int getDemand() {
     return nonTransportingVehicles + transportingVehicles;
   }
 
-  public int getTimeToAvailableTransport(int travelTime) {
-    if (departureFromScene.isEmpty() || departureFromScene.get().isAfter(availableTransport)) {
-      if (urgencyLevel.isRegular()) {
-        return travelTime + medianTimeAtHospital.get(UrgencyLevel.REGULAR);
+  public int getTimeToAvailableTransport(int travelTime, Config config) {
+    if (config.HISTORIC_HOSPITAL_TIME()) {
+      if (departureFromScene.isEmpty() || departureFromScene.get().isAfter(availableTransport)) {
+        return simulatedTimeToAvailable(travelTime);
       }
-      return travelTime + medianTimeAtHospital.get(urgencyLevel);
+      return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableTransport);
     }
+    return simulatedTimeToAvailable(travelTime);
+  }
 
-    return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableTransport);
+  private int simulatedTimeToAvailable(int travelTime) {
+    // median times found using scripts
+    if (urgencyLevel.equals(UrgencyLevel.ACUTE)) {
+      return travelTime + 1381;
+    }
+    if (urgencyLevel.equals(UrgencyLevel.URGENT)) {
+      return travelTime + 1283;
+    }
+    return travelTime + 1448;
   }
 }

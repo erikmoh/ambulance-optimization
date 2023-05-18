@@ -20,7 +20,7 @@ import javafx.beans.property.DoubleProperty;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.simulation.event.AbortIncident;
 import no.ntnu.ambulanceallocation.simulation.event.Event;
-import no.ntnu.ambulanceallocation.simulation.event.HospitalArrival;
+import no.ntnu.ambulanceallocation.simulation.event.HospitalDeparture;
 import no.ntnu.ambulanceallocation.simulation.event.LocationUpdate;
 import no.ntnu.ambulanceallocation.simulation.event.NewCall;
 import no.ntnu.ambulanceallocation.simulation.event.PartiallyRespondedCall;
@@ -118,7 +118,7 @@ public final class Simulation {
           case AbortIncident abortIncident -> handleAbortIncident(abortIncident);
           case SceneArrival sceneArrival -> handleSceneArrival(sceneArrival);
           case SceneDeparture sceneDeparture -> handleSceneDeparture(sceneDeparture);
-          case HospitalArrival hospitalArrival -> handleHospitalArrival(hospitalArrival);
+          case HospitalDeparture hospitalDeparture -> handleHospitalDeparture(hospitalDeparture);
           case LocationUpdate locationUpdate -> handleLocationUpdate(locationUpdate);
         }
       } catch (Exception e) {
@@ -243,6 +243,8 @@ public final class Simulation {
     }
 
     var incident = newCall.incident;
+    var callQueueTime = (int) ChronoUnit.SECONDS.between(incident.callReceived(), time);
+    var handlingTime = Math.max(callQueueTime, config.HANDLING_DELAY().get(incident));
 
     if (incident.departureFromScene().isEmpty() && incident.arrivalAtScene().isEmpty()) {
       // Assume incident was aborted
@@ -254,7 +256,7 @@ public final class Simulation {
           // ambulance is queued for this event but busy with previous
           continue;
         }
-        var delay = config.DISPATCH_DELAY().get(incident, ambulance);
+        var delay = handlingTime + config.DISPATCH_DELAY().get(incident, ambulance);
         var updateTime = time.plusSeconds(delay).plusMinutes(config.UPDATE_LOCATION_PERIOD());
         if (updateTime.isBefore(abortTime)) {
           eventQueue.add(new LocationUpdate(updateTime, ambulance));
@@ -264,9 +266,10 @@ public final class Simulation {
     }
 
     var firstAmbulance = dispatchedAmbulances.get(0);
-    var responseTime = firstAmbulance.getUpdatedTimeToIncident(incident);
+    var timeToIncident = firstAmbulance.getUpdatedTimeToIncident(incident);
+    var responseTime = callQueueTime + handlingTime + timeToIncident;
 
-    if (plannedTravelTimes.containsKey(incident)) {
+    if (newCall instanceof PartiallyRespondedCall && plannedTravelTimes.containsKey(incident)) {
       responseTime = Math.min(plannedTravelTimes.get(incident), responseTime);
     }
     // set or update travel time
@@ -279,7 +282,7 @@ public final class Simulation {
         timeAtScene = incident.getTimeSpentAtScene();
       } else {
         // No arrival time at scene, so we simulate it by using dispatch and travel time
-        var simulatedArrivalTime = incident.dispatched().plusSeconds(responseTime);
+        var simulatedArrivalTime = time.plusSeconds(timeToIncident);
         timeAtScene =
             (int)
                 ChronoUnit.SECONDS.between(
@@ -290,10 +293,12 @@ public final class Simulation {
       timeAtScene = incident.getTimeSpentAtSceneNonTransport();
     }
 
-    var departureTime = time.plusSeconds(responseTime).plusSeconds(timeAtScene);
+    var departureTime =
+        time.plusSeconds(handlingTime).plusSeconds(timeToIncident).plusSeconds(timeAtScene);
 
     for (var ambulance : dispatchedAmbulances) {
-      var arrivalTime = time.plusSeconds(ambulance.getUpdatedTimeToIncident(incident));
+      var arrivalTime =
+          time.plusSeconds(handlingTime).plusSeconds(ambulance.getUpdatedTimeToIncident(incident));
       eventQueue.add(new SceneArrival(arrivalTime, newCall, ambulance, departureTime));
 
       if (ambulance.getNextCall() != null) {
@@ -301,7 +306,7 @@ public final class Simulation {
         continue;
       }
 
-      var delay = config.DISPATCH_DELAY().get(incident, ambulance);
+      var delay = handlingTime + config.DISPATCH_DELAY().get(incident, ambulance);
       var updateTime = time.plusSeconds(delay).plusMinutes(config.UPDATE_LOCATION_PERIOD());
       if (updateTime.isBefore(arrivalTime)) {
         eventQueue.add(new LocationUpdate(updateTime, ambulance));
@@ -316,7 +321,7 @@ public final class Simulation {
         ambulance.removeNextCall();
         continue;
       }
-      jobCompleted(ambulance, abortIncident.newCall);
+      jobCompleted(ambulance);
     }
   }
 
@@ -330,6 +335,12 @@ public final class Simulation {
     // only depart if all ambulances have arrived
     if (ambulancesAtScene.get(incident).size() < incident.getDemand()) {
       return;
+    }
+
+    var newCall = sceneArrival.newCall;
+    var travelTime = plannedTravelTimes.remove(newCall.incident);
+    if (newCall.providesResponseTime && travelTime != null) {
+      saveResponseTime(newCall, travelTime);
     }
 
     var departureTime = sceneArrival.departureTime;
@@ -350,26 +361,25 @@ public final class Simulation {
         ambulance.transport();
 
         var transportTime = ambulance.getTimeToHospital();
-        var timeToAvailable = newCall.incident.getTimeToAvailableTransport(transportTime);
+        var timeToAvailable = newCall.incident.getTimeToAvailableTransport(transportTime, config);
         if (timeToAvailable < transportTime) {
           timeToAvailable = transportTime;
         }
         var availableTime = time.plusSeconds(timeToAvailable);
-        eventQueue.add(new HospitalArrival(availableTime, ambulance, ambulance.getCall()));
+        eventQueue.add(new HospitalDeparture(availableTime, ambulance, ambulance.getCall()));
 
         var updateTime = time.plusMinutes(config.UPDATE_LOCATION_PERIOD());
         if (updateTime.isBefore(availableTime)) {
           eventQueue.add(new LocationUpdate(updateTime, ambulance));
         }
       } else {
-        jobCompleted(ambulance, newCall);
+        jobCompleted(ambulance);
       }
     }
   }
 
-  private void handleHospitalArrival(HospitalArrival hospitalArrival) {
-    var newCall = hospitalArrival.newCall;
-    var ambulance = hospitalArrival.ambulance;
+  private void handleHospitalDeparture(HospitalDeparture hospitalDeparture) {
+    var ambulance = hospitalDeparture.ambulance;
 
     ambulance.arriveAtHospital();
     ambulance.flagAsAvailable();
@@ -389,14 +399,10 @@ public final class Simulation {
       }
       eventQueue.add(new LocationUpdate(updateTime, ambulance));
     }
-
-    var travelTime = plannedTravelTimes.remove(newCall.incident);
-    if (newCall.providesResponseTime && travelTime != null) {
-      saveResponseTime(newCall, travelTime);
-    }
+    checkQueue();
   }
 
-  private void jobCompleted(Ambulance ambulance, NewCall newCall) {
+  private void jobCompleted(Ambulance ambulance) {
     ambulance.flagAsAvailable();
 
     var ambulancesToReturn = remainingOffDutyAmbulances.get(ambulance.getBaseStation());
@@ -411,11 +417,6 @@ public final class Simulation {
       updateTime = stationTime;
     }
     eventQueue.add(new LocationUpdate(updateTime, ambulance));
-
-    var travelTime = plannedTravelTimes.remove(newCall.incident);
-    if (newCall.providesResponseTime && travelTime != null) {
-      saveResponseTime(newCall, travelTime);
-    }
 
     checkQueue();
   }
@@ -454,7 +455,8 @@ public final class Simulation {
         a ->
             config
                 .DISPATCH_POLICY()
-                .updateAmbulance(a, available, incident, demand, baseStationAmbulances, config));
+                .updateAmbulance(
+                    a, available, incident, demand, baseStationAmbulances, time, config));
 
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted

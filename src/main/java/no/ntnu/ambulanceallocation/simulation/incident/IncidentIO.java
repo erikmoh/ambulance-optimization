@@ -15,18 +15,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import no.ntnu.ambulanceallocation.Parameters;
-import no.ntnu.ambulanceallocation.simulation.Hospital;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
 import no.ntnu.ambulanceallocation.simulation.grid.Coordinate;
-import no.ntnu.ambulanceallocation.simulation.grid.DistanceIO;
-import no.ntnu.ambulanceallocation.simulation.grid.Route;
-import no.ntnu.ambulanceallocation.utils.Tuple;
 import no.ntnu.ambulanceallocation.utils.Utils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,7 +46,6 @@ public class IncidentIO {
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
   public static final List<Incident> incidents;
-  public static final Map<UrgencyLevel, Integer> medianTimeAtHospital;
   public static final Map<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>>
       gridDistribution;
   public static final Map<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>
@@ -61,7 +55,6 @@ public class IncidentIO {
 
   static {
     incidents = loadIncidentsFromFile();
-    medianTimeAtHospital = findMedianTimeAtHospital();
     gridDistribution = loadGridDistributions();
     baseStationDistribution = loadBaseStationDistributions();
     predictionDistribution = loadPredictionDistributions(false);
@@ -310,70 +303,5 @@ public class IncidentIO {
 
     logger.info("Loaded {} distributions.", distributions.size());
     return distributions;
-  }
-
-  private static Map<UrgencyLevel, Integer> findMedianTimeAtHospital() {
-    var routes = DistanceIO.routes;
-
-    var map = new HashMap<UrgencyLevel, Integer>();
-
-    for (var i = 0; i < UrgencyLevel.values().length - 2; i++) {
-      var level = UrgencyLevel.values()[i];
-      var levels = new java.util.ArrayList<>(List.of(level));
-      if (level.equals(UrgencyLevel.REGULAR)) {
-        levels.add(UrgencyLevel.REGULAR_PLANNED);
-        levels.add(UrgencyLevel.REGULAR_UNPLANNED);
-      }
-
-      var times = new ArrayList<Integer>();
-      for (var incident : incidents) {
-        if (levels.contains(incident.urgencyLevel())
-            || incident.transportingVehicles() == 0
-            || incident.departureFromScene().isEmpty()
-            || incident.departureFromScene().get().isAfter(incident.availableTransport())) {
-          continue;
-        }
-
-        var closestHospital = findNearestHospital(routes, incident);
-        var travelTime = getDistance(routes, incident.getLocation(), closestHospital);
-        var timeToHospital = incident.getTimeToAvailableTransport(0);
-
-        if (timeToHospital <= 0 || travelTime <= 0 || travelTime > timeToHospital) {
-          continue;
-        }
-
-        var time = (int) (timeToHospital - travelTime);
-        times.add(time);
-      }
-
-      times.sort(Integer::compareTo);
-
-      var size = times.size();
-      var midpoint = size % 2 == 0 ? size / 2 - 1 : size / 2;
-      map.put(level, times.get(midpoint));
-    }
-
-    return map;
-  }
-
-  public static Coordinate findNearestHospital(
-      Map<Tuple<Coordinate>, Route> routes, Incident incident) {
-    return Arrays.stream(Hospital.values())
-        .min(
-            Comparator.comparing(
-                hospital -> getDistance(routes, incident.getLocation(), hospital.getCoordinate())))
-        .map(Hospital::getCoordinate)
-        .orElseThrow();
-  }
-
-  private static double getDistance(
-      Map<Tuple<Coordinate>, Route> routes, Coordinate from, Coordinate to) {
-    if (from == to) {
-      return 60.0;
-    }
-    if (!routes.containsKey(new Tuple<>(from, to))) {
-      return -1.0;
-    }
-    return routes.get(new Tuple<>(from, to)).time();
   }
 }

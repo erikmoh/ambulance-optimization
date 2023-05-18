@@ -6,11 +6,12 @@ import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
+import no.ntnu.ambulanceallocation.simulation.dispatch.HandlingDelay;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
 
 public final class Parameters {
   // General
-  public static final int RUNS = 5;
+  public static final int RUNS = 1;
   public static final int MAX_RUNNING_TIME = (int) (6.0 * 60); // 6 minutes
 
   // Simulation
@@ -25,11 +26,13 @@ public final class Parameters {
   public static final LocalTime NIGHT_SHIFT_START = LocalTime.of(20, 0);
 
   public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.NONE;
-  public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
+  public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoverageBaseStation;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
+  public static final HandlingDelay HANDLING_DELAY = HandlingDelay.HISTORIC_MEDIAN;
+  public static final boolean HISTORIC_HOSPITAL_TIME = false;
   public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;
-  public static final boolean ENABLE_REDISPATCH = true;
-  public static final boolean ENABLE_QUEUE_NEXT = true;
+  public static final boolean ENABLE_REDISPATCH = false;
+  public static final boolean ENABLE_QUEUE_NEXT = false;
 
   public static final int UPDATE_LOCATION_PERIOD = 5; // minutes
 
