@@ -11,8 +11,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import KFold, train_test_split
 
 
-DISTRIBUTION_FILE = "data/incidents_distribution_station_count.csv"
-DISTRIBUTION_TEST_FILE = "data/incidents_distribution_station_count_test.csv"
+DISTRIBUTION_FILE = "data/incidents_distribution/station_count.csv"
+DISTRIBUTION_TEST_FILE = "data/incidents_distribution/station_count_test.csv"
 
 CONFIGS = [
         {

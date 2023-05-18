@@ -5,12 +5,12 @@ import pandas as pd
 from tqdm import tqdm
 from datetime import datetime
 
-from processing import filter_urgency_levels, convert_to_datetime, filter_erroneous_timestamps, aggregate_concurrent_incidents, save_data, set_index, sort_index, filter_regions, keep_period_of_interest
+from processing import filter_urgency_levels, convert_to_datetime, filter_erroneous_timestamps, aggregate_concurrent_incidents, save_data, set_index, sort_index, filter_regions, keep_period_of_interest, calltime_to_datetime
 from coordinate_converter import utm_to_ssb_grid_id
 
 
-CREATE_NEW_PROCESSED = False
-PROCESSED_FILE = "data/incidents_all_processed.csv"
+CREATE_NEW_PROCESSED = True
+PROCESSED_FILE = "data/incidents_all_processed_2.csv"
 DISTRIBUTION_FILE = "data/incidents_distribution_station_truths.json"
 
 FIELDS = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested',
@@ -32,12 +32,14 @@ def get_processed_file():
 def create_processed_file():
     df = pd.read_csv("proprietary_data/cleaned_data.csv", encoding='utf-8', escapechar='\\', 
                      usecols=FIELDS, parse_dates=True)
+    print("Convert call datetime")
+    df = calltime_to_datetime(df)
+    print("Filter years")
+    df = keep_period_of_interest(df)
     print("Filter regions")
     df = filter_regions(df)
     print("Convert datetime")
     df = convert_to_datetime(df)
-    print("Filter years")
-    df = keep_period_of_interest(df)
     print("Filter urgency")
     df = filter_urgency_levels(df)
     print("Filter erronous timestamps")

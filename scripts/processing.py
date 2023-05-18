@@ -19,7 +19,8 @@ def print_step(func):
     print(f'- Completed in {(t2 - t1):.4f}s')
     print(f'- Input size was {args[0].shape[0]}')
     print(f'- Output size was {return_value.shape[0]}')
-    funnel_statistics.append((func.__name__, args[0].shape[0]))
+    if func.__name__.startswith("filter") or func.__name__.startswith("aggregate") or func.__name__.startswith("set"):
+      funnel_statistics.append((func.__name__, args[0].shape[0]))
     return return_value
 
   return wrapper
@@ -171,12 +172,12 @@ def get_args():
 
 
 def save_data(df, output_data_file):
-  #plot_funnel(*zip(*funnel_statistics))
+  plot_funnel(*zip(*funnel_statistics))
 
   df.to_csv(output_data_file, index=False)
 
-  destination_file = '../src/main/resources/incidents.csv'
-  shutil.copyfile(output_data_file, destination_file)
+  """ destination_file = '../src/main/resources/incidents.csv'
+  shutil.copyfile(output_data_file, destination_file) """
 
 
 def main():
@@ -186,9 +187,9 @@ def main():
   funnel_statistics = []
 
   input_data_file = 'proprietary_data/cleaned_data.csv'
-  output_data_file = 'proprietary_data/incidents_all.csv'
+  output_data_file = 'proprietary_data/processed_distribution.csv'
 
-  buffer_size = 4  # hours
+  buffer_size = 0  # hours
 
   fields = ['tidspunkt', 'varslet', 'rykker_ut', 'ank_hentested', 'avg_hentested',
             'ank_levsted', 'ledig', 'xcoor', 'ycoor', 'hastegrad', 'tiltak_type', 'ssbid1000M']
@@ -216,7 +217,7 @@ def main():
 
   steps = [
     calltime_to_datetime,
-    filter_incomplete_years,
+    #filter_incomplete_years,
     filter_years,
     filter_regions,
     convert_to_datetime,
@@ -226,8 +227,8 @@ def main():
     # filter_response_time_outliers,
     select_features,
     save_intermediate,
-    filter_dispatch_types,
-    # filter_urgency_levels,
+    #filter_dispatch_types,
+    filter_urgency_levels,
     aggregate_concurrent_incidents,
     set_index,
     sort_index,

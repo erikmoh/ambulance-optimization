@@ -21,7 +21,7 @@ def keep_period_of_interest(df, buffer_size=0):
 
 
 def process_dataframe():
-  incidents = pd.read_csv('proprietary_data/cleaned_data.csv', index_col=False)
+  incidents = pd.read_csv('proprietary_data/processed_distribution.csv', index_col=False)
   incidents = calltime_to_datetime(incidents)
   incidents = keep_period_of_interest(incidents)
 

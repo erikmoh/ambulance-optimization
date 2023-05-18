@@ -4,6 +4,9 @@ import map.geojson_tools as geojson_tools
 import map.map_tools as map_tools
 import map.styles as styles
 
+import chromedriver_autoinstaller as chromedriver
+chromedriver.install()
+
 
 def process_grids():
   grids = pd.read_csv('data/grid_zones.csv', index_col=0)
