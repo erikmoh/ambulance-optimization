@@ -6,7 +6,6 @@ import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.optimization.Allocation;
 import no.ntnu.ambulanceallocation.optimization.Optimizer;
 import no.ntnu.ambulanceallocation.optimization.ga.GeneticAlgorithm;
-import no.ntnu.ambulanceallocation.optimization.ga.MultiObjectiveGeneticAlgorithm;
 import no.ntnu.ambulanceallocation.simulation.Simulation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
