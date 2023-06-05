@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public class Utils {
 
-  public static final Random random = new Random(10062022);
+  public static final Random random = new Random(100620221);
 
   public static double randomDouble() {
     return random.nextDouble();

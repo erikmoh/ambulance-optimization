@@ -5,6 +5,7 @@ import no.ntnu.ambulanceallocation.Parameters;
 import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
+import no.ntnu.ambulanceallocation.simulation.dispatch.HandlingDelay;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
 
 public record Config(
@@ -19,6 +20,8 @@ public record Config(
     boolean ENABLE_REDISPATCH,
     boolean ENABLE_QUEUE_NEXT,
     DispatchDelay DISPATCH_DELAY,
+    HandlingDelay HANDLING_DELAY,
+    boolean HISTORIC_HOSPITAL_TIME,
     IncidentDistribution INCIDENT_DISTRIBUTION,
     ConstraintStrategy CONSTRAINT_STRATEGY) {
 
@@ -35,6 +38,8 @@ public record Config(
         Parameters.ENABLE_REDISPATCH,
         Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY,
+        Parameters.HANDLING_DELAY,
+        Parameters.HISTORIC_HOSPITAL_TIME,
         Parameters.INCIDENT_DISTRIBUTION,
         Parameters.CONSTRAINT_STRATEGY);
   }
@@ -52,6 +57,8 @@ public record Config(
         Parameters.ENABLE_REDISPATCH,
         Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY,
+        Parameters.HANDLING_DELAY,
+        Parameters.HISTORIC_HOSPITAL_TIME,
         Parameters.INCIDENT_DISTRIBUTION,
         Parameters.CONSTRAINT_STRATEGY);
   }
@@ -69,6 +76,8 @@ public record Config(
         Parameters.ENABLE_REDISPATCH,
         Parameters.ENABLE_QUEUE_NEXT,
         Parameters.DISPATCH_DELAY,
+        Parameters.HANDLING_DELAY,
+        Parameters.HISTORIC_HOSPITAL_TIME,
         Parameters.INCIDENT_DISTRIBUTION,
         Parameters.CONSTRAINT_STRATEGY);
   }

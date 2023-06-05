@@ -39,8 +39,8 @@ public class Individual extends Solution {
   public void recombineWith(Individual individual, double crossoverProbability) {
     if (Utils.randomDouble() < crossoverProbability) {
       for (var shift = 0; shift < getAllocation().size(); shift++) {
-        var chromosomeFromA = getAllocation().get(shift);
-        var chromosomeFromB = individual.getAllocation().get(shift);
+        var chromosomeFromA = getAllocation().get(shift); // .stream().sorted().toList();
+        var chromosomeFromB = individual.getAllocation().get(shift); // .stream().sorted().toList();
 
         var crossoverPoint = 1 + Utils.randomInt(chromosomeFromA.size() - 2);
 

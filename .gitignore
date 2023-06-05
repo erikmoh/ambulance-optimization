@@ -5,7 +5,8 @@ target/
 .idea/
 .vscode/
 
-output/simulation/logs
+output/simulation/
+output/visualization/
 
 scripts/data/
 scripts/proprietary_data/

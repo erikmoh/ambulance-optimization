@@ -157,12 +157,11 @@ public abstract class Solution implements Comparable<Solution> {
 
     fitness = simulatedFitness + (violations * penaltyFactor);
 
-    /*
     survivalRate = simulationResults.averageSurvivalRate();
-    var resultMap = simulationResults.getAverageResponse();
+    // for multi-objective
+    /*var resultMap = simulationResults.createAverageResults();
     responseTimeA = resultMap.get("acuteResponse");
-    responseTimeH = resultMap.get("urgentResponse");
-    */
+    responseTimeH = resultMap.get("urgentResponse");*/
   }
 
   private void calculateNovelty(List<Individual> population) {

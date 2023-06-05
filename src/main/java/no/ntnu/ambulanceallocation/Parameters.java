@@ -6,12 +6,13 @@ import no.ntnu.ambulanceallocation.optimization.ga.ConstraintStrategy;
 import no.ntnu.ambulanceallocation.optimization.initializer.Initializer;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchDelay;
 import no.ntnu.ambulanceallocation.simulation.dispatch.DispatchPolicy;
+import no.ntnu.ambulanceallocation.simulation.dispatch.HandlingDelay;
 import no.ntnu.ambulanceallocation.simulation.incident.IncidentDistribution;
 
 public final class Parameters {
   // General
-  public static final int RUNS = 5;
-  public static final int MAX_RUNNING_TIME = (int) (6.0 * 60); // 6 minutes
+  public static final int RUNS = 10;
+  public static final int MAX_RUNNING_TIME = (int) (4.0 * 60); // 4 minutes
 
   // Simulation
   public static final int BUFFER_SIZE = 4; // hours
@@ -27,6 +28,8 @@ public final class Parameters {
   public static final ConstraintStrategy CONSTRAINT_STRATEGY = ConstraintStrategy.NONE;
   public static final DispatchPolicy DISPATCH_POLICY = DispatchPolicy.CoveragePredictedDemand;
   public static final DispatchDelay DISPATCH_DELAY = DispatchDelay.HISTORIC_MEDIAN;
+  public static final HandlingDelay HANDLING_DELAY = HandlingDelay.HISTORIC_MEDIAN;
+  public static final boolean HISTORIC_HOSPITAL_TIME = true;
   public static final IncidentDistribution INCIDENT_DISTRIBUTION = IncidentDistribution.PREDICTION;
   public static final boolean ENABLE_REDISPATCH = true;
   public static final boolean ENABLE_QUEUE_NEXT = true;
@@ -40,18 +43,19 @@ public final class Parameters {
 
   // Genetic & Memetic Algorithm
   public static final Initializer INITIALIZER =
-      new no.ntnu.ambulanceallocation.optimization.initializer.Mix();
-  public static final int ISLANDS = 5;
-  public static final int GENERATIONS_ISLAND = 100;
-  public static final int GENERATIONS_COMBINED = 999;
-  public static final int POPULATION_SIZE = 100;
-  public static final int ELITE_SIZE = 100;
-  public static final int TOURNAMENT_SIZE = 4;
-  public static final int DIVERSITY_LIMIT = 2;
-  public static final int DIVERSIFY_GENERATIONS = 30; // generations without improvement
+      new no.ntnu.ambulanceallocation.optimization.initializer.Random();
+  public static final int ISLANDS = 3; // set to 0 to disable islands
+  public static final int GENERATIONS_ISLAND = 200;
+  public static final int GENERATIONS_COMBINED = 9999;
+  public static final int POPULATION_SIZE = 60;
+  public static final int ELITE_SIZE = 6;
+  public static final int TOURNAMENT_SIZE = 6;
+  public static final int DIVERSITY_LIMIT = 0;
+  public static final int DIVERSIFY_GENERATIONS = 99999; // generations without improvement
   public static final int RESET_GENERATIONS = 100; // generations without improvement
 
-  public static final double CROSSOVER_PROBABILITY = 0.2;
+  public static final double CROSSOVER_TUNE_START = 0.8;
+  public static final double CROSSOVER_PROBABILITY = 0.1;
   public static final double MUTATION_PROBABILITY = 0.014;
   public static final double IMPROVE_PROBABILITY = 0.25;
 

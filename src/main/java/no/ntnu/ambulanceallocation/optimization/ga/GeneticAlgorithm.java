@@ -1,6 +1,7 @@
 package no.ntnu.ambulanceallocation.optimization.ga;
 
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_PROBABILITY;
+import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_TUNE_START;
 import static no.ntnu.ambulanceallocation.Parameters.DIVERSIFY_GENERATIONS;
 import static no.ntnu.ambulanceallocation.Parameters.DIVERSITY_LIMIT;
 import static no.ntnu.ambulanceallocation.Parameters.ELITE_SIZE;
@@ -43,6 +44,7 @@ public class GeneticAlgorithm implements Optimizer {
   private final List<Double> bestFitness = new ArrayList<>();
   private final List<Double> averageFitness = new ArrayList<>();
   private final List<Double> diversity = new ArrayList<>();
+  private final List<Double> diversityOld = new ArrayList<>();
 
   protected Config config;
   protected Population population;
@@ -155,7 +157,7 @@ public class GeneticAlgorithm implements Optimizer {
             printAndSaveSummary(logger, generation, population);
 
             if (population.getDiversity() < DIVERSITY_LIMIT
-                || noImprovementCount > DIVERSIFY_GENERATIONS) {
+                && noImprovementCount > DIVERSIFY_GENERATIONS) {
               diversify();
               noImprovementCount = 0;
             }
@@ -207,7 +209,7 @@ public class GeneticAlgorithm implements Optimizer {
 
   private void diversify() {
     logger.info("Diversifying");
-    population.nonElite(10).forEach(i -> i.mutate(MUTATION_PROBABILITY + 0.02));
+    population.nonElite(ELITE_SIZE).forEach(i -> i.mutate(0.3));
     population.evaluate();
   }
 
@@ -218,8 +220,8 @@ public class GeneticAlgorithm implements Optimizer {
   }
 
   private double getCrossoverProbability(int generation) {
-    var generationReduction = generation / 100.0;
-    return Math.max(CROSSOVER_PROBABILITY, 0.8 - generationReduction);
+    var generationReduction = generation / 600.0;
+    return Math.max(CROSSOVER_PROBABILITY, CROSSOVER_TUNE_START - generationReduction);
   }
 
   @Override
@@ -228,6 +230,7 @@ public class GeneticAlgorithm implements Optimizer {
     runStatistics.saveColumn("best", bestFitness);
     runStatistics.saveColumn("average", averageFitness);
     runStatistics.saveColumn("diversity", diversity);
+    runStatistics.saveColumn("diversityOld", diversityOld);
     return runStatistics;
   }
 
@@ -246,6 +249,7 @@ public class GeneticAlgorithm implements Optimizer {
     var bestFitness = best.getFitness();
     var averageFitness = population.getAverageFitness();
     var diversity = population.getDiversity();
+    var diversityOld = population.getDiversityOld();
     if (config.USE_URGENCY_FITNESS()) {
       logger.info("Best fitness: {}", 1.0 - bestFitness);
       logger.info("Average fitness: {}", 1.0 - averageFitness);
@@ -256,9 +260,11 @@ public class GeneticAlgorithm implements Optimizer {
       logger.info("Best survival rate: {}", bestSurvivalRate);
     }
     logger.info("Diversity: {}", diversity);
+    logger.info("DiversityOld: {}", diversityOld);
     this.bestFitness.add(bestFitness);
     this.averageFitness.add(averageFitness);
     this.diversity.add(diversity);
+    this.diversityOld.add(diversityOld);
   }
 
   protected void plotPopulation() {
@@ -288,5 +294,6 @@ public class GeneticAlgorithm implements Optimizer {
     bestFitness.clear();
     averageFitness.clear();
     diversity.clear();
+    diversityOld.clear();
   }
 }

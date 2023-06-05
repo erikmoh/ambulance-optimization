@@ -15,7 +15,7 @@ def process_base_stations():
 
 
 def process_predictions(day, hour):
-  predictions_file = json.load(open('data/incidents_distribution/station_predictions.json', 'r'))
+  predictions_file = json.load(open('data/incident_distribution/station_predictions.json', 'r'))
   predictions = {}
   for station in range(0, 19):
     prediction = predictions_file[str(station)][str(day)][str(hour)]
@@ -24,7 +24,7 @@ def process_predictions(day, hour):
 
 
 def process_truths(day, hour):
-  truths_file = json.load(open('data/incidents_distribution/station_truths.json', 'r'))
+  truths_file = json.load(open('data/incident_distribution/station_truths.json', 'r'))
   truths = {}
   for station in range(0, 19):
     truth = truths_file[str(station)][str(2017)][str(8)][str(day)][str(hour)]
@@ -52,27 +52,27 @@ def main():
   points = geojson_tools.dataframe_to_points(base_stations)
   circle_markers = map_tools.create_circle_markers(points)
 
-  day = 12
+  day = 11
   for hour in range(0, 24):
-    # predictions = process_predictions(day, hour)
-    # grids = process_grids(predictions)
-    truths = process_truths(day, hour)
-    grids = process_grids(truths)
+    predictions = process_predictions(day, hour)
+    grids = process_grids(predictions)
+    # truths = process_truths(day, hour)
+    # grids = process_grids(truths)
 
-    filename = "base_station_demand_truth"
+    filename = "prediction"
 
     features = geojson_tools.dataframe_to_squares(grids)
-    geojson_tools.export_features(features, f'data/{filename}_{hour}.geojson')
+    geojson_tools.export_features(features, f'data/{filename}_{day}_{hour}.geojson')
 
     heatmap = map_tools.get_map()
 
-    geojson = map_tools.get_geojson_items(f'data/{filename}_{hour}.geojson', styles.heatmap_prediction_style)
+    geojson = map_tools.get_geojson_items(f'data/{filename}_{day}_{hour}.geojson', styles.heatmap_prediction_style)
     geojson.add_to(heatmap)
 
     for circle_marker in circle_markers:
       circle_marker.add_to(heatmap)
 
-    map_tools.export_map_with_chrome(heatmap, f'{filename}_{hour}')
+    map_tools.export_map_with_chrome(heatmap, f'{filename}_{day}_{hour}')
 
 
 def plot_color_limits():

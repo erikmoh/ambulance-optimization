@@ -55,7 +55,7 @@ IntelliJ VM options
 - simulation is only ensured to work from 7.8.17 to 21.8.17. od_paths will probably be missing paths in other time periods. 
 Incident distribution predictions have not been created for other time periods.
 (some of the scripts can be used to fix it, but they are a bit messy)
-- tests have not been maintained.
+- The tests have not been maintained
 
 
 ### Tips:
