@@ -13,6 +13,7 @@ public class SimpleAllocationExperiment implements Experiment {
   private static final Logger logger = LoggerFactory.getLogger(SimpleAllocationExperiment.class);
   private final Result incidentResults = new Result();
   private final Result fitnessResult = new Result();
+  private final Result allocationResult = new Result();
 
   @Override
   public void run() {
@@ -22,9 +23,11 @@ public class SimpleAllocationExperiment implements Experiment {
 
   @Override
   public void saveResults() {
+    var PREFIX = "";
     var POSTFIX = "";
-    incidentResults.saveResults("simple_response_times");
-    fitnessResult.saveResults("simple_result" + POSTFIX);
+    incidentResults.saveResults("simple_response_times" + POSTFIX);
+    fitnessResult.saveResults(PREFIX + "simple_result" + POSTFIX);
+    allocationResult.saveResults("allocations" + POSTFIX);
   }
 
   private void runDeterministicExperiment(Initializer initializer) {
@@ -33,6 +36,9 @@ public class SimpleAllocationExperiment implements Experiment {
 
     var dayShiftAllocation = initializer.initialize(Parameters.NUMBER_OF_AMBULANCES_DAY);
     var nightShiftAllocation = initializer.initialize(Parameters.NUMBER_OF_AMBULANCES_NIGHT);
+
+    allocationResult.saveColumn(name + "_d", dayShiftAllocation);
+    allocationResult.saveColumn(name + "_n", nightShiftAllocation);
 
     var simulationResults = Simulation.simulate(dayShiftAllocation, nightShiftAllocation);
 

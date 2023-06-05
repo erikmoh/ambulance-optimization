@@ -16,6 +16,7 @@ public record Incident(
     LocalDateTime dispatched,
     Optional<LocalDateTime> arrivalAtScene,
     Optional<LocalDateTime> departureFromScene,
+    Optional<LocalDateTime> arriveAtHospital,
     LocalDateTime availableNonTransport,
     LocalDateTime availableTransport,
     int nonTransportingVehicles,
@@ -64,24 +65,24 @@ public record Incident(
     return nonTransportingVehicles + transportingVehicles;
   }
 
-  public int getTimeToAvailableTransport(int travelTime, Config config) {
+  public int getHospitalTime(Config config) {
     if (config.HISTORIC_HOSPITAL_TIME()) {
-      if (departureFromScene.isEmpty() || departureFromScene.get().isAfter(availableTransport)) {
-        return simulatedTimeToAvailable(travelTime);
+      if (arriveAtHospital.isEmpty() || arriveAtHospital.get().isAfter(availableTransport)) {
+        return getHospitalTimeMedian();
       }
-      return (int) ChronoUnit.SECONDS.between(departureFromScene.get(), availableTransport);
+      return (int) ChronoUnit.SECONDS.between(arriveAtHospital.get(), availableTransport);
     }
-    return simulatedTimeToAvailable(travelTime);
+    return getHospitalTimeMedian();
   }
 
-  private int simulatedTimeToAvailable(int travelTime) {
+  private int getHospitalTimeMedian() {
     // median times found using scripts
     if (urgencyLevel.equals(UrgencyLevel.ACUTE)) {
-      return travelTime + 1381;
+      return 1008;
     }
     if (urgencyLevel.equals(UrgencyLevel.URGENT)) {
-      return travelTime + 1283;
+      return 827;
     }
-    return travelTime + 1448;
+    return 751;
   }
 }

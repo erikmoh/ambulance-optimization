@@ -22,7 +22,8 @@ public enum DispatchPolicy {
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
         LocalDateTime currentTime,
-        Config config) {
+        Config config,
+        int factor) {
       ambulance.updateDispatchDelay(incident);
 
       var time = ambulance.getCurrentLocation().euclideanDistanceTo(incident.getLocation());
@@ -43,7 +44,8 @@ public enum DispatchPolicy {
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
         LocalDateTime currentTime,
-        Config config) {
+        Config config,
+        int factor) {
       ambulance.updateDispatchDelay(incident);
 
       var time = ambulance.getCurrentLocation().manhattanDistanceTo(incident.getLocation());
@@ -64,7 +66,8 @@ public enum DispatchPolicy {
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
         LocalDateTime currentTime,
-        Config config) {
+        Config config,
+        int factor) {
       ambulance.updateDispatchDelay(incident);
 
       ambulance.setTimeToIncident(incident);
@@ -84,7 +87,8 @@ public enum DispatchPolicy {
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
         LocalDateTime currentTime,
-        Config config) {
+        Config config,
+        int factor) {
 
       int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
       if (coveragePenaltyImportance == 0) {
@@ -99,10 +103,8 @@ public enum DispatchPolicy {
 
       var penalty =
           switch (Math.max(0, numAvailable - demand)) {
-            case 0 -> 660;
-            case 1 -> 215;
-            case 2 -> 30;
-            case 3 -> 15;
+            case 0 -> 1050; // 1510, 1315, 1050
+            case 1 -> 50; // 60, 310, 50
             default -> 0;
           };
 
@@ -119,7 +121,8 @@ public enum DispatchPolicy {
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
         LocalDateTime currentTime,
-        Config config) {
+        Config config,
+        int factor) {
 
       int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
       if (coveragePenaltyImportance == 0) {
@@ -143,10 +146,8 @@ public enum DispatchPolicy {
 
       var penalty =
           switch (Math.max(0, closeAmbulances - demand)) {
-            case 0 -> 660;
-            case 1 -> 215;
-            case 2 -> 30;
-            case 3 -> 15;
+            case 0 -> 690; // 1590, 1780, 690
+            case 1 -> 210; // 55, 255, 210
             default -> 0;
           };
 
@@ -163,7 +164,8 @@ public enum DispatchPolicy {
         Integer demand,
         Map<BaseStation, List<Ambulance>> baseStationAmbulances,
         LocalDateTime currentTime,
-        Config config) {
+        Config config,
+        int factor) {
 
       int coveragePenaltyImportance = updateAmbulance(ambulance, incident);
       if (coveragePenaltyImportance == 0) {
@@ -212,16 +214,14 @@ public enum DispatchPolicy {
       var availableAmbulanceCount = Math.max(0L, areaAmbulanceCount - demand);
       var penalty =
           switch ((int) availableAmbulanceCount) {
-            case 0 -> 660;
-            case 1 -> 215;
-            case 2 -> 30;
-            case 3 -> 15;
+            case 0 -> 720; // 1920, 1590, 720
+            case 1 -> 220; // 280, 20, 220
             default -> 0;
           };
 
       var penaltyFactor = switch (config.INCIDENT_DISTRIBUTION()) {
-        // found by testing factors in a range of [0, 200] and picking the one that gave best result
-        case PREDICTION -> 26;
+        // found by testing factors in a range of [0, 500] and picking the one that gave best result
+        case PREDICTION -> 101; //185, 100, 101
         case TRUTH -> 77;
         case default -> 39;
       };
@@ -260,5 +260,6 @@ public enum DispatchPolicy {
       Integer demand,
       Map<BaseStation, List<Ambulance>> baseStationAmbulances,
       LocalDateTime currentTime,
-      Config config);
+      Config config,
+      int factor);
 }

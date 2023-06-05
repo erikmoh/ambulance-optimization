@@ -36,6 +36,7 @@ import no.ntnu.ambulanceallocation.utils.Utils;
 public final class Simulation {
 
   private static final Map<Config, List<Incident>> memoizedIncidentList = new HashMap<>();
+  private static int factor = 0;
 
   private final DoubleProperty simulationUpdateInterval;
   private final TriConsumer<LocalDateTime, Collection<Ambulance>, Collection<NewCall>> onTimeUpdate;
@@ -98,6 +99,13 @@ public final class Simulation {
         .simulate(new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)));
   }
 
+  public static SimulationResults simulate(
+      final List<Integer> dayShiftAllocation, final List<Integer> nightShiftAllocation, int f) {
+    factor = f;
+    return withDefaultConfig()
+        .simulate(new Allocation(List.of(dayShiftAllocation, nightShiftAllocation)));
+  }
+
   public SimulationResults simulate(final Allocation allocation) {
     initialize(allocation);
     Event event;
@@ -114,7 +122,7 @@ public final class Simulation {
 
       try {
         switch (event) {
-          case NewCall newCall -> handleNewCall(newCall);
+          case NewCall newCall -> handleNewCall(newCall, false);
           case AbortIncident abortIncident -> handleAbortIncident(abortIncident);
           case SceneArrival sceneArrival -> handleSceneArrival(sceneArrival);
           case SceneDeparture sceneDeparture -> handleSceneDeparture(sceneDeparture);
@@ -235,7 +243,7 @@ public final class Simulation {
     }
   }
 
-  private void handleNewCall(NewCall newCall) {
+  private void handleNewCall(NewCall newCall, boolean reassigned) {
     var dispatchedAmbulances = dispatch(newCall);
 
     if (dispatchedAmbulances.isEmpty()) {
@@ -244,7 +252,10 @@ public final class Simulation {
 
     var incident = newCall.incident;
     var callQueueTime = (int) ChronoUnit.SECONDS.between(incident.callReceived(), time);
-    var handlingTime = Math.max(callQueueTime, config.HANDLING_DELAY().get(incident));
+    var handlingTime = config.HANDLING_DELAY().get(incident);
+    if (reassigned) {
+      handlingTime = Math.max(0, handlingTime - callQueueTime);
+    }
 
     if (incident.departureFromScene().isEmpty() && incident.arrivalAtScene().isEmpty()) {
       // Assume incident was aborted
@@ -267,7 +278,11 @@ public final class Simulation {
 
     var firstAmbulance = dispatchedAmbulances.get(0);
     var timeToIncident = firstAmbulance.getUpdatedTimeToIncident(incident);
-    var responseTime = callQueueTime + handlingTime + timeToIncident;
+    var waitingTime = Math.max(callQueueTime, handlingTime);
+    if (reassigned) {
+      waitingTime = callQueueTime + handlingTime;
+    }
+    var responseTime = waitingTime + timeToIncident;
 
     if (newCall instanceof PartiallyRespondedCall && plannedTravelTimes.containsKey(incident)) {
       responseTime = Math.min(plannedTravelTimes.get(incident), responseTime);
@@ -361,11 +376,8 @@ public final class Simulation {
         ambulance.transport();
 
         var transportTime = ambulance.getTimeToHospital();
-        var timeToAvailable = newCall.incident.getTimeToAvailableTransport(transportTime, config);
-        if (timeToAvailable < transportTime) {
-          timeToAvailable = transportTime;
-        }
-        var availableTime = time.plusSeconds(timeToAvailable);
+        var hospitalTime = newCall.incident.getHospitalTime(config);
+        var availableTime = time.plusSeconds(transportTime + hospitalTime);
         eventQueue.add(new HospitalDeparture(availableTime, ambulance, ambulance.getCall()));
 
         var updateTime = time.plusMinutes(config.UPDATE_LOCATION_PERIOD());
@@ -456,7 +468,7 @@ public final class Simulation {
             config
                 .DISPATCH_POLICY()
                 .updateAmbulance(
-                    a, available, incident, demand, baseStationAmbulances, time, config));
+                    a, available, incident, demand, baseStationAmbulances, time, config, factor));
 
     // sort ambulances based on dispatch score.
     // if reassign score is equal to regular, regular ambulance will be first when sorted
@@ -543,7 +555,7 @@ public final class Simulation {
               ambulance -> {
                 var oldCall = ambulance.getCall();
                 eventQueue.removeIf(e -> Objects.equals(e.newCall, oldCall));
-                handleNewCall(oldCall);
+                handleNewCall(oldCall, true);
                 ambulance.setReassigned(true);
               });
     }

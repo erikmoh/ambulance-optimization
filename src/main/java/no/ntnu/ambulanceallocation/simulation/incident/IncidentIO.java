@@ -1,6 +1,7 @@
 package no.ntnu.ambulanceallocation.simulation.incident;
 
 import static no.ntnu.ambulanceallocation.Parameters.DISPATCH_POLICY;
+import static no.ntnu.ambulanceallocation.Parameters.INCIDENT_DISTRIBUTION;
 import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.getCoordinateFromString;
 import static no.ntnu.ambulanceallocation.simulation.grid.DistanceIO.loadNeighboursFromFile;
 
@@ -129,11 +130,12 @@ public class IncidentIO {
     var dispatched = LocalDateTime.parse(values.get(6), dateTimeFormatter);
     var arrivalAtScene = parseDateTime(values.get(7));
     var departureFromScene = parseDateTime(values.get(8));
-    var availableNonTransport = LocalDateTime.parse(values.get(9), dateTimeFormatter);
-    var availableTransport = LocalDateTime.parse(values.get(10), dateTimeFormatter);
+    var arrivalAtHospital = parseDateTime(values.get(9));
+    var availableNonTransport = LocalDateTime.parse(values.get(10), dateTimeFormatter);
+    var availableTransport = LocalDateTime.parse(values.get(11), dateTimeFormatter);
 
-    var nonTransportingVehicles = Integer.parseInt(values.get(11));
-    var transportingVehicles = Integer.parseInt(values.get(12));
+    var nonTransportingVehicles = Integer.parseInt(values.get(12));
+    var transportingVehicles = Integer.parseInt(values.get(13));
 
     return new Incident(
         ambulanceNotified,
@@ -144,6 +146,7 @@ public class IncidentIO {
         dispatched,
         arrivalAtScene,
         departureFromScene,
+        arrivalAtHospital,
         availableNonTransport,
         availableTransport,
         nonTransportingVehicles,
@@ -156,7 +159,7 @@ public class IncidentIO {
       return false;
     }
 
-    return !values.get(6).isBlank() && !values.get(9).isBlank();
+    return !values.get(6).isBlank() && !values.get(10).isBlank();
   }
 
   private static Optional<LocalDateTime> parseDateTime(String dateTime) {
@@ -167,7 +170,8 @@ public class IncidentIO {
   }
 
   static Map<Coordinate, Map<Integer, Map<Integer, Map<Integer, Double>>>> loadGridDistributions() {
-    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || !INCIDENT_DISTRIBUTION.equals(IncidentDistribution.GRID)) {
       return Collections.emptyMap();
     }
 
@@ -217,7 +221,8 @@ public class IncidentIO {
 
   static Map<Integer, Map<Integer, Map<Integer, Map<Integer, Double>>>>
       loadBaseStationDistributions() {
-    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || !INCIDENT_DISTRIBUTION.equals(IncidentDistribution.BASE_STATION)) {
       return Collections.emptyMap();
     }
 
@@ -263,7 +268,9 @@ public class IncidentIO {
 
   static Map<Integer, Map<Integer, Map<Integer, Double>>> loadPredictionDistributions(
       boolean truth) {
-    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)) {
+    if (!DISPATCH_POLICY.equals(DispatchPolicy.CoveragePredictedDemand)
+        || (!truth && !INCIDENT_DISTRIBUTION.equals(IncidentDistribution.PREDICTION))
+        || (truth && !INCIDENT_DISTRIBUTION.equals(IncidentDistribution.TRUTH))) {
       return Collections.emptyMap();
     }
 
@@ -289,7 +296,11 @@ public class IncidentIO {
 
           for (var hourKey : hourJsonObject.names()) {
             var hour = Integer.parseInt(hourKey.toString());
-            hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+            try {
+              hourMap.put(hour, hourJsonObject.getDouble(hourKey.toString()));
+            } catch (Exception e) {
+              hourMap.put(hour, -1.0);
+            }
           }
           dayMap.put(day, hourMap);
         }

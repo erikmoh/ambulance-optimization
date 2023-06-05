@@ -1,10 +1,10 @@
 package no.ntnu.ambulanceallocation.simulation;
 
 import static java.lang.Math.exp;
-import static java.lang.Math.pow;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import no.ntnu.ambulanceallocation.simulation.incident.UrgencyLevel;
@@ -14,6 +14,8 @@ public class SimulationResults {
 
   private final List<SimulatedIncidentResult> simulatedIncidents = new ArrayList<>();
   private final List<Double> survivalRates = new ArrayList<>();
+
+  private final Map<String, Double> averageResults = new HashMap<>();
 
   public void add(SimulatedIncidentResult simulatedIncidentResult) {
     simulatedIncidents.add(simulatedIncidentResult);
@@ -54,9 +56,14 @@ public class SimulationResults {
 
     for (int i = 0; i < responseTimes.size(); i++) {
       var r = responseTimes.get(i) / 60.0;
-      var u = urgencyLevels.get(i).getCoefficient();
-      var survivalRate = pow((1 + exp(-u + 0.1 * r)), -1);
-      survivalRates.add(survivalRate);
+      var u1 = urgencyLevels.get(i).getCoefficient1();
+      var u2 = urgencyLevels.get(i).getCoefficient2();
+      var survivalRate = 1.0 / (1 + exp(-u1 + u2 * r));
+      if (urgencyLevels.get(i).equals(UrgencyLevel.ACUTE)) {
+        survivalRates.add(survivalRate * 2);
+      } else {
+        survivalRates.add(survivalRate);
+      }
     }
     return survivalRates;
   }
@@ -69,38 +76,35 @@ public class SimulationResults {
   }
 
   public Map<String, Double> createAverageResults() {
-    var urgencyLevels = getUrgencyLevels();
-    var responseTimes = getResponseTimes();
-    var survivalRates = getSurvivalRates();
-    var acuteLen = 0;
-    var acuteResponse = 0;
-    var acuteSurvival = 0.0;
-    var urgentLen = 0;
-    var urgentResponse = 0;
-    var urgentSurvival = 0.0;
-    for (int i = 0; i < urgencyLevels.size(); i++) {
-      var urgency = urgencyLevels.get(i);
-      var responseTime = responseTimes.get(i);
-      var survivalRate = survivalRates.get(i);
-      if (urgency.equals(UrgencyLevel.ACUTE)) {
-        acuteResponse += responseTime;
-        acuteSurvival += survivalRate;
-        acuteLen++;
-      } else {
-        urgentResponse += responseTime;
-        urgentSurvival += survivalRate;
-        urgentLen++;
+    if (averageResults.isEmpty()) {
+      var urgencyLevels = getUrgencyLevels();
+      var responseTimes = getResponseTimes();
+      var survivalRates = getSurvivalRates();
+      var acuteLen = 0;
+      var acuteResponse = 0;
+      var acuteSurvival = 0.0;
+      var urgentLen = 0;
+      var urgentResponse = 0;
+      var urgentSurvival = 0.0;
+      for (int i = 0; i < urgencyLevels.size(); i++) {
+        var urgency = urgencyLevels.get(i);
+        var responseTime = responseTimes.get(i);
+        var survivalRate = survivalRates.get(i);
+        if (urgency.equals(UrgencyLevel.ACUTE)) {
+          acuteResponse += responseTime;
+          acuteSurvival += survivalRate;
+          acuteLen++;
+        } else {
+          urgentResponse += responseTime;
+          urgentSurvival += survivalRate;
+          urgentLen++;
+        }
       }
+      averageResults.put("acuteResponse", (double) acuteResponse / acuteLen);
+      averageResults.put("acuteSurvival", acuteSurvival / acuteLen);
+      averageResults.put("urgentResponse", (double) urgentResponse / urgentLen);
+      averageResults.put("urgentSurvival", urgentSurvival / urgentLen);
     }
-
-    return Map.of(
-        "acuteResponse",
-        (double) acuteResponse / acuteLen,
-        "acuteSurvival",
-        acuteSurvival / acuteLen,
-        "urgentResponse",
-        (double) urgentResponse / urgentLen,
-        "urgentSurvival",
-        urgentSurvival / urgentLen);
+    return averageResults;
   }
 }

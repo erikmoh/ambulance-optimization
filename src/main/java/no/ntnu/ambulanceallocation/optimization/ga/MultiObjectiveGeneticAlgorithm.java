@@ -1,6 +1,7 @@
 package no.ntnu.ambulanceallocation.optimization.ga;
 
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_PROBABILITY;
+import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_TUNE_START;
 import static no.ntnu.ambulanceallocation.Parameters.GENERATIONS_COMBINED;
 import static no.ntnu.ambulanceallocation.Parameters.GENERATIONS_ISLAND;
 import static no.ntnu.ambulanceallocation.Parameters.INITIALIZER;
@@ -39,6 +40,7 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
   private final List<Double> bestFitness = new ArrayList<>();
   private final List<Double> averageFitness = new ArrayList<>();
   private final List<Double> diversity = new ArrayList<>();
+  private final List<Double> diversityOld = new ArrayList<>();
 
   protected Config config;
   protected Population population;
@@ -165,8 +167,8 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
   }
 
   private double getCrossoverProbability(int generation) {
-    var generationReduction = generation / 100.0;
-    return Math.max(CROSSOVER_PROBABILITY, 0.8 - generationReduction);
+    var generationReduction = generation / 700.0;
+    return Math.max(CROSSOVER_PROBABILITY, CROSSOVER_TUNE_START - generationReduction);
   }
 
   @Override
@@ -175,6 +177,7 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
     runStatistics.saveColumn("best", bestFitness);
     runStatistics.saveColumn("average", averageFitness);
     runStatistics.saveColumn("diversity", diversity);
+    runStatistics.saveColumn("diversityOld", diversityOld);
     return runStatistics;
   }
 
@@ -189,27 +192,31 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
 
   protected void printAndSaveSummary(Logger logger, int generation, Population population) {
     logger.info("{} generation: {}", getAbbreviation(), generation);
-    var bestFitness = population.getBestFitness();
+    var best = population.bestMO();
+    var bestFitness = best.getFitness();
     var averageFitness = population.getAverageFitness();
     var diversity = population.getDiversity();
+    var diversityOld = population.getDiversityOld();
     if (config.USE_URGENCY_FITNESS()) {
       logger.info("Best fitness: {}", 1.0 - bestFitness);
       logger.info("Average fitness: {}", 1.0 - averageFitness);
     } else {
+      var bestSurvivalRate = best.getSurvivalRate();
       logger.info("Best fitness: {}", bestFitness);
       logger.info("Average fitness: {}", averageFitness);
+      logger.info("Best survival rate: {}", bestSurvivalRate);
     }
     logger.info("Diversity: {}", diversity);
     this.bestFitness.add(bestFitness);
     this.averageFitness.add(averageFitness);
     this.diversity.add(diversity);
+    this.diversityOld.add(diversityOld);
   }
 
   protected void plotRankedPopulation() {
     var colors =
         new ArrayList<>(
             List.of(
-                "crimson",
                 "red",
                 "orange",
                 "yellow",
@@ -226,8 +233,8 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
     try {
       var plt = Plot.create();
       for (var individual : population) {
-        var x = individual.getResponseTimeH();
-        var y = individual.getResponseTimeA();
+        var x = individual.getResponseTimeH() / 60;
+        var y = individual.getResponseTimeA() / 60;
         var color = "gray";
         if (individual.getRank() - 1 < colors.size()) {
           color = colors.get(individual.getRank() - 1);
@@ -237,8 +244,8 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
       plt.title("Response time");
       plt.xlabel("Urgent");
       plt.ylabel("Acute");
-      plt.xlim(460, 620);
-      plt.ylim(430, 540);
+      // plt.xlim(14.3, 15.6);
+      // plt.ylim(9.4, 10.3);
       plt.show();
     } catch (Exception e) {
       logger.error("Failed to plot population", e);
@@ -249,5 +256,6 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
     bestFitness.clear();
     averageFitness.clear();
     diversity.clear();
+    diversityOld.clear();
   }
 }
