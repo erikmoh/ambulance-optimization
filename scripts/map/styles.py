@@ -97,7 +97,7 @@ def heatmap_prediction_style(feature):
         'color': '#000000',
         'fillOpacity': 0.8,
         'weight': 0 if prediction >= 0 else 0.1,
-        'fillColor': _heatmap_color_mapper_hour(prediction)
+        'fillColor': _heatmap_color_prediction_mapper(prediction)
     }
 
 

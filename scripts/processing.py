@@ -104,6 +104,7 @@ def aggregate_concurrent_incidents(df):
     'rykker_ut': min,
     'ank_hentested': min,
     'avg_hentested': min,
+    'ank_levsted': min,
     'ledig_ikketransport': min,
     'ledig_transport': max,
     'non_transporting_vehicles': min,
@@ -187,7 +188,7 @@ def main():
   funnel_statistics = []
 
   input_data_file = 'proprietary_data/cleaned_data.csv'
-  output_data_file = 'proprietary_data/processed_distribution.csv'
+  output_data_file = 'proprietary_data/incidents_processed_3.csv'
 
   buffer_size = 0  # hours
 
@@ -209,7 +210,7 @@ def main():
     if args.keep_all_years:
       intermediate_data_file = 'proprietary_data/half_processed_data.csv'
       temp_df = df[['xcoor', 'ycoor', 'hastegrad', 'tiltak_type',
-                    'rykker_ut', 'ank_hentested', 'avg_hentested', 'ledig']]
+                    'rykker_ut', 'ank_hentested', 'avg_hentested', 'ank_levsted', 'ledig']]
       temp_df = set_index(temp_df)
       temp_df = sort_index(temp_df)
       temp_df.to_csv(intermediate_data_file, index=False)
@@ -227,8 +228,8 @@ def main():
     # filter_response_time_outliers,
     select_features,
     save_intermediate,
-    #filter_dispatch_types,
-    filter_urgency_levels,
+    filter_dispatch_types,
+    #filter_urgency_levels,
     aggregate_concurrent_incidents,
     set_index,
     sort_index,

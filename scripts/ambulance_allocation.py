@@ -7,6 +7,9 @@ from common import VISUALIZATION_FOLDER, ensure_folder_exists
 import map.geojson_tools as geojson_tools
 import map.map_tools as map_tools
 
+import chromedriver_autoinstaller as chromedriver
+chromedriver.install()
+
 
 def process_grids():
     grids = pd.read_csv('data/grid_zones.csv', index_col=0)
@@ -66,3 +69,6 @@ def plot() -> None:
 
             map_tools.export_map_with_chrome(heatmap, file_name, width=700)
     print('done.')
+
+
+plot()

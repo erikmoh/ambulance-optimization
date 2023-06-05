@@ -65,8 +65,8 @@ def _point_to_text_marker(point, text) -> folium.Marker:
         location=point["geometry"]["coordinates"][::-1],
         icon=folium.DivIcon(
             icon_size=(100, 100),
-            icon_anchor=(3, 9),
-            html=text,
+            icon_anchor=(3, 8),
+            html=f'<b>{text}</b>',
         )
     )
 
