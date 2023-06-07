@@ -25,6 +25,10 @@ public class Utils {
     return random.nextInt(list.size());
   }
 
+  public static boolean nextBoolean() {
+    return random.nextBoolean();
+  }
+
   // Pick x random items from a list
   public static <T> List<T> randomChooseN(List<T> list, int numberOfItems) {
     List<T> selection = new ArrayList<>(numberOfItems);

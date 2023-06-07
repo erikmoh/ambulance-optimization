@@ -2,12 +2,14 @@ package no.ntnu.ambulanceallocation.optimization.ga;
 
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_PROBABILITY;
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_TUNE_START;
+import static no.ntnu.ambulanceallocation.Parameters.DISTINCT;
 import static no.ntnu.ambulanceallocation.Parameters.GENERATIONS_COMBINED;
 import static no.ntnu.ambulanceallocation.Parameters.GENERATIONS_ISLAND;
 import static no.ntnu.ambulanceallocation.Parameters.INITIALIZER;
 import static no.ntnu.ambulanceallocation.Parameters.ISLANDS;
 import static no.ntnu.ambulanceallocation.Parameters.MAX_RUNNING_TIME;
 import static no.ntnu.ambulanceallocation.Parameters.MUTATION_PROBABILITY;
+import static no.ntnu.ambulanceallocation.Parameters.MUTATION_TUNE_START;
 import static no.ntnu.ambulanceallocation.Parameters.POPULATION_SIZE;
 import static no.ntnu.ambulanceallocation.Parameters.TOURNAMENT_SIZE;
 
@@ -72,6 +74,8 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
           population.evaluateMO();
           printAndSaveSummary(logger, generation, population);
 
+          // plotRankedPopulation();
+
           while (combinedGeneration < GENERATIONS_COMBINED
               && elapsedTime(startTime) < MAX_RUNNING_TIME) {
 
@@ -83,14 +87,15 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
                 runningCombined = true;
               } else {
                 newIsland();
+                generation = 1;
               }
-              generation = 1;
               printAndSaveSummary(logger, generation, population);
             }
 
             var nextPopulation = new Population();
             var countDownLatch = new CountDownLatch(POPULATION_SIZE);
             var crossoverP = getCrossoverProbability(generation);
+            var mutationP = getMutationProbability(generation);
 
             for (var i = 0; i < POPULATION_SIZE / 2; i++) {
               executor.execute(
@@ -101,16 +106,16 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
 
                     offspringA.recombineWith(offspringB, crossoverP);
 
-                    offspringA.mutate(MUTATION_PROBABILITY);
-                    offspringB.mutate(MUTATION_PROBABILITY);
+                    offspringA.mutate(mutationP);
+                    offspringB.mutate(mutationP);
 
                     synchronized (nextPopulation) {
                       if (nextPopulation.size() < POPULATION_SIZE) {
-                        if (offspringA.hasChanged()) {
+                        if (!DISTINCT || offspringA.hasChanged()) {
                           nextPopulation.add(offspringA, config.CONSTRAINT_STRATEGY());
                         }
                         countDownLatch.countDown();
-                        if (nextPopulation.size() < POPULATION_SIZE) {
+                        if (!DISTINCT || nextPopulation.size() < POPULATION_SIZE) {
                           if (offspringB.hasChanged()) {
                             nextPopulation.add(offspringB, config.CONSTRAINT_STRATEGY());
                           }
@@ -167,8 +172,13 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
   }
 
   private double getCrossoverProbability(int generation) {
-    var generationReduction = generation / 700.0;
+    var generationReduction = generation / 200.0;
     return Math.max(CROSSOVER_PROBABILITY, CROSSOVER_TUNE_START - generationReduction);
+  }
+
+  private double getMutationProbability(int generation) {
+    var generationReduction = generation / 200.0;
+    return Math.max(MUTATION_PROBABILITY, MUTATION_TUNE_START - generationReduction);
   }
 
   @Override
@@ -244,8 +254,8 @@ public class MultiObjectiveGeneticAlgorithm implements Optimizer {
       plt.title("Response time");
       plt.xlabel("Urgent");
       plt.ylabel("Acute");
-      // plt.xlim(14.3, 15.6);
-      // plt.ylim(9.4, 10.3);
+      plt.xlim(14.2, 15.6);
+      plt.ylim(9.4, 10.3);
       plt.show();
     } catch (Exception e) {
       logger.error("Failed to plot population", e);

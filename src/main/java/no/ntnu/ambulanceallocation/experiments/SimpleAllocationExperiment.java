@@ -25,9 +25,9 @@ public class SimpleAllocationExperiment implements Experiment {
   public void saveResults() {
     var PREFIX = "";
     var POSTFIX = "";
-    incidentResults.saveResults("simple_response_times" + POSTFIX);
+    incidentResults.saveResults(PREFIX + "simple_response_times" + POSTFIX);
     fitnessResult.saveResults(PREFIX + "simple_result" + POSTFIX);
-    allocationResult.saveResults("allocations" + POSTFIX);
+    allocationResult.saveResults(PREFIX + "allocations" + POSTFIX);
   }
 
   private void runDeterministicExperiment(Initializer initializer) {

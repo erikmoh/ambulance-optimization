@@ -159,12 +159,13 @@ public abstract class Solution implements Comparable<Solution> {
 
     survivalRate = simulationResults.averageSurvivalRate();
     // for multi-objective
-    /*var resultMap = simulationResults.createAverageResults();
+    /* var resultMap = simulationResults.createAverageResults();
     responseTimeA = resultMap.get("acuteResponse");
     responseTimeH = resultMap.get("urgentResponse");*/
   }
 
   private void calculateNovelty(List<Individual> population) {
+    novelty = 0.0;
     for (var other : population) {
       novelty += distance(other);
     }

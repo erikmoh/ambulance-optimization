@@ -2,6 +2,8 @@ package no.ntnu.ambulanceallocation.optimization.ga;
 
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_PROBABILITY;
 import static no.ntnu.ambulanceallocation.Parameters.CROSSOVER_TUNE_START;
+import static no.ntnu.ambulanceallocation.Parameters.CROWDING;
+import static no.ntnu.ambulanceallocation.Parameters.DISTINCT;
 import static no.ntnu.ambulanceallocation.Parameters.DIVERSIFY_GENERATIONS;
 import static no.ntnu.ambulanceallocation.Parameters.DIVERSITY_LIMIT;
 import static no.ntnu.ambulanceallocation.Parameters.ELITE_SIZE;
@@ -11,8 +13,12 @@ import static no.ntnu.ambulanceallocation.Parameters.INITIALIZER;
 import static no.ntnu.ambulanceallocation.Parameters.ISLANDS;
 import static no.ntnu.ambulanceallocation.Parameters.MAX_RUNNING_TIME;
 import static no.ntnu.ambulanceallocation.Parameters.MUTATION_PROBABILITY;
+import static no.ntnu.ambulanceallocation.Parameters.MUTATION_TUNE_START;
 import static no.ntnu.ambulanceallocation.Parameters.POPULATION_SIZE;
 import static no.ntnu.ambulanceallocation.Parameters.TOURNAMENT_SIZE;
+import static no.ntnu.ambulanceallocation.Parameters.TOURNAMENT_TUNE_END;
+import static no.ntnu.ambulanceallocation.utils.Utils.nextBoolean;
+import static no.ntnu.ambulanceallocation.utils.Utils.randomDouble;
 
 import com.github.sh0nk.matplotlib4j.Plot;
 import java.util.ArrayList;
@@ -31,6 +37,7 @@ import no.ntnu.ambulanceallocation.optimization.Optimizer;
 import no.ntnu.ambulanceallocation.optimization.Solution;
 import no.ntnu.ambulanceallocation.simulation.BaseStation;
 import no.ntnu.ambulanceallocation.simulation.Config;
+import no.ntnu.ambulanceallocation.utils.Tuple;
 import no.ntnu.ambulanceallocation.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +92,8 @@ public class GeneticAlgorithm implements Optimizer {
           while (combinedGeneration < GENERATIONS_COMBINED
               && elapsedTime(startTime) < MAX_RUNNING_TIME) {
 
+            // plotPopulation();
+
             if (!runningCombined && generation == GENERATIONS_ISLAND) {
               populationIslands.add(population);
               logger.info("islands: {}", populationIslands.size());
@@ -93,17 +102,25 @@ public class GeneticAlgorithm implements Optimizer {
                 runningCombined = true;
               } else {
                 newIsland();
+                generation = 1;
               }
               bestFitness = 0.0;
-              generation = 1;
               printAndSaveSummary(logger, generation, population);
             }
 
             var nextPopulation = new Population();
-            var countDownLatch = new CountDownLatch(POPULATION_SIZE);
+            var nonElite = POPULATION_SIZE - ELITE_SIZE;
+            if (DISTINCT) {
+              nonElite = POPULATION_SIZE;
+            }
+            var nonEliteFinal = nonElite;
+            var countDownLatch = new CountDownLatch(nonEliteFinal);
+            // var tournamentSize = getTournamentSize(generation);
             var crossoverP = getCrossoverProbability(generation);
+            var mutationP = getMutationProbability(generation);
+            var f = getScalingFactor(population.getDiversity());
 
-            for (var i = 0; i < POPULATION_SIZE / 2; i++) {
+            for (var i = 0; i < nonEliteFinal / 2; i++) {
               executor.execute(
                   () -> {
                     var parents = population.selection(TOURNAMENT_SIZE);
@@ -112,17 +129,23 @@ public class GeneticAlgorithm implements Optimizer {
 
                     offspringA.recombineWith(offspringB, crossoverP);
 
-                    offspringA.mutate(MUTATION_PROBABILITY);
-                    offspringB.mutate(MUTATION_PROBABILITY);
+                    offspringA.mutate(mutationP);
+                    offspringB.mutate(mutationP);
+
+                    if (CROWDING) {
+                      var offspring = competeCrowding(parents, offspringA, offspringB, f);
+                      offspringA = offspring.first();
+                      offspringB = offspring.second();
+                    }
 
                     synchronized (nextPopulation) {
-                      if (nextPopulation.size() < POPULATION_SIZE) {
-                        if (offspringA.hasChanged()) {
+                      if (nextPopulation.size() < nonEliteFinal) {
+                        if (!DISTINCT || offspringA.hasChanged()) {
                           nextPopulation.add(offspringA, config.CONSTRAINT_STRATEGY());
                         }
                         countDownLatch.countDown();
-                        if (nextPopulation.size() < POPULATION_SIZE) {
-                          if (offspringB.hasChanged()) {
+                        if (nextPopulation.size() < nonEliteFinal) {
+                          if (!DISTINCT || offspringB.hasChanged()) {
                             nextPopulation.add(offspringB, config.CONSTRAINT_STRATEGY());
                           }
                           countDownLatch.countDown();
@@ -139,10 +162,15 @@ public class GeneticAlgorithm implements Optimizer {
             }
 
             nextPopulation.evaluate();
-            population.reducePopulation(
-                Math.max(ELITE_SIZE, POPULATION_SIZE - nextPopulation.size()));
-            population.addAll(nextPopulation);
-            population.reducePopulation(POPULATION_SIZE);
+            if (DISTINCT) {
+              population.reducePopulation(
+                  Math.max(ELITE_SIZE, POPULATION_SIZE - nextPopulation.size()));
+              population.addAll(nextPopulation);
+              population.reducePopulation(POPULATION_SIZE);
+            } else {
+              population.reducePopulation(ELITE_SIZE);
+              population.addAll(nextPopulation);
+            }
 
             generation++;
             if (runningCombined) combinedGeneration++;
@@ -185,6 +213,50 @@ public class GeneticAlgorithm implements Optimizer {
     logger.info("Total GA optimization time: " + optimizationTime + " seconds");
   }
 
+  private Tuple<Individual> competeCrowding(
+      Tuple<Individual> parents, Individual c1, Individual c2, double f) {
+    var p1 = parents.first();
+    var p2 = parents.second();
+    Individual w1;
+    Individual w2;
+    if (p1.distance(c1) + p2.distance(c2) < p1.distance(c2) + p2.distance(c1)) {
+      w1 = compete(p1, c1, f);
+      w2 = compete(p2, c2, f);
+    } else {
+      w1 = compete(p1, c2, f);
+      w2 = compete(p2, c1, f);
+    }
+    return new Tuple<>(w1, w2);
+  }
+
+  private Individual competeDeterministic(Individual p, Individual c) {
+    if (c.getFitness() < p.getFitness()) {
+      return c;
+    } else if (p.getFitness() < c.getFitness()) {
+      return p;
+    }
+    return nextBoolean() ? p : c;
+  }
+
+  private Individual competeProbabilistic(Individual p, Individual c) {
+    var prob = c.getFitness() / (c.getFitness() + p.getFitness());
+    // reverse p and c because minimization problem
+    if (prob > randomDouble()) {
+      return p;
+    }
+    return c;
+  }
+
+  private Individual compete(Individual p, Individual c, double f) {
+    var prob = 0.5; // of picking p
+    if (c.getFitness() > p.getFitness()) {
+      prob = c.getFitness() / (c.getFitness() + (f * p.getFitness()));
+    } else if (p.getFitness() > c.getFitness()) {
+      prob = (f * c.getFitness()) / ((f * c.getFitness()) + p.getFitness());
+    }
+    return prob > randomDouble() ? p : c;
+  }
+
   private void newIsland() {
     population = new Population(POPULATION_SIZE, INITIALIZER, config);
     logger.info("Started new island.");
@@ -220,8 +292,32 @@ public class GeneticAlgorithm implements Optimizer {
   }
 
   private double getCrossoverProbability(int generation) {
-    var generationReduction = generation / 600.0;
+    var generationReduction = generation / 200.0;
     return Math.max(CROSSOVER_PROBABILITY, CROSSOVER_TUNE_START - generationReduction);
+  }
+
+  private double getMutationProbability(int generation) {
+    var generationReduction = generation / 200.0;
+    return Math.max(MUTATION_PROBABILITY, MUTATION_TUNE_START - generationReduction);
+  }
+
+  private int getTournamentSize(int generation) {
+    var startGeneration = 1;
+    var endGeneration = 250;
+
+    // Calculate the exponential growth factor
+    var growthFactor =
+        Math.pow(
+            (double) TOURNAMENT_TUNE_END / TOURNAMENT_SIZE,
+            1.0 / (endGeneration - startGeneration));
+
+    // Calculate the tournament size based on the current generation
+    var tournamentSize = TOURNAMENT_SIZE * Math.pow(growthFactor, (generation - startGeneration));
+    return (int) Math.floor(tournamentSize);
+  }
+
+  private double getScalingFactor(double diversity) {
+    return diversity / 20;
   }
 
   @Override
@@ -283,7 +379,7 @@ public class GeneticAlgorithm implements Optimizer {
       }
       plt.plot().add(x, y, "o");
       plt.title("Fitness distribution");
-      plt.ylim(0.860, 0.884);
+      // plt.ylim(0.860, 0.884);
       plt.show();
     } catch (Exception e) {
       return;

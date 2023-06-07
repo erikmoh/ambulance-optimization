@@ -44,18 +44,22 @@ public final class Parameters {
   // Genetic & Memetic Algorithm
   public static final Initializer INITIALIZER =
       new no.ntnu.ambulanceallocation.optimization.initializer.Random();
-  public static final int ISLANDS = 3; // set to 0 to disable islands
-  public static final int GENERATIONS_ISLAND = 200;
+  public static final int ISLANDS = 0; // set to 0 to disable islands
+  public static final int GENERATIONS_ISLAND = 90;
   public static final int GENERATIONS_COMBINED = 9999;
-  public static final int POPULATION_SIZE = 60;
-  public static final int ELITE_SIZE = 6;
+  public static final int POPULATION_SIZE = 200;
+  public static final int ELITE_SIZE = 10;
   public static final int TOURNAMENT_SIZE = 6;
+  public static final int TOURNAMENT_TUNE_END = 30;
   public static final int DIVERSITY_LIMIT = 0;
   public static final int DIVERSIFY_GENERATIONS = 99999; // generations without improvement
   public static final int RESET_GENERATIONS = 100; // generations without improvement
+  public static final boolean CROWDING = false;
+  public static final boolean DISTINCT = true;
 
   public static final double CROSSOVER_TUNE_START = 0.8;
   public static final double CROSSOVER_PROBABILITY = 0.1;
+  public static final double MUTATION_TUNE_START = 0.05;
   public static final double MUTATION_PROBABILITY = 0.014;
   public static final double IMPROVE_PROBABILITY = 0.25;
 
